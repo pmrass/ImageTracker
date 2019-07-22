@@ -4,16 +4,21 @@ classdef PMMovieLibraryManager < handle
     
     properties
         
+        
+     
         Viewer
         TagOfHandleOfInfoFigure =                   'PMMovieLibraryManager_InfoWindow';
         ActiveInfoType =                            'Project';
         
-        MainProjectFolder =                         '/Users/rishi/Documents/MATLAB/ImageSequences_LacticAcid.mat';
         
-        FileWithPreviousSettings =                  '/Users/rishi/ImageTracker/imans_PreviouslyUsedFile.mat';
+        MainProjectFolder =                         '/Users/rishi/Documents/GitHub/ImageSequences_LacticAcid.mat';
+        
+        FileWithPreviousSettings =                  '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/imans_PreviouslyUsedFile.mat';
         FileNameForLoadingNewObject =               '' % use this only for loading the new file; the movie-library will "save itself" with the filename it has in one its properties
         
         MovieLibrary
+        
+      
         
         ActiveMovieController
         ListWithLoadedImageData =                   cell(0,1);
@@ -147,7 +152,7 @@ classdef PMMovieLibraryManager < handle
 
             
             % help menu:
-             obj.Viewer.HelpMenu.KeyboardShortcuts.MenuSelectedFcn  =                           @obj.showKeyboardShortcuts;
+             obj.Viewer.HelpMenu.KeyboardShortcuts.MenuSelectedFcn  =                   @obj.showKeyboardShortcuts;
 
             
             %% other views
@@ -157,7 +162,7 @@ classdef PMMovieLibraryManager < handle
             
             
             
-            
+          
             
             
             
@@ -548,6 +553,7 @@ classdef PMMovieLibraryManager < handle
                 waitbar(waitBarNumber, h, ['Mapping image file: ' currentNickName]);
                 
                 % do the actual mapping
+                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.Folder =                obj.MovieLibrary.PathOfMovieFolder;
                 obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1} = obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.AddImageMap;
 
                 % update filter view (i.e. remove mapped movie from "unmapped list";
@@ -1032,7 +1038,6 @@ classdef PMMovieLibraryManager < handle
         function [obj] =        movieListClicked(obj, src, ~)
             
 
-
             SelectionType =                                         obj.Viewer.Figure.SelectionType;
             switch SelectionType
                 
@@ -1070,7 +1075,7 @@ classdef PMMovieLibraryManager < handle
                 PopupMenu =                         obj.Viewer.ProjectViews.FilterForKeywords;
                 
                 obj.MovieLibrary =                  obj.MovieLibrary.updateFilterSettingsFromPopupMenu(PopupMenu);
-                 obj =                              obj.updateView;
+                obj =                              obj.updateView;
                  
               
                  
@@ -1461,8 +1466,9 @@ classdef PMMovieLibraryManager < handle
                 
                  
                 obj.MovieLibrary =                                  PMMovieLibrary(obj.FileNameForLoadingNewObject);
-                obj =                                               obj.resetActiveMovieController;
+                obj.MovieLibrary =                                  obj.MovieLibrary.sortByNickName;
                 
+                obj =                                               obj.resetActiveMovieController;
                 
                 if isempty(obj.FileNameForLoadingNewObject)
                     return
@@ -1472,7 +1478,7 @@ classdef PMMovieLibraryManager < handle
                 obj.ListWithLoadedImageData =                       cell(size(obj.MovieLibrary.ListhWithMovieObjects,1),1);
                 obj =                                               obj.updateView;
                 obj =                                               obj.updateInfoView;
-                obj =                                               obj.changeDisplayedMovie;
+          %      obj =                                               obj.changeDisplayedMovie;
                 
           end
           
@@ -1488,6 +1494,9 @@ classdef PMMovieLibraryManager < handle
             end
             
             
+            obj =                                                      obj.resetActiveMovieController;
+            
+            
             %% if a movie is there: change the "active movie";
             SelectedRow =                                               obj.MovieLibrary.getSelectedRowInLibrary;
             obj.ActiveMovieController.LoadedMovie =                     obj.MovieLibrary.ListhWithMovieObjects{SelectedRow,1};
@@ -1496,9 +1505,11 @@ classdef PMMovieLibraryManager < handle
             
              %% when the file was not yet mapped successfully, do the mapping now
             if isempty(obj.ActiveMovieController.LoadedMovie.ImageMapPerFile)
+                
+                obj.ActiveMovieController.LoadedMovie.Folder =                obj.MovieLibrary.PathOfMovieFolder;
                  obj.ActiveMovieController.LoadedMovie =                     obj.ActiveMovieController.LoadedMovie.AddImageMap;
                  
-                 if obj.ActiveMovieController.LoadedMovie.PointersPerFile ==           -1
+                 if obj.ActiveMovieController.LoadedMovie.FileCouldNotBeRead
                      return
                      
                  end
@@ -1657,7 +1668,10 @@ classdef PMMovieLibraryManager < handle
                 if ~isempty(ListWithSelectedNickNames)
 
                     if obj.MovieLibrary.SortIndex == 1 % currently always sorted by nickanme
-                        ListWithSelectedNickNames =     sort(ListWithSelectedNickNames);
+                        ListWithSelectedNickNames =                         sort(ListWithSelectedNickNames);
+                        
+                        
+        
                     end
                     
                     ProjectWindowHandles.ListOfMoviesInProject.String=                  ListWithSelectedNickNames;
@@ -1705,15 +1719,9 @@ classdef PMMovieLibraryManager < handle
                  case 'Attached files'
 
                      
-                     if ~obj.verifyActiveMovieStatus
-                         InfoText = {'No movie loaded'};
-                         
-                     else
-                         
-                          TrackingInternal =                              obj.ActiveMovieController.LoadedMovie.Tracking;
-                        DriftCorrectionInternal =                       obj.ActiveMovieController.LoadedMovie.DriftCorrection;
-                         NameOfSelectedNickName=                         obj.ActiveMovieController.LoadedMovie.NickName;
-                        NamesOfAttachedFileNames=                       obj.ActiveMovieController.LoadedMovie.AttachedFiles;
+                      TrackingInternal =                              obj.ActiveMovieController.LoadedMovie.Tracking;
+                        
+                          NamesOfAttachedFileNames=                       obj.ActiveMovieController.LoadedMovie.AttachedFiles;
 
 
 
@@ -1758,8 +1766,6 @@ classdef PMMovieLibraryManager < handle
                         InfoText= [FileText; SummaryText];
 
                          
-                         
-                     end
                      
                       
 

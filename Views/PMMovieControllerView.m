@@ -5,10 +5,10 @@ classdef PMMovieControllerView
     properties
         
         % views:
+        Figure
         
         Menu
         
-        Figure
         Navigation
         Channels
         Annotation
@@ -21,80 +21,63 @@ classdef PMMovieControllerView
         
         function obj = PMMovieControllerView(ProjectViews)
             %PMMOVIECONTROLLERVIEW Construct an instance of this class
-            %   Detailed explanation goes here
-
+            %   Creation of views that support navigating through the loaded image-sequences;
 
             obj =                   obj.createMovieMenu(ProjectViews);
             obj =                   obj.CreateNavigationViews(ProjectViews);
             obj =                   obj.CreateChannelViews(ProjectViews);
             obj =                   obj.CreateAnnotationViews(ProjectViews);
-            
             obj =                   obj.createMovieView(ProjectViews);
-         
-            
-            
-            
+      
         end
         
      
         function obj = createMovieMenu(obj, ProjectViews)
             
-            MainMovieMenu=                                          uimenu(ProjectViews.Figure);
-            MainMovieMenu.Label=                                    'Movie';
+            MainMovieMenu=                                                      uimenu(ProjectViews.Figure);
+            MainMovieMenu.Label=                                                'Movie';
 
-            obj.Menu.Keyword=                                  uimenu(MainMovieMenu);
-            obj.Menu.Keyword.Label=                            'Change keyword';
-            obj.Menu.Keyword.Tag=                              'Movies_EditKeyword';
-            obj.Menu.Keyword.Enable=                           'on';
+            obj.Menu.Keyword=                                                   uimenu(MainMovieMenu);
+            obj.Menu.Keyword.Label=                                             'Change keyword';
+            obj.Menu.Keyword.Tag=                                               'Movies_EditKeyword';
+            obj.Menu.Keyword.Enable=                                            'on';
 
-
-            obj.Menu.ReapplySourceFiles=                                  uimenu(MainMovieMenu);
-            obj.Menu.ReapplySourceFiles.Label=                            'Reapply source files';
-            obj.Menu.ReapplySourceFiles.Tag=                              'ReapplySourceFiles';
-            obj.Menu.ReapplySourceFiles.Enable=                           'on';
-            obj.Menu.ReapplySourceFiles.Separator=                     'on';
+            obj.Menu.ReapplySourceFiles=                                        uimenu(MainMovieMenu);
+            obj.Menu.ReapplySourceFiles.Label=                                  'Reapply source files';
+            obj.Menu.ReapplySourceFiles.Tag=                                    'ReapplySourceFiles';
+            obj.Menu.ReapplySourceFiles.Separator=                              'on';
+            obj.Menu.ReapplySourceFiles.Enable=                                 'on';
 
             obj.Menu.DeleteImageCache=                                          uimenu(MainMovieMenu);
             obj.Menu.DeleteImageCache.Label=                                    'Delete image cache';
             obj.Menu.DeleteImageCache.Tag=                                      'DeleteImageCache';
-            obj.Menu.DeleteImageCache.Enable=                                   'on';
             obj.Menu.DeleteImageCache.Separator=                                'off';
-
-            
+            obj.Menu.DeleteImageCache.Enable=                                   'on';
             
             obj.Menu.ApplyManualDriftCorrection=                                uimenu(MainMovieMenu);
             obj.Menu.ApplyManualDriftCorrection.Label=                          'Apply manual drift correction';
             obj.Menu.ApplyManualDriftCorrection.Tag=                            'Export_ManualTracking';
-            obj.Menu.ApplyManualDriftCorrection.Enable=                         'on';
             obj.Menu.ApplyManualDriftCorrection.Separator=                      'on';
+            obj.Menu.ApplyManualDriftCorrection.Enable=                         'on';
 
-           
-
-                obj.Menu.EraseAllDriftCorrections=                              uimenu(MainMovieMenu);
-                obj.Menu.EraseAllDriftCorrections.Label=                        'Erase all drift corrections';
-                obj.Menu.EraseAllDriftCorrections.Tag=                          'Export_ResetDriftCorrection';
-                obj.Menu.EraseAllDriftCorrections.Enable=                       'on';
-
+            obj.Menu.EraseAllDriftCorrections=                                  uimenu(MainMovieMenu);
+            obj.Menu.EraseAllDriftCorrections.Label=                            'Erase all drift corrections';
+            obj.Menu.EraseAllDriftCorrections.Tag=                              'Export_ResetDriftCorrection';
+            obj.Menu.EraseAllDriftCorrections.Enable=                           'on';
 
             % access movie file
             obj.Menu.ShowMetaData=                                              uimenu(MainMovieMenu);
             obj.Menu.ShowMetaData.Label=                                        'Show meta-data';
             obj.Menu.ShowMetaData.Tag=                                          'Movies_MovieInfo';
-            obj.Menu.ShowMetaData.Enable=                                       'on';
             obj.Menu.ShowMetaData.Separator=                                    'on';
+            obj.Menu.ShowMetaData.Enable=                                       'on';
 
             %
             obj.Menu.ShowAttachedFiles=                                         uimenu(MainMovieMenu);
             obj.Menu.ShowAttachedFiles.Label=                                   'Show attached files';
             obj.Menu.ShowAttachedFiles.Tag=                                     'Movies_ShowFiles';
             obj.Menu.ShowAttachedFiles.Enable=                                  'on';
-   
-            
-            
-              
-                
-               
-    
+         
         end
         
         
@@ -103,131 +86,108 @@ classdef PMMovieControllerView
            
             %% set positions
             
-            TopRowInside =                                                    ProjectViews.StartRowNavigation;
+            TopRowInside =                                                          ProjectViews.StartRowNavigation;
             
-            ColumnShiftInside =                                         ProjectViews.ColumnShift;
-            ViewHeightInside =                                          ProjectViews.ViewHeight;
-            WidthOfFirstColumnInside =                                  ProjectViews.WidthOfFirstColumn;
-            WidthOfSecondColumnInside =                                 ProjectViews.WidthOfSecondColumn;
-            
-            
-            
-            
-            
-            RowShiftInside =                                                 ProjectViews.RowShift;
-            LeftColumnStart =                                           0.8;
+            ColumnShiftInside =                                                     ProjectViews.ColumnShift;
+            ViewHeightInside =                                                      ProjectViews.ViewHeight;
+            WidthOfFirstColumnInside =                                              ProjectViews.WidthOfFirstColumn;
+            WidthOfSecondColumnInside =                                             ProjectViews.WidthOfSecondColumn;
+               
+            RowShiftInside =                                                        ProjectViews.RowShift;
+            LeftColumnStart =                                                       0.8;
            
 
-            TitleRow =                                                  TopRowInside-0.11;
+            TitleRow =                                                              TopRowInside-0.11;
             
-            HeightOfEditSelection =                                     0.1;
+            HeightOfEditSelection =                                                 0.1;
             
             
-            PositionRow1 =                                              TitleRow-RowShiftInside;
-            PositionRow2 =                                              PositionRow1-RowShiftInside;
-            PositionRow3 =                                              PositionRow2-RowShiftInside;
-            PositionRow4 =                                              PositionRow3-RowShiftInside;
+            PositionRow1 =                                                          TitleRow-RowShiftInside;
+            PositionRow2 =                                                          PositionRow1-RowShiftInside;
+            PositionRow3 =                                                          PositionRow2-RowShiftInside;
+            PositionRow4 =                                                          PositionRow3-RowShiftInside;
            
-            PositionRow5 =                                              PositionRow4-RowShiftInside;
-            PositionRow6 =                                              PositionRow5-RowShiftInside;
+            PositionRow5 =                                                          PositionRow4-RowShiftInside;
+            PositionRow6 =                                                          PositionRow5-RowShiftInside;
+
+            FirstColumn =                                                           LeftColumnStart;
+            SecondColumn =                                                          LeftColumnStart + ColumnShiftInside;
 
             
 
-            FirstColumn =                                               LeftColumnStart;
-            SecondColumn =                                              LeftColumnStart + ColumnShiftInside;
-
-            
-            
-            %% frames:
-            
-            
-            
             %% list of options:
-            EditingOptions=             uicontrol;
-            EditingOptions.Tag=         'SelectDisplayOfImageAnalysis';
-            EditingOptions.Style=       'Listbox';
-            EditingOptions.String=      { 'Viewing only',  'Edit manual drift correction', 'Edit tracks'};
-            EditingOptions.Units=           'normalized';
-            EditingOptions.Position=        [FirstColumn TitleRow (ColumnShiftInside + WidthOfSecondColumnInside) HeightOfEditSelection];
+            EditingOptions=                                                         uicontrol;
+            EditingOptions.Tag=                                                     'SelectDisplayOfImageAnalysis';
+            EditingOptions.Style=                                                   'Listbox';
+            EditingOptions.String=                                                  { 'Viewing only',  'Edit manual drift correction', 'Edit tracks'};
+            EditingOptions.Units=                                                   'normalized';
+            EditingOptions.Position=                                                [FirstColumn TitleRow (ColumnShiftInside + WidthOfSecondColumnInside) HeightOfEditSelection];
 
-            
-            
-                
-           
-            CurrentTimePointTitle=                                          uicontrol;
-            CurrentTimePointTitle.Style=                                    'Text';
-            CurrentTimePointTitle.FontWeight=                               'normal';
-            CurrentTimePointTitle.HorizontalAlignment=                      'left';
-            CurrentTimePointTitle.Tag=                                      'CurrentTimePointText';
-            CurrentTimePointTitle.String=                                   'Frame#:';
-            CurrentTimePointTitle.Units=                                    'normalized';
-            CurrentTimePointTitle.Position=                                 [ FirstColumn PositionRow1 WidthOfFirstColumnInside ViewHeightInside];
-            
-            CurrentTimePoint=                                               uicontrol;
-            CurrentTimePoint.Style=                                         'PopupMenu';
-            CurrentTimePoint.Tag=                                           'CurrentTimePoint';
-            CurrentTimePoint.Units=                                         'normalized';
-            CurrentTimePoint.Position=                                      [SecondColumn PositionRow1 WidthOfSecondColumnInside ViewHeightInside];
 
-             TimeSlider =                                uicontrol;
-                    TimeSlider.Style =                           'slider';
-                    
-                  
-                   
+            CurrentTimePointTitle=                                                  uicontrol;
+            CurrentTimePointTitle.Style=                                            'Text';
+            CurrentTimePointTitle.FontWeight=                                       'normal';
+            CurrentTimePointTitle.HorizontalAlignment=                              'left';
+            CurrentTimePointTitle.Tag=                                              'CurrentTimePointText';
+            CurrentTimePointTitle.String=                                           'Frame#:';
+            CurrentTimePointTitle.Units=                                            'normalized';
+            CurrentTimePointTitle.Position=                                         [ FirstColumn PositionRow1 WidthOfFirstColumnInside ViewHeightInside];
+            
+            CurrentTimePoint=                                                       uicontrol;
+            CurrentTimePoint.Style=                                                 'PopupMenu';
+            CurrentTimePoint.Tag=                                                   'CurrentTimePoint';
+            CurrentTimePoint.Units=                                                 'normalized';
+            CurrentTimePoint.Position=                                              [SecondColumn PositionRow1 WidthOfSecondColumnInside ViewHeightInside];
 
+            TimeSlider =                                                            uicontrol;
+            TimeSlider.Style =                                                      'slider';
              
-            CurrentPlaneTitle=                                              uicontrol;
-            CurrentPlaneTitle.Style=                                        'Text';
-            CurrentPlaneTitle.FontWeight=                                   'normal';
-            CurrentPlaneTitle.HorizontalAlignment=                          'left';
-            CurrentPlaneTitle.Tag=                                          'CurrentPlaneText';
-            CurrentPlaneTitle.String=                                       'TopPlane#:';
-            CurrentPlaneTitle.Units=                                        'normalized';
-            CurrentPlaneTitle.Position=                                     [FirstColumn PositionRow2 WidthOfFirstColumnInside ViewHeightInside];
+            CurrentPlaneTitle=                                                      uicontrol;
+            CurrentPlaneTitle.Style=                                                'Text';
+            CurrentPlaneTitle.FontWeight=                                           'normal';
+            CurrentPlaneTitle.HorizontalAlignment=                                  'left';
+            CurrentPlaneTitle.Tag=                                                  'CurrentPlaneText';
+            CurrentPlaneTitle.String=                                               'TopPlane#:';
+            CurrentPlaneTitle.Units=                                                'normalized';
+            CurrentPlaneTitle.Position=                                             [FirstColumn PositionRow2 WidthOfFirstColumnInside ViewHeightInside];
 
+            CurrentPlane=                                                           uicontrol;
+            CurrentPlane.Style=                                                     'PopupMenu';
+            CurrentPlane.Tag=                                                       'CurrentPlane';
+            CurrentPlane.Units=                                                     'normalized';
+            CurrentPlane.Position=                                                  [SecondColumn PositionRow2 WidthOfSecondColumnInside ViewHeightInside];
 
-            CurrentPlane=                                                   uicontrol;
-            CurrentPlane.Style=                                             'PopupMenu';
-            CurrentPlane.Tag=                                               'CurrentPlane';
-            CurrentPlane.Units=                                             'normalized';
-            CurrentPlane.Position=                                          [SecondColumn PositionRow2 WidthOfSecondColumnInside ViewHeightInside];
+            ShowMaxVolumeHandle=                                                    uicontrol;
+            ShowMaxVolumeHandle.Style=                                              'CheckBox';
+            ShowMaxVolumeHandle.Tag=                                                'ShowMaxVolume';
+            ShowMaxVolumeHandle.String=                                             'Maximum projection';
+            ShowMaxVolumeHandle.Units=                                              'normalized';
+            ShowMaxVolumeHandle.Position=                                           [FirstColumn PositionRow3 WidthOfFirstColumnInside ViewHeightInside];
 
-            ShowMaxVolumeHandle=                                            uicontrol;
-            ShowMaxVolumeHandle.Style=                                      'CheckBox';
-            ShowMaxVolumeHandle.Tag=                                        'ShowMaxVolume';
-            ShowMaxVolumeHandle.String=                                     'Maximum projection';
-            ShowMaxVolumeHandle.Units=                                      'normalized';
-            ShowMaxVolumeHandle.Position=                                   [FirstColumn PositionRow3 WidthOfFirstColumnInside ViewHeightInside];
-
-            CropImageHandle=                                                uicontrol;
-            CropImageHandle.Style=                                          'CheckBox';
-            CropImageHandle.Tag=                                            'CropImage';
-            CropImageHandle.Units=                                          'normalized';
-            CropImageHandle.Position=                                       [SecondColumn PositionRow3 WidthOfSecondColumnInside ViewHeightInside];
-            CropImageHandle.String=                                         'Crop image';
+            CropImageHandle=                                                        uicontrol;
+            CropImageHandle.Style=                                                  'CheckBox';
+            CropImageHandle.Tag=                                                    'CropImage';
+            CropImageHandle.Units=                                                  'normalized';
+            CropImageHandle.Position=                                               [SecondColumn PositionRow3 WidthOfSecondColumnInside ViewHeightInside];
+            CropImageHandle.String=                                                 'Crop image';
             
-            ApplyDriftCorrectionHandle=                                                uicontrol;
-            ApplyDriftCorrectionHandle.Style=                                          'CheckBox';
-            ApplyDriftCorrectionHandle.Tag=                                            'DriftCorrectionHandle';
-            ApplyDriftCorrectionHandle.Units=                                          'normalized';
-            ApplyDriftCorrectionHandle.Position=                                       [FirstColumn PositionRow4 WidthOfFirstColumnInside ViewHeightInside];
-            ApplyDriftCorrectionHandle.String=                                         'Apply drift';
+            ApplyDriftCorrectionHandle=                                             uicontrol;
+            ApplyDriftCorrectionHandle.Style=                                       'CheckBox';
+            ApplyDriftCorrectionHandle.Tag=                                         'DriftCorrectionHandle';
+            ApplyDriftCorrectionHandle.Units=                                       'normalized';
+            ApplyDriftCorrectionHandle.Position=                                    [FirstColumn PositionRow4 WidthOfFirstColumnInside ViewHeightInside];
+            ApplyDriftCorrectionHandle.String=                                      'Apply drift';
             
-            
-         
             %% change settings of handles that are dependent on loaded movie;
-
-
-            
-            obj.Navigation.TimeSlider=                      TimeSlider;
-            obj.Navigation.EditingOptions=                                      EditingOptions;
-            obj.Navigation.CurrentTimePointTitle=                                CurrentTimePointTitle;
-            obj.Navigation.CurrentTimePoint=                                     CurrentTimePoint;
-            obj.Navigation.CurrentPlaneTitle=                                    CurrentPlaneTitle;
-            obj.Navigation.CurrentPlane=                                         CurrentPlane;
-            obj.Navigation.ShowMaxVolume=                                        ShowMaxVolumeHandle;
-            obj.Navigation.CropImageHandle=                                      CropImageHandle;
-            obj.Navigation.ApplyDriftCorrection=                                      ApplyDriftCorrectionHandle;
+            obj.Navigation.TimeSlider=                                              TimeSlider;
+            obj.Navigation.EditingOptions=                                          EditingOptions;
+            obj.Navigation.CurrentTimePointTitle=                                   CurrentTimePointTitle;
+            obj.Navigation.CurrentTimePoint=                                        CurrentTimePoint;
+            obj.Navigation.CurrentPlaneTitle=                                       CurrentPlaneTitle;
+            obj.Navigation.CurrentPlane=                                            CurrentPlane;
+            obj.Navigation.ShowMaxVolume=                                           ShowMaxVolumeHandle;
+            obj.Navigation.CropImageHandle=                                         CropImageHandle;
+            obj.Navigation.ApplyDriftCorrection=                                    ApplyDriftCorrectionHandle;
         
 
 
@@ -246,7 +206,7 @@ classdef PMMovieControllerView
             WidthOfFirstColumnInside =                                  ProjectViews.WidthOfFirstColumn;
             WidthOfSecondColumnInside =                                 ProjectViews.WidthOfSecondColumn;
             
-            RowShiftInside =                                                  ProjectViews.RowShift;
+            RowShiftInside =                                            ProjectViews.RowShift;
            
             PositionRow0 =                                              TopRow-RowShiftInside*1;
             PositionRow1 =                                              TopRow-RowShiftInside*2;
@@ -646,31 +606,26 @@ classdef PMMovieControllerView
     
         function obj = blackOutMovieView(obj)
             
-            obj.MovieView.MainImage.CData(:) = 0;
+            obj.MovieView.MainImage.CData(:) =                      0;
+            obj.MovieView.ZStampText.String =                       '';
             
-            obj.MovieView.ZStampText.String = '';
-            
-            obj.MovieView.TimeStampText.String = '';
-            obj.MovieView.ScalebarText.String = '';
-            obj.MovieView.CentroidLine.Visible = 'off';
-            obj.MovieView.CentroidLine_SelectedTrack.Visible = 'off';
-            obj.MovieView.Rectangle.Visible = 'off';
-            obj.MovieView.ManualDriftCorrectionLine.Visible = 'off';
+            obj.MovieView.TimeStampText.String =                    '';
+            obj.MovieView.ScalebarText.String =                     '';
+            obj.MovieView.CentroidLine.Visible =                    'off';
+            obj.MovieView.CentroidLine_SelectedTrack.Visible =      'off';
+            obj.MovieView.Rectangle.Visible =                       'off';
+            obj.MovieView.ManualDriftCorrectionLine.Visible =       'off';
             
             
         end
         
         
-        function obj = reverseBlackOut(obj)
-            
+        function obj = reverseBlackOut(obj)   
            
-            
-           
-            obj.MovieView.CentroidLine.Visible =                'on';
-            obj.MovieView.CentroidLine_SelectedTrack.Visible =  'on';
-            obj.MovieView.Rectangle.Visible =                   'on';
-            obj.MovieView.ManualDriftCorrectionLine.Visible =   'on';
-            
+            obj.MovieView.CentroidLine.Visible =                    'on';
+            obj.MovieView.CentroidLine_SelectedTrack.Visible =      'on';
+            obj.MovieView.Rectangle.Visible =                       'on';
+            obj.MovieView.ManualDriftCorrectionLine.Visible =       'on';
             
         end
 

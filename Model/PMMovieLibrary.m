@@ -18,6 +18,7 @@ classdef PMMovieLibrary
         SelectedNickname =                          ''
         ListWithFilteredNicknames
         
+        
         FilterSelectionIndex =                      1;
         FilterSelectionString =                     ''
         FilterList =                                true
@@ -88,6 +89,27 @@ classdef PMMovieLibrary
             
         end
         
+     
+        function [obj] =                sortByNickName(obj)
+            
+            
+            
+            AllNicknames =      cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
+            
+            
+            obj.ListhWithMovieObjects(:,2) =            AllNicknames;
+            
+            obj.ListhWithMovieObjects =         sortrows(obj.ListhWithMovieObjects, 2);
+            
+            
+             obj.ListhWithMovieObjects(:,2) =       [];
+            
+            
+        end
+        
+        
+        
+        
         function [Selection, obj] =     selectMovieObject(obj, NickName)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
@@ -117,10 +139,9 @@ classdef PMMovieLibrary
         
         function [obj] =                createFilterForEntireContent(obj)
             
-            
             obj.FilterList =                        cellfun(@(x) true, obj.ListhWithMovieObjects);             
-            obj.ListWithFilteredNicknames=      cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
-            
+            obj.ListWithFilteredNicknames=          cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
+        
             
         end
         
@@ -128,7 +149,12 @@ classdef PMMovieLibrary
         function [obj] =                createFilterForAllMovies(obj)
             
             
+            SomeMetaDataMissing =       max(cellfun(@(x) isempty(x.MetaData), obj.ListhWithMovieObjects));
             
+            if SomeMetaDataMissing
+                return
+                
+            end
             
             ListWithNumberOfPlanes =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfPlanes, obj.ListhWithMovieObjects);
             ListWithNumberOfFrames =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfTimePoints, obj.ListhWithMovieObjects);
@@ -136,10 +162,20 @@ classdef PMMovieLibrary
             obj.FilterList =                    ListWithNumberOfFrames >= 2;
             ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
+         
 
         end
         
         function [obj] =                createFilterForAllZStacks(obj)
+            
+            
+             SomeMetaDataMissing =       max(cellfun(@(x) isempty(x.MetaData), obj.ListhWithMovieObjects));
+            
+            if SomeMetaDataMissing
+                return
+                
+            end
+            
             
             ListWithNumberOfPlanes =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfPlanes, obj.ListhWithMovieObjects);
             ListWithNumberOfFrames =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfTimePoints, obj.ListhWithMovieObjects);
@@ -148,11 +184,20 @@ classdef PMMovieLibrary
             obj.FilterList =                    IsStack;
             ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
-
+          
             
         end
         
         function [obj] =                createFilterForAllSnapshots(obj)
+            
+            
+             SomeMetaDataMissing =       max(cellfun(@(x) isempty(x.MetaData), obj.ListhWithMovieObjects));
+            
+            if SomeMetaDataMissing
+                return
+                
+            end
+            
             
              ListWithNumberOfPlanes =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfPlanes, obj.ListhWithMovieObjects);
             ListWithNumberOfFrames =              cellfun(@(x) x.MetaData.EntireMovie.NumberOfTimePoints, obj.ListhWithMovieObjects);
@@ -161,7 +206,7 @@ classdef PMMovieLibrary
             obj.FilterList =                    IsStack;
             ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
-
+          
             
         end
         
@@ -175,7 +220,7 @@ classdef PMMovieLibrary
             
             ListWithAllNickNames =                  cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=          ListWithAllNickNames(obj.FilterList,:);
-           
+       
           
             
             
@@ -190,7 +235,7 @@ classdef PMMovieLibrary
             obj.FilterList =                    TrackingWasPerformed;
             ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
-            
+     
             
         end
         
@@ -208,7 +253,7 @@ classdef PMMovieLibrary
             
                 ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
                 obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
-            
+           
 
             
         end
@@ -219,8 +264,7 @@ classdef PMMovieLibrary
             obj.FilterList =                    cellfun(@(x) x.DriftCorrection.testForExistenceOfDriftCorrection, obj.ListhWithMovieObjects);
             ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
-
- 
+             
         end
         
         function [obj] =        createFilterForInAccurateChannelInformation(obj)
@@ -239,7 +283,6 @@ classdef PMMovieLibrary
             ListWithAllNickNames =                  cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
             obj.ListWithFilteredNicknames=          ListWithAllNickNames(obj.FilterList,:);
           
-            
             
             
             
