@@ -3,6 +3,7 @@ classdef PMMovieController < handle
     %   Detailed explanation goes here
     
     properties
+         
         
         Views
         TrackingViews
@@ -581,7 +582,18 @@ classdef PMMovieController < handle
         
         function [obj] = deleteAllTrackLineViews(obj)
             
-            cellfun(@(x) delete(x),  obj.ListOfTrackViews)
+            
+            AllLines =  findobj(obj.Views.MovieView.ViewMovieAxes, 'Type', 'Line');
+            
+            TrackLineRows  =    arrayfun(@(x) ~isnan(str2double(x.Tag)), AllLines);
+            
+            TrackLines=     AllLines(TrackLineRows,:);
+            
+            if ~isempty(TrackLines)
+                arrayfun(@(x) delete(x),  TrackLines);
+            end
+            
+            
             obj.ListOfTrackViews =  cell(0,1);
             
  

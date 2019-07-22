@@ -107,7 +107,7 @@ classdef PMMovieLibraryManager < handle
             
             obj.ActiveMovieController.disableAllViews;
             obj.Viewer.MovieControllerViews.blackOutMovieView;
-            obj.ActiveMovieController =                             obj.ActiveMovieController.deleteAllTrackLineViews;
+            obj.ActiveMovieController =                                                         obj.ActiveMovieController.deleteAllTrackLineViews;
 
             
             
@@ -282,8 +282,13 @@ classdef PMMovieLibraryManager < handle
                 
                 %% then use that filename to load this project and update the views:
                 obj.FileNameForLoadingNewObject =               [SelectedPath, FileName];
+               
+                
                 obj.ActiveInfoType =                            'Project';
                 obj =                                           obj.loadLibraryAndUpdateViews;
+                 obj.MovieLibrary.FileName =                     [SelectedPath, FileName];
+                 
+                 obj=                                            obj.updateInfoView;
               
                 
                 %% after loading the file: store the path of this file for future load at the beginning;
@@ -1493,7 +1498,9 @@ classdef PMMovieLibraryManager < handle
                 return
             end
             
-            
+             [obj.ActiveMovieController] =                      obj.ActiveMovieController.deleteAllTrackLineViews;
+             
+             
             obj =                                                      obj.resetActiveMovieController;
             
             

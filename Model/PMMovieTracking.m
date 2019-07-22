@@ -804,26 +804,16 @@ classdef PMMovieTracking
              timepoints = obj.MetaData.EntireMovie.NumberOfTimePoints;
             planes = obj.MetaData.EntireMovie.NumberOfPlanes;
             
-            if max(obj.SelectedFrames) > timepoints
+            if isempty(obj.SelectedFrames) ||  max(obj.SelectedFrames) > timepoints || min(obj.SelectedFrames) < 1
                 obj.SelectedFrames = 1;
                 
             end
             
-            if max(obj.SelectedPlanes) > planes
+            if isempty(obj.SelectedPlanes) ||  max(obj.SelectedPlanes) > planes || min(obj.SelectedPlanes) < 1
                 obj.SelectedPlanes = 1;
                 
-            end
-            
-            if min(obj.SelectedFrames) < 1
-                obj.SelectedFrames = 1;
-            end
-            
-            
-            if min(obj.SelectedPlanes) < 1
-                obj.SelectedPlanes = 1;
             end
           
-           
             
         end
         
