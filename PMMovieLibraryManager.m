@@ -8,9 +8,9 @@ classdef PMMovieLibraryManager < handle
         TagOfHandleOfInfoFigure =                   'PMMovieLibraryManager_InfoWindow';
         ActiveInfoType =                            'Project';
         
-        MainProjectFolder =                         '/Users/paulusmrass/Documents/Cannon_DataMac_Projects/Flu/';
+        MainProjectFolder =                         '/Users/rishi/Documents/MATLAB/ImageSequences_LacticAcid.mat';
         
-        FileWithPreviousSettings =                  '/Users/paulusmrass/Documents/Development/MatLab_Sharing/ImageTracker/imans_PreviouslyUsedFile.mat';
+        FileWithPreviousSettings =                  '/Users/rishi/ImageTracker/imans_PreviouslyUsedFile.mat';
         FileNameForLoadingNewObject =               '' % use this only for loading the new file; the movie-library will "save itself" with the filename it has in one its properties
         
         MovieLibrary
@@ -1497,6 +1497,11 @@ classdef PMMovieLibraryManager < handle
              %% when the file was not yet mapped successfully, do the mapping now
             if isempty(obj.ActiveMovieController.LoadedMovie.ImageMapPerFile)
                  obj.ActiveMovieController.LoadedMovie =                     obj.ActiveMovieController.LoadedMovie.AddImageMap;
+                 
+                 if obj.ActiveMovieController.LoadedMovie.PointersPerFile ==           -1
+                     return
+                     
+                 end
             else
                 % otherwise: update the pointers of the current image maps if necessary:;
                 obj.ActiveMovieController.LoadedMovie =                     obj.ActiveMovieController.LoadedMovie.updateFileReadingStatus;

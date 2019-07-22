@@ -297,6 +297,11 @@ classdef PMMovieTracking
                     
                     AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myTiffDocuments)) == -1 ;
                     if AtLeastOneTiffReadFailed
+                        
+                        
+                       
+                        
+                        
                         obj.ImageMapPerFile =               [];
                         obj.PointersPerFile =           -1;
                         obj.FileCouldNotBeRead =        1;

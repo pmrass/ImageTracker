@@ -4,10 +4,10 @@ classdef PMTrackingNavigation
     
     properties
         
-        NumberOfTracks =              0
+        NumberOfTracks =                0
         
-        FieldNamesForTrackingCell = {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
-        TrackingCellForTime = cell(0,6);
+        FieldNamesForTrackingCell =     {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
+        TrackingCellForTime =           cell(0,1);
         
         OldCellMaskStructure
         
@@ -63,6 +63,9 @@ classdef PMTrackingNavigation
                targetFieldNames =               obj.FieldNamesForTrackingCell;
                numberOfColumns =                length(obj.FieldNamesForTrackingCell);
                
+               NumberOfColumnsPerMaskCell =     6;
+               
+               
                 if isfield(myCellMaskStructure, 'TimePoint')
 
                     NumberOfTimePointsSegmented=                length(myCellMaskStructure.TimePoint);
@@ -71,25 +74,44 @@ classdef PMTrackingNavigation
                     for CurrentTimePointIndex =  1:NumberOfTimePointsSegmented
   
                         CurrentStructure =                  myCellMaskStructure.TimePoint(CurrentTimePointIndex,1).CellMasksInEntireZVolume;
-                        fieldNames =                        fieldnames(CurrentStructure);
-                        CurrentSourceCell =                 struct2cell(CurrentStructure)';
                         
-                        NanRows =                           isnan(cell2mat(CurrentSourceCell(:,4)));
-                        CurrentSourceCell(NanRows,:) =      [];
                         
-                        if isempty(CurrentSourceCell)
-                            CurrentTargetCell = cell(0,numberOfColumns);
-                        else
-                        
-                            NumberOfEntries =       size(CurrentSourceCell,1);
-                            CurrentTargetCell =     cell(NumberOfEntries,numberOfColumns);
-                            for CurrentColumn = 1:numberOfColumns
-                                SourceColumn =                          strcmp(fieldNames, targetFieldNames{CurrentColumn});
-                                CurrentTargetCell(:,CurrentColumn) =    CurrentSourceCell(:,SourceColumn);
+                        if ~isempty(CurrentStructure)
+                            
+                            
+                            fieldNames =                        fieldnames(CurrentStructure);
+                            CurrentSourceCell =                 struct2cell(CurrentStructure)';
+
+                            NanRows =                           isnan(cell2mat(CurrentSourceCell(:,4)));
+                            CurrentSourceCell(NanRows,:) =      [];
+
+                            if isempty(CurrentSourceCell)
+                                CurrentTargetCell = cell(0,numberOfColumns);
+                            else
+
+                                NumberOfEntries =       size(CurrentSourceCell,1);
+                                CurrentTargetCell =     cell(NumberOfEntries,numberOfColumns);
+                                for CurrentColumn = 1:numberOfColumns
+                                    SourceColumn =                          strcmp(fieldNames, targetFieldNames{CurrentColumn});
+                                    CurrentTargetCell(:,CurrentColumn) =    CurrentSourceCell(:,SourceColumn);
+
+                                end
 
                             end
-                        
+
+                            
+                        else
+                            
+                            
+                            CurrentTargetCell = cell(0,NumberOfColumnsPerMaskCell);
+                            
+                            
+                            
                         end
+                        
+                        
+                        
+                        
                         
                         CellContent{CurrentTimePointIndex,1} =  CurrentTargetCell;
                                
@@ -103,6 +125,9 @@ classdef PMTrackingNavigation
               
         end
         
+        
+        
+        
         function obj =  calculateNumberOfTracks(obj)
             
                targetFieldNames =           obj.FieldNamesForTrackingCell;
@@ -110,10 +135,21 @@ classdef PMTrackingNavigation
              TrackColumn =            strcmp(targetFieldNames, 'TrackID');
             Result =                        vertcat(obj.TrackingCellForTime{:});
                       
-                    ListWithUniqueTracks =          unique(cell2mat(Result(:,TrackColumn)));
+            
+            if isempty(Result)
+                
+                obj.NumberOfTracks =    0;
+                
+
+            else
+                
+                ListWithUniqueTracks =          unique(cell2mat(Result(:,TrackColumn)));
+                obj.NumberOfTracks =        length(ListWithUniqueTracks);
+                
+            end
+             
+            
                     
-                    
-                    obj.NumberOfTracks =        length(ListWithUniqueTracks);
             
         end
         
