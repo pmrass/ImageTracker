@@ -18,8 +18,6 @@ classdef PMMovieLibraryManager < handle
         
         MovieLibrary
         
-      
-        
         ActiveMovieController
         ListWithLoadedImageData =                   cell(0,1);
         
