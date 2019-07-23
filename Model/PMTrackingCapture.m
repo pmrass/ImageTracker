@@ -10,6 +10,10 @@ classdef PMTrackingCapture
         
         ImageVolume
         CroppedImageVolume
+        NumberOfLostRows
+        NumberOfLostColumns
+        SeedRow
+        SeedColumn
         
         CurrentXCoordinate
         CurrentYCoordinate
@@ -37,17 +41,17 @@ classdef PMTrackingCapture
     methods
         
         function obj = PMTrackingCapture(id, SegmentationOfCurrentFrame, XCoordinate, YCoordinate, ZCoordinate, ImageVolume)
-        %PMTRACKINGCAPTURE Construct an instance of this class
-        %   Detailed explanation goes here
+            %PMTRACKINGCAPTURE Construct an instance of this class
+            %   Detailed explanation goes here
 
-        obj.SegmentationOfCurrentFrame =            SegmentationOfCurrentFrame;
-        obj.CurrentTrackId =                        id;
+            obj.SegmentationOfCurrentFrame =            SegmentationOfCurrentFrame;
+            obj.CurrentTrackId =                        id;
 
-        obj.ImageVolume =                           ImageVolume;
+            obj.ImageVolume =                           ImageVolume;
 
-        obj.CurrentXCoordinate  =                   round(XCoordinate);
-        obj.CurrentYCoordinate  =                   round(YCoordinate);
-        obj.CurrentZCoordinate  =                   round(ZCoordinate);
+            obj.CurrentXCoordinate  =                   round(XCoordinate);
+            obj.CurrentYCoordinate  =                   round(YCoordinate);
+            obj.CurrentZCoordinate  =                   round(ZCoordinate);
 
         end
 
@@ -66,7 +70,7 @@ classdef PMTrackingCapture
         end
         
         
-        function [obj] =                                    generateMaskByClickingThreshold(obj)
+        function [obj] =                                        generateMaskByClickingThreshold(obj)
             
             obj =                                           obj.createCroppedImage;
             [obj] =                                         obj.setThresholdToClickedPixel;
@@ -114,53 +118,54 @@ classdef PMTrackingCapture
 
         function [obj] =                                            createCroppedImage(obj)
 
-
+            
             %% read data:
             MyImageVolume =                                     obj.ImageVolume;
 
-            MaximumRadiusInside =                               obj.MaximumCellRadius;
+            MaximumCellRadiusInside =                           obj.MaximumCellRadius;
             myYCoordinate=                                      obj.CurrentYCoordinate;
             myXCoordinate =                                     obj.CurrentXCoordinate;
             Channel =                                           obj.CurrentChannel;
 
-
             %% process data:
 
-             MinimumRow =                                        myYCoordinate - MaximumRadiusInside;
-
+             MinimumRow =                                        myYCoordinate - MaximumCellRadiusInside;
 
             if MinimumRow < 1
-                MaximumRadiusInside = MaximumRadiusInside + MinimumRow - 1;
+                MinimumRow = 1;
             end
-
-            MinimumColumn = myXCoordinate - MaximumRadiusInside;
-            if MinimumColumn<1
-                MaximumRadiusInside =    MaximumRadiusInside + MinimumColumn - 1;
-
-            end
-
-
-            MaximumColumn =                 myXCoordinate + MaximumRadiusInside;
-            if MaximumColumn>size(MyImageVolume,2)
-                MaximumRadiusInside = MaximumRadiusInside - (MaximumColumn - size(MyImageVolume,2)) - 1;
-            end
-
-
-            MaximumRow =                    myYCoordinate + MaximumRadiusInside;
+            
+            MaximumRow =                    myYCoordinate + MaximumCellRadiusInside;
             if MaximumRow>size(MyImageVolume,1)
-                MaximumRadiusInside =    MaximumRadiusInside - (MaximumRow - size(MyImageVolume,1)) - 1;
+                MaximumRow =            size(MyImageVolume,1);
+            end
+            
+            
+            
+
+            MinimumColumn = myXCoordinate - MaximumCellRadiusInside;
+            if MinimumColumn<1
+                MinimumColumn = 1;
+
             end
 
+            MaximumColumn =                 myXCoordinate + MaximumCellRadiusInside;
+            if MaximumColumn>size(MyImageVolume,2)
+                MaximumColumn = size(MyImageVolume,2);
+            end
 
-
-            MinimumRow =                    myYCoordinate - MaximumRadiusInside;
-            MaximumRow =                    myYCoordinate + MaximumRadiusInside;
-            MinimumColumn =                 myXCoordinate - MaximumRadiusInside;
-            MaximumColumn =                 myXCoordinate + MaximumRadiusInside;
-
-
+           
 
             %% output data:
+            
+            
+            
+             obj.NumberOfLostRows =                                 MinimumRow - 1;
+             obj.NumberOfLostColumns =                               MinimumColumn  - 1;   
+             
+             
+              obj.SeedRow =        myYCoordinate - obj.NumberOfLostRows;                                   
+             obj.SeedColumn = myXCoordinate - obj.NumberOfLostColumns;
 
             obj.CroppedImageVolume =       MyImageVolume(...
             MinimumRow:MaximumRow,...
@@ -272,7 +277,8 @@ classdef PMTrackingCapture
         %CREATELISTWITHMASKCOORDINATES Summary of this function goes here
         %   Detailed explanation goes here
 
-            %% read data:
+        
+                %% read data:
 
                 myCroppedImageVolume =                              obj.CroppedImageVolume;
                 NumberOfPlanesAboveAndBelowConsidered =             obj.PlaneNumberAboveAndBelow;
@@ -342,12 +348,14 @@ classdef PMTrackingCapture
 
             % start connecting from clicked pixel
 
-            SeedRow =                                                           round(size(MaskImage,1)/2);
-            SeedColumn =                                                        round(size(MaskImage,2)/2);
-            BW =                                                                grayconnected(MaskImage, SeedRow,SeedColumn);
+            SeedRowInternal =                                                           obj.SeedRow;
+            SeedColumnInteral =                                                       obj.SeedColumn;
+            BW =                                                                grayconnected(MaskImage, SeedRowInternal,SeedColumnInteral);
             [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=           find(BW); 
 
 
+            
+          
             %% calibrate coordinates to full image (also will have to add drift-correction here at some point:
             [ListWithPixels] =                                              obj.CalibratePixelList([YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]);
             ListWithPixels(:,3)=                                            Plane;
@@ -358,18 +366,12 @@ classdef PMTrackingCapture
 
         function [ListWithPixels] =                                 CalibratePixelList(obj,ListWithPixels)
 
+                    %myXCoordinate =                     obj.CurrentXCoordinate;
+                    %myYCoordinate =                     obj.CurrentYCoordinate;
+                    %myCellRadius =                      obj.MaximumCellRadius;
 
-
-                    myXCoordinate =                     obj.CurrentXCoordinate;
-                    myYCoordinate =                     obj.CurrentYCoordinate;
-                    myCellRadius =                      obj.MaximumCellRadius;
-
-
-                    ListWithPixels(:,1) =               ListWithPixels(:,1) + myYCoordinate - myCellRadius - 1;
-                    ListWithPixels(:,2) =               ListWithPixels(:,2) + myXCoordinate - myCellRadius - 1;
-
-
-
+                    ListWithPixels(:,1) =               ListWithPixels(:,1) + obj.NumberOfLostRows;
+                    ListWithPixels(:,2) =               ListWithPixels(:,2) + obj.NumberOfLostColumns;
 
         end
 

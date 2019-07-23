@@ -10,8 +10,7 @@ classdef PMMovieLibraryManager < handle
         TagOfHandleOfInfoFigure =                   'PMMovieLibraryManager_InfoWindow';
         ActiveInfoType =                            'Project';
         
-        
-        MainProjectFolder =                         userpath;%not in use right now
+        MainProjectFolder =                         userpath; %not in use right now
         
         FileWithPreviousSettings =                  [userpath,'/imans_PreviouslyUsedFile.mat'];
         FileNameForLoadingNewObject =               '' % use this only for loading the new file; the movie-library will "save itself" with the filename it has in one its properties
@@ -81,7 +80,6 @@ classdef PMMovieLibraryManager < handle
             
   
             %% load the project:
-
             obj =                                                                       obj.loadLibraryAndUpdateViews;
 
  
