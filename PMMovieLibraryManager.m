@@ -572,9 +572,7 @@ classdef PMMovieLibraryManager < handle
         end
         
         
-        
-        
-        
+ 
         function [obj] =    toggleProjectInfo(obj,src,~)
             
             
@@ -595,7 +593,7 @@ classdef PMMovieLibraryManager < handle
         function [obj] = showKeyboardShortcuts(obj,src,~)
             
             
-             ShortcutsKeys{1,1}=         '--------KEYS-----------------------';
+            ShortcutsKeys{1,1}=         '--------KEYS-----------------------';
             ShortcutsKeys{2,1}=         '--------Navigation-----------------';
             ShortcutsKeys{3,1}=         '"Left arrow": one frame back';
             ShortcutsKeys{4,1}=         '"Right arrow": one frame forward';
