@@ -11,9 +11,9 @@ classdef PMMovieLibraryManager < handle
         ActiveInfoType =                            'Project';
         
         
-        MainProjectFolder =                         '/Users/rishi/Documents/GitHub/ImageSequences_LacticAcid.mat';
+        MainProjectFolder =                         userpath;%not in use right now
         
-        FileWithPreviousSettings =                  '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/imans_PreviouslyUsedFile.mat';
+        FileWithPreviousSettings =                  [userpath,'/imans_PreviouslyUsedFile.mat'];
         FileNameForLoadingNewObject =               '' % use this only for loading the new file; the movie-library will "save itself" with the filename it has in one its properties
         
         MovieLibrary
