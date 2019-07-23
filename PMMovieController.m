@@ -643,10 +643,10 @@ classdef PMMovieController < handle
                  
              end
              
-            [ yStart, xStart,  planeStartWithoutDrift, frame ] =                    obj.getCoordinatesOfButtonPress;
-            [ yEnd, xEnd,  planeWithoutDrift, frame ] =                             obj.getCoordinatesOfCurrentMousePosition;
+            [ yStart, xStart,  planeStartWithoutDrift, frame ] =                            obj.getCoordinatesOfButtonPress;
+            [ yEnd, xEnd,  planeWithoutDrift, frame ] =                                     obj.getCoordinatesOfCurrentMousePosition;
             
-            obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =          0;
+            obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =                  0;
             obj.Views.MovieView.MainImage.CData( round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) = 200;
 
              
@@ -656,13 +656,12 @@ classdef PMMovieController < handle
          
          function [obj] = updateManualDriftCorrectionByMouse(obj)
              
-              [ yEnd, xEnd,  planeWithoutDrift, frame ] =                             obj.getCoordinatesOfCurrentMousePosition;
-             obj.LoadedMovie.DriftCorrection =                                      obj.LoadedMovie.DriftCorrection.updateManualDriftCorrectionByValues(xEnd, yEnd,  planeWithoutDrift, frame);
-             
-              obj =                                                               obj.updateManualDriftCorrectionView;
-           
-             
-             
+            [ yEnd, xEnd,  planeWithoutDrift, frame ] =                     obj.getCoordinatesOfCurrentMousePosition;
+            obj.LoadedMovie.DriftCorrection =                               obj.LoadedMovie.DriftCorrection.updateManualDriftCorrectionByValues(xEnd, yEnd,  planeWithoutDrift, frame);
+
+            obj =                                                           obj.updateManualDriftCorrectionView;
+
+     
          end
          
          function [obj] = removeHighlightedPixelsFromMask(obj)
@@ -693,7 +692,7 @@ classdef PMMovieController < handle
                 obj =                                                           obj.updatePositionOfActiveTrackHighlight;
                 obj =                                                           obj.updateHighlightingOfActiveTrack;
 
-                     obj.LoadedMovie =                                   obj.LoadedMovie.refreshTrackingResults;
+                obj.LoadedMovie =                                   obj.LoadedMovie.refreshTrackingResults;
                 obj =                                                       obj.updateTrackList;    % because this could potentially lead to track deletion
              
          end
