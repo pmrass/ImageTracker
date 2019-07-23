@@ -645,9 +645,9 @@ classdef PMMovieController < handle
              
             [ yStart, xStart,  planeStartWithoutDrift, frame ] =                    obj.getCoordinatesOfButtonPress;
             [ yEnd, xEnd,  planeWithoutDrift, frame ] =                             obj.getCoordinatesOfCurrentMousePosition;
-
+            
             obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =          0;
-            obj.Views.MovieView.MainImage.CData(round(yStart:yEnd),round(xStart:xEnd),TrackingViewChannel) = 200;
+            obj.Views.MovieView.MainImage.CData( round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) = 200;
 
              
              
@@ -680,7 +680,7 @@ classdef PMMovieController < handle
                 [ yEnd, xEnd,  planeWithoutDrift, frame ] =                 obj.getCoordinatesOfCurrentMousePosition;
                 
                 obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =                                      0;
-                obj.Views.MovieView.MainImage.CData(round(yStart:yEnd),round(xStart:xEnd),TrackingViewChannel) =    200;
+                obj.Views.MovieView.MainImage.CData(round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) =    200;
              
                 [yCoordinates, xCoordinates] =   find(obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel));
              
@@ -714,7 +714,7 @@ classdef PMMovieController < handle
                 [ yEnd, xEnd,  planeWithoutDrift, frame ] =                 obj.getCoordinatesOfCurrentMousePosition;
                 
                 obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =                                      0;
-                obj.Views.MovieView.MainImage.CData(round(yStart:yEnd),round(xStart:xEnd),TrackingViewChannel) =    200;
+                obj.Views.MovieView.MainImage.CData(round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) =    200;
              
                 [yCoordinates, xCoordinates] =   find(obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel));
              
