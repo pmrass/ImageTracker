@@ -558,11 +558,11 @@ classdef PMMovieLibraryManager < handle
                 waitbar(waitBarNumber, h, ['Mapping image file: ' currentNickName]);
                 
                 % do the actual mapping
-                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.Folder =                obj.MovieLibrary.PathOfMovieFolder;
-                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1} = obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.AddImageMap;
+                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.Folder =                  obj.MovieLibrary.PathOfMovieFolder;
+                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1} =                         obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.AddImageMap;
 
                 % update filter view (i.e. remove mapped movie from "unmapped list";
-                [obj] =                                                 obj.callbackForFilterChange(src, 0);
+                [obj] =                                                                                         obj.callbackForFilterChange(src, 0);
 
             end
 
@@ -1498,7 +1498,7 @@ classdef PMMovieLibraryManager < handle
                 return
             end
             
-             [obj.ActiveMovieController] =                      obj.ActiveMovieController.deleteAllTrackLineViews;
+             [obj.ActiveMovieController] =                          obj.ActiveMovieController.deleteAllTrackLineViews;
              
              
             obj =                                                      obj.resetActiveMovieController;

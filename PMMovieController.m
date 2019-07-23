@@ -77,24 +77,16 @@ classdef PMMovieController < handle
             
            
             %PMMOVIETRACKINGSTATE Construct an instance of this class
-            %   Detailed explanation goes here
+            %   modulates interplay between movie model (images and annotation) and views;
            
 
         end
         
         
         function [obj] =changeMovieKeyword(obj)
-            
-            
-            
-              KeywordString=                  char(inputdlg('Enter new keyword'));
+              KeywordString=                        char(inputdlg('Enter new keyword'));
               obj.LoadedMovie.Keywords{1,1} =       KeywordString;
-              
-           
-            
-            
-           
-            
+                 
         end
        
 
@@ -176,6 +168,8 @@ classdef PMMovieController < handle
 
                  obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
             end
+            
+            
              obj.RowOfActiveTrack =                             obj.CurrentTrackIDs == myIDOfActiveTrack ;
 
 
@@ -186,7 +180,6 @@ classdef PMMovieController < handle
 
 
             obj =                                               obj.updatePositionOfActiveTrackHighlight;
-
             obj =                                               obj.updateManualDriftCorrectionView;
 
 
@@ -231,12 +224,8 @@ classdef PMMovieController < handle
         
         function [obj] =        updateManualDriftCorrectionModelByMouseClick(obj)
             
-            
              [ yCoordinateWithOutDrift, xCoordinateWithoutDrift,  planeWithoutDrift, frame ] =           obj.getCoordinatesOfCurrentMousePosition;
-            
-            
-            
-            
+                 
         end
         
         function [obj] =    updateSegmentationInformationForFrame(obj, CurrentFrame)

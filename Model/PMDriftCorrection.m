@@ -49,9 +49,7 @@ classdef PMDriftCorrection
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             
-            
-            
-            
+
              if ~isempty(fieldnames(Data.DriftCorrection)) && ~isempty (fieldnames(Data.ManualDriftCorrection))
                 DriftCorrectionStatus = 'Manual and complete';
             elseif ~isempty(fieldnames(Data.DriftCorrection))
@@ -172,7 +170,7 @@ classdef PMDriftCorrection
                 % if it does not exist, create one:
                 manualDriftCorrectionExists =           obj.testForExistenceOfManualDriftCorrection;
                 if ~manualDriftCorrectionExists
-                    [obj] =                     obj.autoPopulateDefaultManualValues(MetaData);
+                    [obj] =                             obj.autoPopulateDefaultManualValues(MetaData);
                     
                 end
                 

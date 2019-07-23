@@ -11,8 +11,22 @@ classdef PMMovieTracking
         Folder
         AttachedFiles
         
-        DriftCorrection
+         ListWithPaths
+        PointersPerFile =           -1
+        FileCouldNotBeRead =        1
+        
+        
+        % tracking: stats
+        IdOfActiveTrack =           NaN
+        ActiveTrackIsHighlighted =  false
+        CentroidsAreVisible =       false
+        TracksAreVisible =          false
+        MasksAreVisible =           false
+        CollapseAllTracking =       false
+        
         DriftCorrectionOn =         false
+        TrackingOn =                false
+        
         
         % state for navigation: this is mostly relevant for the window controller but is here so that it can be saved conveniently on file;
         ScaleBarSize =              50
@@ -44,32 +58,22 @@ classdef PMMovieTracking
         
         
         
-        %% special information that is only added for specific analysis (need to load from file, only do on request):
-        
+        %%  information that is read from linked files; 
         ImageMapPerFile
         ImageMap
         
         MetaData
         MetaDataOfSeparateMovies
         
-        ListWithPaths
-        PointersPerFile =           -1
-        FileCouldNotBeRead =        1
+       
         
         
-        % tracking: stats
-        IdOfActiveTrack =           NaN
-        ActiveTrackIsHighlighted =  false
-        CentroidsAreVisible =       false
-        TracksAreVisible =          false
-        MasksAreVisible =           false
-        CollapseAllTracking =       false
-        
-        TrackingOn =                0
+        %% dimensions of drift correction and tracking are dependent on the movie files:
+        % content is set by the user;
+        DriftCorrection
         
         % tracking model content used for displaying data
         % there are now several different formats of the tracking data: maybe add a method to remove duplicate analysis to not boost storage space unnecessarily;
-        
         Tracking % for storing basic migration data on file (new tracking data are moved directly here);
         TrackingAnalysis % is built from basic migration data and enables sophisticated analysis;
         
@@ -89,11 +93,12 @@ classdef PMMovieTracking
          
             switch Version
                 
-                case 0
+                case 0 % this is the current default version:
                     
                     obj.NickName =                                              MovieStructure.NickName;
-                     obj.Folder =                                                AdditionalInput;
+                    obj.Folder =                                                AdditionalInput;
                     obj.AttachedFiles =                                         MovieStructure.AttachedFiles;
+                    
                     obj.DriftCorrection =                                       PMDriftCorrection(MovieStructure, Version);
                     obj.Tracking =                                              PMTrackingNavigation(MovieStructure,Version);
 
@@ -107,9 +112,7 @@ classdef PMMovieTracking
                     obj.Folder =                                                AdditionalInput;
                     obj.AttachedFiles =                                         MovieStructure.FileInfo.AttachedFileNames;
                     
-                    
-                    
-                    
+
                     obj.DriftCorrection =                                       PMDriftCorrection(MovieStructure, Version);
                     
                   
@@ -127,13 +130,11 @@ classdef PMMovieTracking
 
                      %% channel data from previous versions will be lost: this is just for display and would have been very complicated (because old dataset was inconcistent);
                     
-                     if isfield(MovieStructure.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
+                    if isfield(MovieStructure.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
                          
                          NumberOfChannels =                      MovieStructure.MetaData.EntireMovie.NumberOfChannels;
                          obj =                                  obj.resetChannels(NumberOfChannels);
                          
-                        
-
                      end
                      
                     obj.CollapseAllPlanes =                     MovieStructure.ViewMovieSettings.MaximumProjection;
@@ -142,9 +143,7 @@ classdef PMMovieTracking
                     obj.TimeVisible =                           MovieStructure.ViewMovieSettings.TimeAnnotation;
                     obj.ScaleBarVisible =                       MovieStructure.ViewMovieSettings.ScaleBarAnnotation;   
         
-                    
-                    
-                    
+  
                     if isfield(MovieStructure.ViewMovieSettings, 'CropLimits')
                         obj.CroppingGate =                      MovieStructure.ViewMovieSettings.CropLimits;
                     else
@@ -152,9 +151,7 @@ classdef PMMovieTracking
                     end
                     
                     obj.CroppingOn =                            0;
-  
-                    
-                    
+ 
                     obj.Tracking =                               PMTrackingNavigation(MovieStructure.TrackingResults,Version);
                     
                     
@@ -298,10 +295,6 @@ classdef PMMovieTracking
                     AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myTiffDocuments)) == -1 ;
                     if AtLeastOneTiffReadFailed
                         
-                        
-                       
-                        
-                        
                         obj.ImageMapPerFile =               [];
                         obj.PointersPerFile =           -1;
                         obj.FileCouldNotBeRead =        1;
@@ -329,6 +322,8 @@ classdef PMMovieTracking
 
                         obj.PointersPerFile =                   -1;
                         obj.FileCouldNotBeRead =               0;
+                        
+                        % update tracking data and drift correction
                         
                         
                         
