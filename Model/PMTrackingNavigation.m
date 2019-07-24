@@ -9,6 +9,9 @@ classdef PMTrackingNavigation
         FieldNamesForTrackingCell =     {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
         TrackingCellForTime =           cell(0,1);
         
+        FieldNamesForTrackingInfo =     {'SegmentationInfo'};
+        TrackingInfoCellForTime=        cell(0,1);
+        
         OldCellMaskStructure
         
         Tracking

@@ -4,7 +4,10 @@ classdef PMTrackingCapture
     
     properties
         
-        FieldNamesForSegmentation = {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
+        
+        %% temporary data: these data are derived from the original movie and are needed only temporarily for analysis;
+        % no permanent record desired:
+        FieldNamesForSegmentation =         {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
         SegmentationOfCurrentFrame
         CurrentTrackId
         
@@ -15,25 +18,28 @@ classdef PMTrackingCapture
         SeedRow
         SeedColumn
         
-        CurrentXCoordinate
-        CurrentYCoordinate
-        CurrentZCoordinate
-        
         MaskCoordinateList
         
-        CurrentChannel =            1
+
+        %% settings that define how segmentation/tracking is done;
+        % these should be stored permanently because they will give insight into how the segmentation was obtained;
+        % this could be useful in the future when 
+        ActiveXCoordinate
+        ActiveYCoordinate
+        ActiveZCoordinate
         
-        MaximumCellRadius =         30
+        ActiveChannel =                         1
         
-        % this is for calculating seed statistics: this is only optional;
-        StdForMaskRecognition =     2
-        SeedWindowSize =            2
-        SeedMedian
-        SeedStandardDeviation
+        MaximumCellRadius =                     30
+        PlaneNumberAboveAndBelow =              3
         
-        PlaneNumberAboveAndBelow = 3
+        % currently not used;
+        StdForMaskRecognition =                 NaN
+        SeedWindowSize =                        NaN
+        SeedMedian =                            NaN
+        SeedStandardDeviation =                 NaN
         
-        Threshold
+        Threshold =                             NaN
         
     end
     
@@ -49,9 +55,9 @@ classdef PMTrackingCapture
 
             obj.ImageVolume =                           ImageVolume;
 
-            obj.CurrentXCoordinate  =                   round(XCoordinate);
-            obj.CurrentYCoordinate  =                   round(YCoordinate);
-            obj.CurrentZCoordinate  =                   round(ZCoordinate);
+            obj.ActiveXCoordinate  =                   round(XCoordinate);
+            obj.ActiveYCoordinate  =                   round(YCoordinate);
+            obj.ActiveZCoordinate  =                   round(ZCoordinate);
 
         end
 
@@ -76,7 +82,7 @@ classdef PMTrackingCapture
             [obj] =                                             obj.setThresholdToClickedPixel;
             [obj] =                                             obj.createMaskCoordinateList;
             obj =                                               obj.removePreviouslyTrackedDuplicatePixels;
-
+            
         end
 
 
@@ -88,9 +94,9 @@ classdef PMTrackingCapture
             MyImageVolume =                                     obj.ImageVolume;
 
             MaximumCellRadiusInside =                           obj.MaximumCellRadius;
-            myYCoordinate=                                      obj.CurrentYCoordinate;
-            myXCoordinate =                                     obj.CurrentXCoordinate;
-            Channel =                                           obj.CurrentChannel;
+            myYCoordinate=                                      obj.ActiveYCoordinate;
+            myXCoordinate =                                     obj.ActiveXCoordinate;
+            Channel =                                           obj.ActiveChannel;
 
             %% process data:
 
@@ -144,10 +150,10 @@ classdef PMTrackingCapture
              MyImageVolume =                                     obj.ImageVolume;
 
             
-            myYCoordinate=                                      obj.CurrentYCoordinate;
-            myXCoordinate =                                     obj.CurrentXCoordinate;
-            myZCoordinate =                                     obj.CurrentZCoordinate;
-            Channel =                                           obj.CurrentChannel;
+            myYCoordinate=                                      obj.ActiveYCoordinate;
+            myXCoordinate =                                     obj.ActiveXCoordinate;
+            myZCoordinate =                                     obj.ActiveZCoordinate;
+            Channel =                                           obj.ActiveChannel;
 
             
             obj.Threshold =                                     MyImageVolume(myYCoordinate,myXCoordinate,myZCoordinate,Channel);
@@ -160,7 +166,7 @@ classdef PMTrackingCapture
             %% read data:
             myWindowSize =          obj.SeedWindowSize;
             myCroppedWindow =        obj.CroppedImageVolume;
-            myZCoordinate =         obj.CurrentZCoordinate;
+            myZCoordinate =         obj.ActiveZCoordinate;
 
 
             %% process data:
@@ -245,7 +251,7 @@ classdef PMTrackingCapture
 
                 myCroppedImageVolume =                              obj.CroppedImageVolume;
                 NumberOfPlanesAboveAndBelowConsidered =             obj.PlaneNumberAboveAndBelow;
-                middlePlane =                                       obj.CurrentZCoordinate;
+                middlePlane =                                       obj.ActiveZCoordinate;
                 MyImageVolume =                                     obj.ImageVolume;
                 myNewThreshold =                                    obj.Threshold;
 
