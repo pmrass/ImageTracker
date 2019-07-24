@@ -35,6 +35,7 @@ classdef PMMovieController < handle
         CurrentYOfCentroids
         CurrentZOfCentroids
         ListOfAllPixels
+        ListOfAllActiveTrackPixels
         
         ColumnWithTrack =                               1;
         ColumnWithAbsoluteFrame =                       2;
@@ -55,6 +56,7 @@ classdef PMMovieController < handle
         
         
         MaskColor =             [NaN NaN 150];
+        MaskColorForActiveTrack =   [100 100 100];
         
         MouseDownRow =              NaN
         MouseDownColumn =           NaN
@@ -159,6 +161,11 @@ classdef PMMovieController < handle
 
                 obj.ListOfAllPixels =                           cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithPixelList));
 
+                obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackAll,obj.ColumnWithPixelList));
+                
+                
+                
+                 
             else
 
                 obj.CurrentTrackIDs =                           cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));
@@ -167,6 +174,10 @@ classdef PMMovieController < handle
                 obj.CurrentZOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidZ));
 
                  obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
+                 
+                  obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackFilter,obj.ColumnWithPixelList));
+                
+                
             end
             
             
@@ -193,6 +204,46 @@ classdef PMMovieController < handle
                 obj.ListOfAllPixels(isnan(obj.ListOfAllPixels(:,1)),:) =            [];
                 rgbImage =                                                          obj.addMasksToImage(rgbImage);
             end
+            
+             if obj.LoadedMovie.ActiveTrackIsHighlighted
+                    
+                    
+                    
+                    
+                         IntensityForRedChannel =                obj.MaskColorForActiveTrack(1);
+                        IntensityForGreenChannel =              obj.MaskColorForActiveTrack(2);
+                        IntensityForBlueChannel =               obj.MaskColorForActiveTrack(3);
+
+                        CoordinateList =                        obj.ListOfAllActiveTrackPixels;
+
+
+                        NumberOfPixels =                        size(CoordinateList,1);
+                        if ~isnan(IntensityForRedChannel)
+                            for CurrentPixel =  1:NumberOfPixels
+                                rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),1)= IntensityForRedChannel;
+                            end
+                        end
+
+                        if ~isnan(IntensityForGreenChannel)
+                            for CurrentPixel =  1:NumberOfPixels
+                                rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),2)= IntensityForGreenChannel;
+                            end
+                        end
+
+                        if ~isnan(IntensityForBlueChannel)
+                            for CurrentPixel =  1:NumberOfPixels
+
+
+                                rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),3)= IntensityForBlueChannel;
+                            end
+                        end
+
+
+
+                    
+                    
+             end
+                
 
             obj =                                                                   obj.shiftImageByDriftCorrection;
             obj.Views.MovieView.MainImage.CData=                                    rgbImage;
@@ -235,12 +286,13 @@ classdef PMMovieController < handle
             obj.SegmentationOfCurrentFrame =                    obj.LoadedMovie.Tracking.TrackingCellForTime{CurrentFrame,1};
             obj =                                               obj.createSegmentationWithPlaneFilter;
     
-             obj.CurrentTrackIDsAll =                           cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithTrack));;
-             obj.CurrentTrackIDsPlaneFilter =                   cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));;
-                   
+             obj.CurrentTrackIDsAll =                           cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithTrack));; 
             obj.RowOfActiveTrackAll =                           obj.CurrentTrackIDsAll == myIDOfActiveTrack ;         
+            
+            
+             obj.CurrentTrackIDsPlaneFilter =                   cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));;
             obj.RowOfActiveTrackFilter  =                       obj.CurrentTrackIDsPlaneFilter == myIDOfActiveTrack ;  
-
+             
             
             
         end
@@ -616,7 +668,7 @@ classdef PMMovieController < handle
                 obj.Views.MovieView.MainImage.CData(round(yCoordinateWithOutDrift),(xCoordinateWithoutDrift),:) = 255;
                 
                 myTrackingObject =                                              myTrackingObject.generateMaskByClickingThreshold;
-                myTrackingObject =                                              myTrackingObject.removeDuplicatePixels;
+               
 
                 myPixels =                                                      myTrackingObject.MaskCoordinateList;
                 if isempty(myPixels) || max(max(isnan(myPixels))) % if empty or not numeric: do not add pixel list:
@@ -1065,7 +1117,10 @@ classdef PMMovieController < handle
                     
                else
                    obj.Views.MovieView.CentroidLine_SelectedTrack.Visible = obj.LoadedMovie.ActiveTrackIsHighlighted;
+                   
                end
+               
+               obj =                                obj.updateImageView;
             
         end
         
@@ -2185,9 +2240,8 @@ classdef PMMovieController < handle
                 
                 CoordinateList =                        obj.ListOfAllPixels;
                 
-               
-        
-                NumberOfPixels =                                                    size(CoordinateList,1);
+
+                NumberOfPixels =                        size(CoordinateList,1);
                 if ~isnan(IntensityForRedChannel)
                     for CurrentPixel =  1:NumberOfPixels
                         rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),1)= IntensityForRedChannel;
@@ -2207,7 +2261,11 @@ classdef PMMovieController < handle
                         rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),3)= IntensityForBlueChannel;
                     end
                 end
+                
+                
+                %% add mask specifically for activated track when mask is active;
 
+               
      
           end
       

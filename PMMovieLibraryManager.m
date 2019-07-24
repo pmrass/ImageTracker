@@ -1382,6 +1382,7 @@ classdef PMMovieLibraryManager < handle
               obj.ActiveMovieController =       obj.ActiveMovieController.updateHighlightingOfActiveTrack;
               
               
+              
           end
           
           function [obj] =      trackingCentroidButtonClicked(obj,src,~)

@@ -72,50 +72,15 @@ classdef PMTrackingCapture
         
         function [obj] =                                        generateMaskByClickingThreshold(obj)
             
-            obj =                                           obj.createCroppedImage;
-            [obj] =                                         obj.setThresholdToClickedPixel;
-            [obj] =                                         obj.createMaskCoordinateList;
-            
-        end
-
-
-        function [obj] =                                        removeDuplicatePixels(obj)
-
-            
-            %% read data:
-            FieldNames =                                        obj.FieldNamesForSegmentation;
-            CellWithMaskData =                                  obj.SegmentationOfCurrentFrame;
-            PixelListDerivedFromCurrentClick =                  obj.MaskCoordinateList;
-            
-            %% process data:
-            
-            % get coordinates of all other previously tracked cells:
-            Column_TrackID=                                     strcmp('TrackID', FieldNames);
-            Column_AbsoluteFrame=                               find(strcmp('AbsoluteFrame', FieldNames));
-            Column_CentroidY=                                   find(strcmp('CentroidY', FieldNames));
-            Column_CentroidX=                                   find(strcmp('CentroidX', FieldNames));
-            Column_CentroidZ=                                   find(strcmp('CentroidZ', FieldNames));
-            Column_PixelList =                                  strcmp('ListWithPixels_3D', FieldNames);
-            
-            RowWithCurrentTrack =                               cell2mat(CellWithMaskData(:,Column_TrackID)) == obj.CurrentTrackId;  
-            CellWithMaskData(RowWithCurrentTrack,:) =           [];
-
-            PixelListFromOtherTrackedCells =                    CellWithMaskData(:,Column_PixelList);
-            PixelListFromOtherTrackedCells =                    vertcat(PixelListFromOtherTrackedCells{:});
-
-
-             if ~isempty(PixelListFromOtherTrackedCells)
-                PixelListDerivedFromCurrentClick(ismember(PixelListDerivedFromCurrentClick,PixelListFromOtherTrackedCells,'rows'),:) = [];
-
-             end
-
-             %% return data to object:
-             obj.MaskCoordinateList =                                   PixelListDerivedFromCurrentClick;
-
+            obj =                                               obj.createCroppedImage;
+            [obj] =                                             obj.setThresholdToClickedPixel;
+            [obj] =                                             obj.createMaskCoordinateList;
+            obj =                                               obj.removePreviouslyTrackedDuplicatePixels;
 
         end
 
 
+        
         function [obj] =                                            createCroppedImage(obj)
 
             
@@ -129,6 +94,8 @@ classdef PMTrackingCapture
 
             %% process data:
 
+            
+            % set area of interest by expected maximum cel size (if at border of image cut off there);
              MinimumRow =                                        myYCoordinate - MaximumCellRadiusInside;
 
             if MinimumRow < 1
@@ -139,8 +106,6 @@ classdef PMTrackingCapture
             if MaximumRow>size(MyImageVolume,1)
                 MaximumRow =            size(MyImageVolume,1);
             end
-            
-            
             
 
             MinimumColumn = myXCoordinate - MaximumCellRadiusInside;
@@ -157,15 +122,11 @@ classdef PMTrackingCapture
            
 
             %% output data:
-            
-            
-            
-             obj.NumberOfLostRows =                                 MinimumRow - 1;
-             obj.NumberOfLostColumns =                               MinimumColumn  - 1;   
+             obj.NumberOfLostRows =                                     MinimumRow - 1;
+             obj.NumberOfLostColumns =                                  MinimumColumn  - 1;   
              
-             
-              obj.SeedRow =        myYCoordinate - obj.NumberOfLostRows;                                   
-             obj.SeedColumn = myXCoordinate - obj.NumberOfLostColumns;
+             obj.SeedRow =                                             myYCoordinate - obj.NumberOfLostRows;                                   
+             obj.SeedColumn =                                           myXCoordinate - obj.NumberOfLostColumns;
 
             obj.CroppedImageVolume =       MyImageVolume(...
             MinimumRow:MaximumRow,...
@@ -175,6 +136,23 @@ classdef PMTrackingCapture
 
         end
 
+        
+      
+                
+        function [obj] =                                            setThresholdToClickedPixel(obj)
+            
+             MyImageVolume =                                     obj.ImageVolume;
+
+            
+            myYCoordinate=                                      obj.CurrentYCoordinate;
+            myXCoordinate =                                     obj.CurrentXCoordinate;
+            myZCoordinate =                                     obj.CurrentZCoordinate;
+            Channel =                                           obj.CurrentChannel;
+
+            
+            obj.Threshold =                                     MyImageVolume(myYCoordinate,myXCoordinate,myZCoordinate,Channel);
+            
+        end
 
 
         function [obj]=                                             calculateSeedStatistics(obj)
@@ -256,26 +234,11 @@ classdef PMTrackingCapture
 
         end
 
-        
-        function [obj] =                                            setThresholdToClickedPixel(obj)
-            
-             MyImageVolume =                                     obj.ImageVolume;
-
-            
-            myYCoordinate=                                      obj.CurrentYCoordinate;
-            myXCoordinate =                                     obj.CurrentXCoordinate;
-            myZCoordinate =                                     obj.CurrentZCoordinate;
-            Channel =                                           obj.CurrentChannel;
-
-            
-            obj.Threshold =                                     MyImageVolume(myYCoordinate,myXCoordinate,myZCoordinate,Channel);
-            
-        end
 
 
         function [obj] =                                            createMaskCoordinateList(obj)
-        %CREATELISTWITHMASKCOORDINATES Summary of this function goes here
-        %   Detailed explanation goes here
+        %CREATELISTWITHMASKCOORDINATES create coordinate list by thresholding image;
+        %   cropped image, threshold, seed position
 
         
                 %% read data:
@@ -286,10 +249,8 @@ classdef PMTrackingCapture
                 MyImageVolume =                                     obj.ImageVolume;
                 myNewThreshold =                                    obj.Threshold;
 
-
                 myCroppedImageVolumeMask =                          uint8(myCroppedImageVolume >= myNewThreshold) * 255;
 
-                
                 %% process data:
                 ZStart =                                            max([ 1 middlePlane - NumberOfPlanesAboveAndBelowConsidered]);
                 MaxZ =                                              size(MyImageVolume, 3);
@@ -306,18 +267,18 @@ classdef PMTrackingCapture
 
                 %% go through lower planes and find connected pixels in 3D:
                 for AnalyzedPlaneNumber = middlePlane-1:-1:ZStart
-                    ConnectedStructuresInTargetPlane =                                  bwconncomp(myCroppedImageVolumeMask(:,:,AnalyzedPlaneNumber));
-                    ListWithUpperPlanePixels =                                          ListWith3DCoordinatesCell{AnalyzedPlaneNumber+1};
-                    ListWith3DCoordinatesCell{AnalyzedPlaneNumber,1}=                    obj.FindOverlappingPixels(ConnectedStructuresInTargetPlane, ListWithUpperPlanePixels, AnalyzedPlaneNumber);
+                    ConnectedStructuresInTargetPlane =                                          bwconncomp(myCroppedImageVolumeMask(:,:,AnalyzedPlaneNumber));
+                    ListWithUpperPlanePixels =                                                  ListWith3DCoordinatesCell{AnalyzedPlaneNumber+1};
+                    ListWith3DCoordinatesCell{AnalyzedPlaneNumber,1}=                           obj.FindContactAreasInNeighborPlane(ConnectedStructuresInTargetPlane, ListWithUpperPlanePixels, AnalyzedPlaneNumber);
 
                 end
 
 
                 %% go through upper planes and find connected pixels in 3D:
                 for AnalyzedPlaneNumber = middlePlane+1:1:ZEnd
-                     ConnectedStructuresInTargetPlane =                                 bwconncomp(myCroppedImageVolumeMask(:,:,AnalyzedPlaneNumber));
-                    ListWithLowerPlanePixels =                                          ListWith3DCoordinatesCell{AnalyzedPlaneNumber-1};
-                    ListWith3DCoordinatesCell{AnalyzedPlaneNumber,1}=                   obj.FindOverlappingPixels(ConnectedStructuresInTargetPlane, ListWithLowerPlanePixels, AnalyzedPlaneNumber);
+                     ConnectedStructuresInTargetPlane =                                         bwconncomp(myCroppedImageVolumeMask(:,:,AnalyzedPlaneNumber));
+                    ListWithLowerPlanePixels =                                                  ListWith3DCoordinatesCell{AnalyzedPlaneNumber-1};
+                    ListWith3DCoordinatesCell{AnalyzedPlaneNumber,1}=                           obj.FindContactAreasInNeighborPlane(ConnectedStructuresInTargetPlane, ListWithLowerPlanePixels, AnalyzedPlaneNumber);
 
 
                 end
@@ -332,25 +293,61 @@ classdef PMTrackingCapture
                 NegativeValues =                                    max([NegativeValuesOne,NegativeValuesTwo, NegativeValuesThree], [], 2);
                 FinalListWith3DCoordinates(NegativeValues,:) =      [];
 
-                
+
                 %% create ouput:
                 obj.MaskCoordinateList =                            FinalListWith3DCoordinates;
 
+        end
+        
+        
+          
+        function [obj] =                                            removePreviouslyTrackedDuplicatePixels(obj)
+
+            
+            %% read data:
+            FieldNames =                                        obj.FieldNamesForSegmentation;
+            CellWithMaskData =                                  obj.SegmentationOfCurrentFrame;
+            PixelListDerivedFromCurrentClick =                  obj.MaskCoordinateList;
+            
+            %% process data:
+            
+            % get coordinates of all other previously tracked cells:
+            Column_TrackID=                                     strcmp('TrackID', FieldNames);
+            Column_AbsoluteFrame=                               find(strcmp('AbsoluteFrame', FieldNames));
+            Column_CentroidY=                                   find(strcmp('CentroidY', FieldNames));
+            Column_CentroidX=                                   find(strcmp('CentroidX', FieldNames));
+            Column_CentroidZ=                                   find(strcmp('CentroidZ', FieldNames));
+            Column_PixelList =                                  strcmp('ListWithPixels_3D', FieldNames);
+            
+            RowWithCurrentTrack =                               cell2mat(CellWithMaskData(:,Column_TrackID)) == obj.CurrentTrackId;  
+            CellWithMaskData(RowWithCurrentTrack,:) =           [];
+
+            PixelListFromOtherTrackedCells =                    CellWithMaskData(:,Column_PixelList);
+            PixelListFromOtherTrackedCells =                    vertcat(PixelListFromOtherTrackedCells{:});
 
 
+             if ~isempty(PixelListFromOtherTrackedCells)
+                PixelListDerivedFromCurrentClick(ismember(PixelListDerivedFromCurrentClick,PixelListFromOtherTrackedCells,'rows'),:) = [];
+
+             end
+
+             %% return data to object:
+             obj.MaskCoordinateList =                                   PixelListDerivedFromCurrentClick;
 
 
         end
+
+        
 
 
         %% helper functions:
         function [ListWithPixels] =                                 getConnectedPixels(obj,MaskImage,Plane)
 
             % start connecting from clicked pixel
-
-            SeedRowInternal =                                                           obj.SeedRow;
-            SeedColumnInteral =                                                       obj.SeedColumn;
-            BW =                                                                grayconnected(MaskImage, SeedRowInternal,SeedColumnInteral);
+            SeedRowInternal =                                                   obj.SeedRow;
+            SeedColumnInteral =                                                 obj.SeedColumn;
+            
+            BW =                                                                grayconnected(MaskImage, SeedRowInternal, SeedColumnInteral);
             [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=           find(BW); 
 
 
@@ -366,21 +363,20 @@ classdef PMTrackingCapture
 
         function [ListWithPixels] =                                 CalibratePixelList(obj,ListWithPixels)
 
-                    %myXCoordinate =                     obj.CurrentXCoordinate;
-                    %myYCoordinate =                     obj.CurrentYCoordinate;
-                    %myCellRadius =                      obj.MaximumCellRadius;
-
+                    %% add back rows and columns and were removed during cropping of source image:
                     ListWithPixels(:,1) =               ListWithPixels(:,1) + obj.NumberOfLostRows;
                     ListWithPixels(:,2) =               ListWithPixels(:,2) + obj.NumberOfLostColumns;
 
         end
 
 
-        function [ListWithOverlappingPixels]=                       FindOverlappingPixels(obj, Structure, ComparisonList, PlaneIndex)
+        function [ListWithOverlappingPixels]=                       FindContactAreasInNeighborPlane(obj, Structure, ComparisonList, PlaneIndex)
 
-                  %% first analyze the structures detected in the target image: 
+                 % compare neighboring planes and include all areas that overlap with the "source" plane;
+            
+                 %% first analyze the structures detected in the target image: 
                  if Structure.NumObjects == 0
-                    ListWithOverlappingPixels =             zeros(0,3);
+                    ListWithOverlappingPixels =                     zeros(0,3);
                     return
                  else
                      ListWithDetectedRegions(:,1) =               Structure.PixelIdxList;
@@ -419,13 +415,7 @@ classdef PMTrackingCapture
 
 
         end
-
-
-       
-
    
-
-        
 
     end
     
