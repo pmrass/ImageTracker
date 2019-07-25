@@ -3,9 +3,8 @@ classdef PMMovieLibraryManager < handle
     %   Detailed explanation goes here
     
     properties
-        
-        
-     
+
+
         Viewer
         TagOfHandleOfInfoFigure =                   'PMMovieLibraryManager_InfoWindow';
         ActiveInfoType =                            'Project';
@@ -65,15 +64,15 @@ classdef PMMovieLibraryManager < handle
 
 
             obj.Viewer.MovieControllerViews.MovieView.TimeStampText.Units =               'centimeters';
-            obj.Viewer.MovieControllerViews.MovieView.TimeStampText.Position =            [14 4 ];
+            obj.Viewer.MovieControllerViews.MovieView.TimeStampText.Position =            [2 0.3 ];
             obj.Viewer.MovieControllerViews.MovieView.TimeStampText.Color = 'c';
 
             obj.Viewer.MovieControllerViews.MovieView.ZStampText.Units =               'centimeters';
-            obj.Viewer.MovieControllerViews.MovieView.ZStampText.Position =              [21 4 ];
+            obj.Viewer.MovieControllerViews.MovieView.ZStampText.Position =              [9 0.3 ];
             obj.Viewer.MovieControllerViews.MovieView.ZStampText.Color = 'c';
 
             obj.Viewer.MovieControllerViews.MovieView.ScalebarText.Units =               'centimeters';
-            obj.Viewer.MovieControllerViews.MovieView.ScalebarText.Position =            [28 4 ];
+            obj.Viewer.MovieControllerViews.MovieView.ScalebarText.Position =            [16 0.3 ];
             obj.Viewer.MovieControllerViews.MovieView.ScalebarText.Color = 'c';
 
             obj.Viewer.InfoView.List.Position =                                           [11.5 0.1 21 3.5];
@@ -93,7 +92,7 @@ classdef PMMovieLibraryManager < handle
             
             
                 
-            obj.ActiveMovieController       =                                                   PMMovieController;  
+            obj.ActiveMovieController       =                                                   PMMovieController();  
             obj.ActiveMovieController.Views =                                                   obj.Viewer.MovieControllerViews;
             obj.ActiveMovieController.Views.Figure =                                            obj.Viewer.Figure;   
             obj.ActiveMovieController.Views.MovieView.ManualDriftCorrectionLine.Visible =       'off';
@@ -1509,13 +1508,14 @@ classdef PMMovieLibraryManager < handle
             if isempty(obj.ActiveMovieController.LoadedMovie.ImageMapPerFile)
                 
                 obj.ActiveMovieController.LoadedMovie.Folder =                obj.MovieLibrary.PathOfMovieFolder;
-                 obj.ActiveMovieController.LoadedMovie =                     obj.ActiveMovieController.LoadedMovie.AddImageMap;
+                 obj.ActiveMovieController.LoadedMovie =                        obj.ActiveMovieController.LoadedMovie.AddImageMap;
                  
                  if obj.ActiveMovieController.LoadedMovie.FileCouldNotBeRead
                      return
                      
                  end
             else
+
                 % otherwise: update the pointers of the current image maps if necessary:;
                 obj.ActiveMovieController.LoadedMovie =                     obj.ActiveMovieController.LoadedMovie.updateFileReadingStatus;
                  
@@ -1538,45 +1538,39 @@ classdef PMMovieLibraryManager < handle
                 %obj.Viewer.MovieControllerViews.blackOutMovieView;;
                 return
 
-             else
+             end
+             
+             
+             
                  
                 obj.ActiveMovieController.enableAllViews;
                 obj.Viewer.MovieControllerViews.reverseBlackOut;
 
-                %% if the active movie controller has no image in memory, it needs to be loaded now(just load one frame), otherwise it should be there (it goes back to the same place where it came before)
-                if isempty(obj.ActiveMovieController.LoadedImageVolumes)
-                     % reserve space for actual imaging data;
-                    obj.ActiveMovieController.LoadedImageVolumes =                      cell(obj.ActiveMovieController.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
-                    
-
-                end
                 
-                %% pre-load single image: this prevents loading multiple frames when the current frame is empty;
-                if isempty(obj.ActiveMovieController.LoadedImageVolumes{obj.ActiveMovieController.LoadedMovie.SelectedFrames(1),1})
-                    obj.ActiveMovieController.NumberOfLoadedFrames =                    0;
-                    obj.ActiveMovieController =                                         obj.ActiveMovieController.updateLoadedImageVolumes;
-                    obj.ActiveMovieController.NumberOfLoadedFrames =                    40;
-                    
-                    
-                end
+                
+                obj.ActiveMovieController =                                     obj.ActiveMovieController.ensureCurrentImageFrameIsInMemory;
+                
+                
                 
                 %% finalize loaded movie so that it works together with the controller views:
                 obj.ActiveMovieController.LoadedMovie.DriftCorrection =                 obj.ActiveMovieController.LoadedMovie.DriftCorrection.update(obj.ActiveMovieController.LoadedMovie.MetaData);
-                
+                obj.ActiveMovieController.LoadedMovie =                                 obj.ActiveMovieController.LoadedMovie.autoCorrectTrackingObject;
                 
 
                 %% if everything was ok: upload all the views with the newly loaded data:
                 
-                obj.ActiveMovieController.LoadedMovie =                                 obj.ActiveMovieController.LoadedMovie.autoCorrectTrackingObject;
+                
                 obj.ActiveMovieController =                                             obj.ActiveMovieController.updateCompleteView;
                 obj.ActiveMovieController =                                             obj.ActiveMovieController.updateAllTrackingViews;
        
                 
-             end
+             
                    
 
-        end
+          end
         
+        
+         
        
           
          %% change model:

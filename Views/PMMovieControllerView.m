@@ -12,6 +12,7 @@ classdef PMMovieControllerView
         Navigation
         Channels
         Annotation
+        
         MovieView
          
         
@@ -19,15 +20,25 @@ classdef PMMovieControllerView
     
     methods
         
-        function obj = PMMovieControllerView(ProjectViews)
+        function obj = PMMovieControllerView(Input)
             %PMMOVIECONTROLLERVIEW Construct an instance of this class
             %   Creation of views that support navigating through the loaded image-sequences;
 
-            obj =                   obj.createMovieMenu(ProjectViews);
-            obj =                   obj.CreateNavigationViews(ProjectViews);
-            obj =                   obj.CreateChannelViews(ProjectViews);
-            obj =                   obj.CreateAnnotationViews(ProjectViews);
-            obj =                   obj.createMovieView(ProjectViews);
+            
+            if ishghandle(Input,'axes') % if the input is only the 
+                
+                obj.Figure =           Input.Parent;  
+                obj =                   obj.createMovieView(Input);
+                
+            else % if input is the project view: create more views and put them in relation to the whole project window;
+            
+                obj =                   obj.createMovieMenu(Input);
+                obj =                   obj.CreateNavigationViews(Input);
+                obj =                   obj.CreateChannelViews(Input);
+                obj =                   obj.CreateAnnotationViews(Input);
+                obj =                   obj.createMovieView(Input);
+            
+            end
       
         end
         
@@ -336,7 +347,168 @@ classdef PMMovieControllerView
            
             
         end
+      
+
+        function obj = createMovieView(obj,Input)
+            %METHOD1 Summary of this method goes here
+            %   Detailed explanation goes here
+            
+            
+                
+                FontSize =                                      20;
+                FontColor =                                     [ 0 0.1 0.99];
+                TimeColumn =                                    0.1;
+                PlaneColumn =                                   0.5;
+                ScaleColumn =                                  0.9;
+                AnnotationRow =                                 0.2;
+            
+            
+            if ~ishghandle(Input,'axes') 
+                
+                
+                 MovieFigure=                                    Input.Figure;
+                 
+                 ViewMovieAxes=                           axes;
+                    ViewMovieAxes.Tag=                       'ImageAxes';
+                    ViewMovieAxes.Position=                  [0 0 1 1];
+                    ViewMovieAxes.DataAspectRatioMode=       'manual'; % this can be tricky, maybe better to turn it off and manually correct the x-y ratio for each view?
+                 
+            else
+                MovieFigure =                           Input.Parent;
+                ViewMovieAxes =                         Input;
+                
+            end
+            
+               
+                
+
+
+                
+                obj.Figure.CurrentAxes = ViewMovieAxes;
+          
+                %% axes image;
+               
+                
+                    
+                    ViewMovieAxes.Visible=                   'on';
+                    ViewMovieAxes.YDir=                      'reverse';  
+                    ViewMovieAxes.XColor =                      'c';
+                    ViewMovieAxes.YColor =                      'c';
+                    
+                    
+                %% image and cropping
+               
+      
+                    HandleOfMainImage=                      image;
+                    HandleOfMainImage.Tag=                  'ImageOfFigure'; 
+                    HandleOfMainImage.Parent=               ViewMovieAxes; % this is a safety thing but may be redundant;
+
+                    handleOfRectangle=                              line;
+                    handleOfRectangle.MarkerSize=                   14;
+                    handleOfRectangle.Color=                        'w';
+                    handleOfRectangle.Tag=                          'ClickedPosition';
+                    handleOfRectangle.Parent=                       ViewMovieAxes;
+                    handleOfRectangle.Marker=                       'none';
+
+
+
+                %% annotation text:
+
+                    TimeStampTextHandle=                            text(1, 1, '');
+                    TimeStampTextHandle.FontSize=                   FontSize;
+                    TimeStampTextHandle.HorizontalAlignment=        'center'; 
+                    TimeStampTextHandle.Color=                      FontColor;
+                    TimeStampTextHandle.Units=                      'normalized'; 
+                    TimeStampTextHandle.Position=                   [TimeColumn AnnotationRow];
+                    TimeStampTextHandle.Tag=                        'TimeStamp';
+                    TimeStampTextHandle.String=                     'Timestamp';
+                    TimeStampTextHandle.Parent=                     ViewMovieAxes;
+                    
+                        ZStampTextHandle=                               text(1, 1, '');
+                        ZStampTextHandle.FontSize=                      FontSize;
+                        ZStampTextHandle.HorizontalAlignment=           'center';
+                        ZStampTextHandle.Color=                         FontColor;
+                        ZStampTextHandle.Units=                         'normalized';
+                        ZStampTextHandle.Position=                      [PlaneColumn AnnotationRow];
+                        ZStampTextHandle.Tag=                           'ZStamp';
+                        ZStampTextHandle.String=                     'ZStamp';
+                        ZStampTextHandle.Parent=                     ViewMovieAxes;
+                  
+                        ScalebarTextHandle=                         text(1, 1, '');
+                        ScalebarTextHandle.FontSize=                FontSize;
+                        ScalebarTextHandle.HorizontalAlignment=     'center';
+                        ScalebarTextHandle.Color=                   FontColor;
+                        ScalebarTextHandle.Units=                   'normalized';
+                        ScalebarTextHandle.Tag=                     'ScaleBar';
+                        ScalebarTextHandle.Position=                [ScaleColumn AnnotationRow];
+                        ScalebarTextHandle.String =                 'Scalebar';
+                        ScalebarTextHandle.Parent=                     ViewMovieAxes;
+                   
+
+
+                        %% drift correction and tracking:
+
+                        HandleOfManualDriftCorrectionLine=                          line; 
+
+
+                         HandleOfManualDriftCorrectionLine.Parent=                   ViewMovieAxes;
+                         HandleOfManualDriftCorrectionLine.Marker=                   'x';
+                         HandleOfManualDriftCorrectionLine.MarkerSize=               15;
+                         HandleOfManualDriftCorrectionLine.Color=                    'w';
+                         HandleOfManualDriftCorrectionLine.Tag=                      'ManualDriftCorrectionLine';
+                         HandleOfManualDriftCorrectionLine.LineStyle=                'none';
+                         HandleOfManualDriftCorrectionLine.MarkerFaceColor=          'none';
+                         HandleOfManualDriftCorrectionLine.MarkerEdgeColor=          'w';
+                         HandleOfManualDriftCorrectionLine.LineWidth=                   2;
+                         HandleOfManualDriftCorrectionLine.Visible =                'off';
+
+                        HandleOfCentroidLine=                          line; 
+                         HandleOfCentroidLine.Parent=                   ViewMovieAxes;
+                         HandleOfCentroidLine.Marker=                   's';
+                         HandleOfCentroidLine.MarkerSize=               8;
+                         HandleOfCentroidLine.Color=                    'c';
+                         HandleOfCentroidLine.Tag=                      'CentroidLine';
+                         HandleOfCentroidLine.LineStyle=                'none';
+                         HandleOfCentroidLine.MarkerFaceColor=          'none';
+                         HandleOfCentroidLine.MarkerEdgeColor=          'c';
+                         HandleOfCentroidLine.LineWidth=                2;
+                        HandleOfCentroidLine.Visible =                'off';
+                        HandleOfCentroidLine_SelectedTrack=                          line; 
+
+
+                         HandleOfCentroidLine_SelectedTrack.Parent=                   ViewMovieAxes;
+                         HandleOfCentroidLine_SelectedTrack.Marker=                   's';
+                         HandleOfCentroidLine_SelectedTrack.MarkerSize=               25;
+                         HandleOfCentroidLine_SelectedTrack.Color=                    'm';
+                         HandleOfCentroidLine_SelectedTrack.Tag=                      'HandleOfCentroidLine_SelectedTrack';
+                         HandleOfCentroidLine_SelectedTrack.LineStyle=                'none';
+                         HandleOfCentroidLine_SelectedTrack.MarkerFaceColor=          'none';
+                         HandleOfCentroidLine_SelectedTrack.MarkerEdgeColor=          'm';
+                         HandleOfCentroidLine_SelectedTrack.LineWidth=                2.5;
+                         HandleOfCentroidLine_SelectedTrack.Visible =                'off';
+
+
+                    
+
+                        %% get all handles
+                        obj.MovieView.ViewMovieHandle=                   MovieFigure;
+
+                        obj.MovieView.ViewMovieAxes=                     ViewMovieAxes;
+                        obj.MovieView.MainImage=                         HandleOfMainImage;
+                        obj.MovieView.ScalebarText=                      ScalebarTextHandle;
+                        obj.MovieView.TimeStampText=                     TimeStampTextHandle;
+                        obj.MovieView.ZStampText=                        ZStampTextHandle;
+                        obj.MovieView.ManualDriftCorrectionLine=         HandleOfManualDriftCorrectionLine;
+                        obj.MovieView.CentroidLine=                      HandleOfCentroidLine;
+                        obj.MovieView.CentroidLine_SelectedTrack=        HandleOfCentroidLine_SelectedTrack;
+                        obj.MovieView.Rectangle=                         handleOfRectangle;
+
+                    
+            
+        end
         
+        
+          
         
         function obj = CreateAnnotationViews(obj, ProjectViews)
             
@@ -402,208 +574,29 @@ classdef PMMovieControllerView
             
         end
         
-
-        function obj = createMovieView(obj,ProjectViews)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-                MovieFigure=                                    ProjectViews.Figure;
-                
-              
-                FontSize =          20;
-                FontColor =         [ 0 0.1 0.99];
-                TopRow =            -0.05;
-                FirstColumn =       0.05;
-                SecondColumn =      0.8;
-                RowShift =          0.05;
-
-
-                
-                
-          
-                %% axes image;
-               
-                
-                    ViewMovieAxes=                           axes;
-                    ViewMovieAxes.Tag=                       'ImageAxes';
-                    ViewMovieAxes.Position=                  [0 0 1 1];
-                    ViewMovieAxes.Visible=                   'off';
-                    ViewMovieAxes.DataAspectRatioMode=       'manual';
-                    ViewMovieAxes.YDir=                      'reverse';  
-                    ViewMovieAxes.XColor =                  'c';
-                    ViewMovieAxes.YColor =                  'c';
-                    
-                    
-                %% image and cropping
-               
-      
-                    HandleOfMainImage=                      image;
-                    HandleOfMainImage.Tag=                  'ImageOfFigure'; 
-                    HandleOfMainImage.Parent=               ViewMovieAxes; % this is a safety thing but may be redundant;
-                
-                
-              
-                
-                 handleOfRectangle=                              line;
-                    handleOfRectangle.MarkerSize=                   14;
-                    handleOfRectangle.Color=                        'w';
-                    handleOfRectangle.Tag=                          'ClickedPosition';
-                    handleOfRectangle.Parent=                       ViewMovieAxes;
-                    handleOfRectangle.Marker=                       'none';
-
-                    
-                    %% slider:
-                    
-                    
-
-                %% annotation text:
-
-                    TimeStampTextHandle=                            text(1, 1, '');
-                    TimeStampTextHandle.FontSize=                   FontSize;
-                    TimeStampTextHandle.HorizontalAlignment=        'center'; 
-                    TimeStampTextHandle.Color=                      FontColor;
-                    TimeStampTextHandle.Units=                      'normalized'; 
-                    TimeStampTextHandle.Position=                   [FirstColumn TopRow];
-                    TimeStampTextHandle.Tag=                        'TimeStamp';
-                    TimeStampTextHandle.String=                     'Timestamp';
-                    TimeStampTextHandle.Parent=                     ProjectViews.ProjectAxes;
-                    
-
-                  
-                        ZStampTextHandle=                               text(1, 1, '');
-                        ZStampTextHandle.FontSize=                      FontSize;
-                        ZStampTextHandle.HorizontalAlignment=           'center';
-                        ZStampTextHandle.Color=                         FontColor;
-                        ZStampTextHandle.Units=                         'normalized';
-                        ZStampTextHandle.Position=                      [(FirstColumn+SecondColumn)/2 TopRow];
-                        ZStampTextHandle.Tag=                           'ZStamp';
-                        ZStampTextHandle.String=                     'ZStamp';
-                        ZStampTextHandle.Parent=                     ProjectViews.ProjectAxes;
-                  
-                        
-                        
-                         ScalebarTextHandle=                         text(1, 1, '');
-                        ScalebarTextHandle.FontSize=                FontSize;
-                        ScalebarTextHandle.HorizontalAlignment=     'center';
-                        ScalebarTextHandle.Color=                   FontColor;
-                        ScalebarTextHandle.Units=                   'normalized';
-                        ScalebarTextHandle.Tag=                     'ScaleBar';
-                        ScalebarTextHandle.Position=                [SecondColumn TopRow];
-                        ScalebarTextHandle.String =                 'Scalebar';
-                        ScalebarTextHandle.Parent=                     ProjectViews.ProjectAxes;
-                   
-
-
-                  
-
-
-                   
-
-                   
-
-                    %% drift correction and tracking:
-
-                     HandleOfManualDriftCorrectionLine=                          line; 
-
-
-                         HandleOfManualDriftCorrectionLine.Parent=                   ViewMovieAxes;
-                         HandleOfManualDriftCorrectionLine.Marker=                   'x';
-                         HandleOfManualDriftCorrectionLine.MarkerSize=               15;
-                         HandleOfManualDriftCorrectionLine.Color=                    'w';
-                         HandleOfManualDriftCorrectionLine.Tag=                      'ManualDriftCorrectionLine';
-                         HandleOfManualDriftCorrectionLine.LineStyle=                'none';
-                         HandleOfManualDriftCorrectionLine.MarkerFaceColor=          'none';
-                         HandleOfManualDriftCorrectionLine.MarkerEdgeColor=          'w';
-                         HandleOfManualDriftCorrectionLine.LineWidth=                   2;
-                         HandleOfManualDriftCorrectionLine.Visible =                'off';
-
-
-
-                   
-                    
-                    
-                          HandleOfCentroidLine=                          line; 
-
-
-                         HandleOfCentroidLine.Parent=                   ViewMovieAxes;
-                         HandleOfCentroidLine.Marker=                   's';
-                         HandleOfCentroidLine.MarkerSize=               8;
-                         HandleOfCentroidLine.Color=                    'c';
-                         HandleOfCentroidLine.Tag=                      'CentroidLine';
-                         HandleOfCentroidLine.LineStyle=                'none';
-                         HandleOfCentroidLine.MarkerFaceColor=          'none';
-                         HandleOfCentroidLine.MarkerEdgeColor=          'c';
-                         HandleOfCentroidLine.LineWidth=                2;
-                        HandleOfCentroidLine.Visible =                'off';
-                        
-
-%                     ControlLine=   findobj(MovieFigure, 'Tag', 'ControlLine');
-%                     if isempty(ControlLine) 
-% 
-%                         ControlLine=                          line; 
-% 
-% 
-%                          ControlLine.Parent=                   ViewMovieAxes;
-%                          ControlLine.Marker=                   'x';
-%                          ControlLine.MarkerSize=               8;
-%                          ControlLine.Color=                    'w';
-%                          ControlLine.Tag=                      'ControlLine';
-%                          ControlLine.LineStyle=                'none';
-%                          ControlLine.MarkerFaceColor=          'none';
-%                          ControlLine.MarkerEdgeColor=          'c';
-%                          ControlLine.LineWidth=                2;
-% 
-%                     end
-
-                    HandleOfCentroidLine_SelectedTrack=                          line; 
-
-
-                         HandleOfCentroidLine_SelectedTrack.Parent=                   ViewMovieAxes;
-                         HandleOfCentroidLine_SelectedTrack.Marker=                   's';
-                         HandleOfCentroidLine_SelectedTrack.MarkerSize=               25;
-                         HandleOfCentroidLine_SelectedTrack.Color=                    'm';
-                         HandleOfCentroidLine_SelectedTrack.Tag=                      'HandleOfCentroidLine_SelectedTrack';
-                         HandleOfCentroidLine_SelectedTrack.LineStyle=                'none';
-                         HandleOfCentroidLine_SelectedTrack.MarkerFaceColor=          'none';
-                         HandleOfCentroidLine_SelectedTrack.MarkerEdgeColor=          'm';
-                         HandleOfCentroidLine_SelectedTrack.LineWidth=                2.5;
-                         HandleOfCentroidLine_SelectedTrack.Visible =                'off';
-
-
-
-
-                    
-                    %% move to contoller:
-                   
-
-                    
-                    
-
-                    %% get all handles
-                    obj.MovieView.ViewMovieHandle=                   MovieFigure;
-
-                    
-                    
-                   
-                    obj.MovieView.ViewMovieAxes=                     ViewMovieAxes;
-                    obj.MovieView.MainImage=                         HandleOfMainImage;
-
-                    
-                    
-                    obj.MovieView.ScalebarText=                      ScalebarTextHandle;
-                    obj.MovieView.TimeStampText=                     TimeStampTextHandle;
-                    obj.MovieView.ZStampText=                        ZStampTextHandle;
-
-                    obj.MovieView.ManualDriftCorrectionLine=         HandleOfManualDriftCorrectionLine;
-
-                  
-                    obj.MovieView.CentroidLine=                      HandleOfCentroidLine;
-                    obj.MovieView.CentroidLine_SelectedTrack=        HandleOfCentroidLine_SelectedTrack;
-
-                    obj.MovieView.Rectangle=                         handleOfRectangle;
-
-        end
         
+        function obj = resetNavigationFontSize(obj, FontSize)
+            
+            
+               obj.MovieView.ScalebarText.FontSize = FontSize;
+               obj.MovieView.TimeStampText.FontSize = FontSize;
+               obj.MovieView.ZStampText.FontSize = FontSize;
+               
+               
+  
+
+      
+            
+            
+            
+            
+        end
     
+        
+        
+     
+        
+        
         function obj = blackOutMovieView(obj)
             
             obj.MovieView.MainImage.CData(:) =                      0;

@@ -272,7 +272,52 @@ classdef PMMovieTracking
               
             
             
+         end
+        
+         
+         
+          function obj = hideTime(obj)
+              
+              obj.TimeVisible =     false;
+        
+            
+            
         end
+        
+        
+         function obj = showTime(obj)
+            obj.TimeVisible =     true;
+            
+         end
+        
+          function obj = hidePlane(obj)
+            
+                  
+              obj.PlanePositionVisible = false;
+        
+
+        end
+        
+        
+         function obj = showPlane(obj)
+             
+              obj.PlanePositionVisible = true;
+            
+            
+         end
+        
+          function obj = hideScale(obj)
+            
+            obj.ScaleBarVisible =          false;
+        end
+        
+        
+         function obj = showScale(obj)
+             obj.ScaleBarVisible =          tru;
+            
+            
+        end
+        
           
           
         

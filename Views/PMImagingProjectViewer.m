@@ -61,6 +61,9 @@ classdef PMImagingProjectViewer
                 
                 
                 
+                %uistack(obj.ProjectAxes, 'top')
+                
+              
                 
                  %obj.changeAppearance;
                 %obj.disableAllViews; % by default disable all views; (only when relevant data are loaded enable specific vies;

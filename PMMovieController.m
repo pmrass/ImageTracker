@@ -17,7 +17,6 @@ classdef PMMovieController < handle
         LoadedImageVolumes
         NumberOfLoadedFrames =      40
         
-        
         RowOfActiveTrack
         
         RowOfActiveTrackAll
@@ -55,7 +54,7 @@ classdef PMMovieController < handle
         
         
         
-        MaskColor =             [NaN NaN 150];
+        MaskColor =                 [NaN NaN 150];
         MaskColorForActiveTrack =   [100 100 100];
         
         MouseDownRow =              NaN
@@ -64,7 +63,7 @@ classdef PMMovieController < handle
         MouseUpColumn =             NaN
         
         % appearance
-        BackgroundColor =               [0 0.1 0.2];
+        BackgroundColor =           [0 0.1 0.2];
         ForegroundColor =               'c';
         
         TrackingCapture
@@ -75,8 +74,34 @@ classdef PMMovieController < handle
     
     methods
         
-        function obj = PMMovieController
+        function obj = PMMovieController(varargin)
             
+            
+            if ~isempty(varargin) % input should be movie controller views
+                
+                switch length(varargin)
+                    
+                    case 1 % only connected movies
+                        ViewObject =                                                         varargin{1};
+                        obj.Views =                                                     ViewObject;
+                        obj.Views.Figure =                                              ViewObject.Figure;  
+
+                        
+                    case 2 % connected views and movie
+                        
+                         ViewObject =                                                         varargin{1};
+                        obj.Views =                                                     ViewObject;
+                        obj.Views.Figure =                                              ViewObject.Figure;  
+
+                    
+                        obj.LoadedMovie =           varargin{2};
+                    
+                end
+                
+                
+
+                
+            end
            
             %PMMOVIETRACKINGSTATE Construct an instance of this class
             %   modulates interplay between movie model (images and annotation) and views;
@@ -86,6 +111,7 @@ classdef PMMovieController < handle
         
         
         function [obj] =changeMovieKeyword(obj)
+            
               KeywordString=                        char(inputdlg('Enter new keyword'));
               obj.LoadedMovie.Keywords{1,1} =       KeywordString;
                  
@@ -127,7 +153,7 @@ classdef PMMovieController < handle
           
         
         
-        function obj =   updateImageView(obj)
+        function obj =          updateImageView(obj)
             
             
             %% collect relevant data from model:
@@ -198,6 +224,12 @@ classdef PMMovieController < handle
 
             %% update image
             obj =                                                                   obj.updateLoadedImageVolumes;
+            
+            if obj.LoadedMovie.FileCouldNotBeRead
+                disp('File could not be read')
+                return
+            end
+            
             rgbImage =                                                              obj.extractCurrentRgbImage; % this is by far the slowest component (but ok): consider changing;
 
             if obj.LoadedMovie.MasksAreVisible && ~isempty(obj.ListOfAllPixels)
@@ -251,7 +283,7 @@ classdef PMMovieController < handle
 
         end
         
-        function [obj] =    updateManualDriftCorrectionView(obj)
+        function [obj] =        updateManualDriftCorrectionView(obj)
             
              CurrentFrame =                                                         obj.LoadedMovie.SelectedFrames(1);
             % update marker for manual drift correction:
@@ -279,7 +311,7 @@ classdef PMMovieController < handle
                  
         end
         
-        function [obj] =    updateSegmentationInformationForFrame(obj, CurrentFrame)
+        function [obj] =        updateSegmentationInformationForFrame(obj, CurrentFrame)
             
               myIDOfActiveTrack =                             obj.LoadedMovie.IdOfActiveTrack;
             
@@ -298,7 +330,7 @@ classdef PMMovieController < handle
         end
         
         
-        function [obj] =    resetPlaneToActiveTrack(obj)
+        function [obj] =        resetPlaneToActiveTrack(obj)
             
             
                         
@@ -321,16 +353,37 @@ classdef PMMovieController < handle
             
         end
         
-        function [obj] = updateViewsAfterFrameChange(obj)
+        function [obj] =        updateViewsAfterFrameChange(obj)
             
-            obj.Views.Navigation.CurrentTimePoint.Value =       obj.LoadedMovie.SelectedFrames;
+            
+            if ~isempty(obj.Views.Navigation)
+                obj.Views.Navigation.CurrentTimePoint.Value =       obj.LoadedMovie.SelectedFrames;
+            end
+            
             obj=                                                obj.updateImageView;
             obj.Views.MovieView.TimeStampText.String =          obj.LoadedMovie.ListWithTimeStamps{obj.LoadedMovie.SelectedFrames};
             
         end
         
+        function [obj] =        resetWidthOfMovieAxesToMatchAspectRatio(obj)
+            
+            XLength =       obj.Views.MovieView.ViewMovieAxes.XLim(2)- obj.Views.MovieView.ViewMovieAxes.XLim(1);
+            YLength =       obj.Views.MovieView.ViewMovieAxes.YLim(2)- obj.Views.MovieView.ViewMovieAxes.YLim(1);
+            LengthenFactorForX =      XLength/  YLength;
+            obj.Views.MovieView.ViewMovieAxes.Position(3) = obj.Views.MovieView.ViewMovieAxes.Position(4) * LengthenFactorForX;
+            
+        end
         
-        function [obj] = updateViewsAfterPlaneChange(obj)
+         function [obj] =        stretchAxes(obj,Factor)
+            
+          
+            obj.Views.MovieView.ViewMovieAxes.Position(3) = obj.Views.MovieView.ViewMovieAxes.Position(3) * Factor;
+            obj.Views.MovieView.ViewMovieAxes.Position(4) = obj.Views.MovieView.ViewMovieAxes.Position(4) * Factor;
+            
+        end
+        
+        
+        function [obj] =        updateViewsAfterPlaneChange(obj)
             
             obj.Views.Navigation.CurrentPlane.Value =       obj.LoadedMovie.SelectedPlanes;
             obj=                                            obj.updateImageView;
@@ -339,7 +392,7 @@ classdef PMMovieController < handle
             
         end
         
-        function [obj] =    updateViewsAfterFrameAndPlaneChange(obj)
+        function [obj] =        updateViewsAfterFrameAndPlaneChange(obj)
             
             obj.Views.Navigation.CurrentTimePoint.Value =       obj.LoadedMovie.SelectedFrames;
             obj.Views.MovieView.TimeStampText.String =          obj.LoadedMovie.ListWithTimeStamps{obj.LoadedMovie.SelectedFrames};
@@ -352,7 +405,7 @@ classdef PMMovieController < handle
         end
         
         
-        function [obj] = updateCroppingLimitView(obj)
+        function [obj] =        updateCroppingLimitView(obj)
                 
             %% read data
             MyRectangleView =                               obj.Views.MovieView.Rectangle;
@@ -436,10 +489,6 @@ classdef PMMovieController < handle
                       
               end
           
-              
-            
-      
-
             
         end
         
@@ -460,10 +509,7 @@ classdef PMMovieController < handle
         
         end
         
-        
-        
-       
-        
+
         function obj = updateTrackView(obj)
             
 
@@ -624,11 +670,9 @@ classdef PMMovieController < handle
         function [obj] = deleteAllTrackLineViews(obj)
             
             
-            AllLines =  findobj(obj.Views.MovieView.ViewMovieAxes, 'Type', 'Line');
-            
-            TrackLineRows  =    arrayfun(@(x) ~isnan(str2double(x.Tag)), AllLines);
-            
-            TrackLines=     AllLines(TrackLineRows,:);
+            AllLines =                  findobj(obj.Views.MovieView.ViewMovieAxes, 'Type', 'Line');
+            TrackLineRows  =            arrayfun(@(x) ~isnan(str2double(x.Tag)), AllLines);
+            TrackLines=                 AllLines(TrackLineRows,:);
             
             if ~isempty(TrackLines)
                 arrayfun(@(x) delete(x),  TrackLines);
@@ -1029,7 +1073,7 @@ classdef PMMovieController < handle
         
          
          
-           function [obj] = updateActiveTrackViewsByNumber(obj, NewTrackID)
+         function [obj] = updateActiveTrackViewsByNumber(obj, NewTrackID)
              
                
                
@@ -1276,6 +1320,14 @@ classdef PMMovieController < handle
             
         end
         
+        
+        
+       
+        
+        
+        
+        
+        
         %% respond to user input:
        
         function [obj] =    interpretKey(obj,PressedKey)
@@ -1327,7 +1379,7 @@ classdef PMMovieController < handle
             end
 
             
-           switch PressedKey
+            switch PressedKey
                 
                 case {'1', '2', '3', '4', '5', '6', '7', '8', '9'} % channel toggle
 
@@ -1498,7 +1550,25 @@ classdef PMMovieController < handle
         
         function obj =      updateAppliedPositionShift(obj)
             
-            DriftCorrectionIsOn =               obj.LoadedMovie.DriftCorrectionOn;
+            obj =       obj.resetAppliedDriftShiftsForMovieView;
+            
+           
+            
+            obj =                                   obj.initializeViewRanges;
+            obj =                                   obj.updateImageView;
+            
+             obj =                              obj.updateTrackList;
+             obj =                              obj.updateTrackView;
+            
+            
+        end
+        
+        
+        function obj =          resetAppliedDriftShiftsForMovieView(obj)
+            
+            
+            
+             DriftCorrectionIsOn =               obj.LoadedMovie.DriftCorrectionOn;
             metaData =                          obj.LoadedMovie.MetaData;
              
             switch DriftCorrectionIsOn
@@ -1533,11 +1603,6 @@ classdef PMMovieController < handle
             obj =                                       obj.updateCroppingLimitView;
             
             
-            obj =                                   obj.initializeViewRanges;
-            obj =                                   obj.updateImageView;
-            
-             obj =                              obj.updateTrackList;
-             obj =                              obj.updateTrackView;
             
             
         end
@@ -1612,6 +1677,7 @@ classdef PMMovieController < handle
              
              %% otherwise check whether the files can be connected and inactivate various controls;
              obj.disableAllViews;% don't let anybody do anything until movie sequence was loaded succesfully;
+             
              [obj.LoadedMovie] =                                obj.LoadedMovie.createFunctionalImageMap;
             if obj.LoadedMovie.FileCouldNotBeRead % check whether the files could be connected: if not do not try to read;
                 return
@@ -1676,6 +1742,33 @@ classdef PMMovieController < handle
             
          end
         
+         
+         function obj =         ensureCurrentImageFrameIsInMemory(obj)
+             
+             
+             %% if the active movie controller has no image in memory, it needs to be loaded now(just load one frame), otherwise it should be there (it goes back to the same place where it came before)
+                if isempty(obj.LoadedImageVolumes)
+                     % reserve space for actual imaging data;
+                    obj.LoadedImageVolumes =                      cell(obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
+                    
+
+                end
+                
+                %% pre-load single image: this prevents loading multiple frames when the current frame is empty;
+                if isempty(obj.LoadedImageVolumes{obj.LoadedMovie.SelectedFrames(1),1})
+                    obj.NumberOfLoadedFrames =                    0;
+                    obj =                                         obj.updateLoadedImageVolumes;
+                    obj.NumberOfLoadedFrames =                    40;
+                    
+                    
+                end
+                
+                
+             
+             
+             
+             
+         end
          
          function obj =         centerFieldOfViewOnCurrentTrack(obj)
              
@@ -1959,6 +2052,11 @@ classdef PMMovieController < handle
            function [ListWithAllViews] =               getListWithAllViews(obj)
             
 
+               if isempty(obj.Views.Navigation)
+                   ListWithAllViews =       cell(0,1);
+                   return
+                   
+               end
             
             FieldNames =            fieldnames(obj.Views.Navigation);
             NavigationViews = cellfun(@(x) obj.Views.Navigation.(x), FieldNames, 'UniformOutput', false);

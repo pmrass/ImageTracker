@@ -386,6 +386,22 @@ classdef PMMovieLibrary
         end
         
         
+        function [NickNames] =  getAllNicknames(obj)
+            
+            
+             NickNames =                        cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);      
+            
+        end
+        
+        function [Movie] = getMovieWithNickName(obj, Nickname)
+            
+            
+            Nicknames =         obj.getAllNicknames;
+            Row =               strcmp(Nicknames,Nickname);
+            Movie  =            obj.ListhWithMovieObjects{Row};
+            
+        end
+        
         
     end
 end

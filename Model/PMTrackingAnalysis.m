@@ -572,10 +572,15 @@ classdef PMTrackingAnalysis
                 CoordinateList(:,Column_CentroidZ)=    num2cell(ListWithZCoordinates);  
 
                 
-            end
+        end
 
 
 
+        function [TrackSegment] =                   extractTrackSegment(obj, TrackID, FrameNumbers)
+            
+            
+            
+        end
 
           
         
