@@ -436,9 +436,17 @@ classdef PMMovieTracking
         function obj =                      refreshTrackingResults(obj)
 
              obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection);
-             obj.Tracking.Tracking =                                obj.TrackingAnalysis.TrackingListForMovieDisplay;
-             obj.Tracking.TrackingWithDriftCorrection =             obj.TrackingAnalysis.TrackingListWithDriftForMovieDisplay;
-   
+             obj =                                                  obj.synchronizeTrackingResults;
+        end
+        
+        function obj =                  synchronizeTrackingResults(obj)
+            
+
+            obj.Tracking.Tracking =                                obj.TrackingAnalysis.TrackingListForMovieDisplay;
+            obj.Tracking.TrackingWithDriftCorrection =             obj.TrackingAnalysis.TrackingListWithDriftForMovieDisplay;
+
+            
+            
         end
         
        

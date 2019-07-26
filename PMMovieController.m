@@ -51,9 +51,7 @@ classdef PMMovieController < handle
         MaximumColumnShift = 0
         MaximumPlaneShift = 0
         
-        
-        
-        
+ 
         MaskColor =                 [NaN NaN 150];
         MaskColorForActiveTrack =   [100 100 100];
         
@@ -74,7 +72,8 @@ classdef PMMovieController < handle
     
     methods
         
-        function obj = PMMovieController(varargin)
+        
+        function obj =          PMMovieController(varargin)
             
             
             if ~isempty(varargin) % input should be movie controller views
@@ -110,7 +109,8 @@ classdef PMMovieController < handle
         end
         
         
-        function [obj] =changeMovieKeyword(obj)
+        
+        function [obj] =        changeMovieKeyword(obj)
             
               KeywordString=                        char(inputdlg('Enter new keyword'));
               obj.LoadedMovie.Keywords{1,1} =       KeywordString;
@@ -118,8 +118,9 @@ classdef PMMovieController < handle
         end
        
 
+        
         %% change views:
-        function [obj] = updateCompleteView(obj)
+        function [obj] =        updateCompleteView(obj)
             
             obj =                                               obj.updateAppliedPositionShift; % needs to be before resetLimitsOfImageAxes
             obj =                                               obj.resetLimitsOfImageAxes;
@@ -199,9 +200,9 @@ classdef PMMovieController < handle
                 obj.CurrentYOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidY ));
                 obj.CurrentZOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidZ));
 
-                 obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
+                obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
                  
-                  obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackFilter,obj.ColumnWithPixelList));
+                obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackFilter,obj.ColumnWithPixelList));
                 
                 
             end
@@ -242,7 +243,7 @@ classdef PMMovieController < handle
                     
                     
                     
-                         IntensityForRedChannel =                obj.MaskColorForActiveTrack(1);
+                        IntensityForRedChannel =                obj.MaskColorForActiveTrack(1);
                         IntensityForGreenChannel =              obj.MaskColorForActiveTrack(2);
                         IntensityForBlueChannel =               obj.MaskColorForActiveTrack(3);
 
@@ -514,19 +515,16 @@ classdef PMMovieController < handle
             
 
                 %% make line of active track thicker
-               IDOfActiveTrack =          obj.LoadedMovie.IdOfActiveTrack;
-                MyTrackModel =                       obj.LoadedMovie.Tracking.Tracking;
+                IDOfActiveTrack =                           obj.LoadedMovie.IdOfActiveTrack;
+                MyTrackModel =                              obj.LoadedMovie.Tracking.Tracking;
+                ColumnWithLineThickness =                   7;
                 
+                
+                %% in the tracking model, make the active track line thicker;
                 if  ~isempty(IDOfActiveTrack) && ~isempty(MyTrackModel)
 
-                    ColumnWithLineThickness =               7;
-                   
-                   
-
-                    
                    MyTrackModel(:,ColumnWithLineThickness) =        {1};
-                   % MyTrackModel(:,ColumnWithLineThickness) =       1:
-                    
+
                     RowWithActiveTrack=                             cell2mat(MyTrackModel(:,2))== IDOfActiveTrack;
                     if sum(RowWithActiveTrack)==1
                         LineWidthOfActiveTrack =                    3; % usually 3
@@ -538,7 +536,7 @@ classdef PMMovieController < handle
                end
 
  
-            %% put data back into model (added additional lines that were missing);
+            %% use tracking model and track views;;
              obj =              obj.deleteNonMatchingTrackLineViews;
              obj =              obj.addMissingTrackLineViews;
              obj =              obj.updatePropertiesOfTrackLineViews;
@@ -559,6 +557,7 @@ classdef PMMovieController < handle
                  end
                  
                  
+                 %% read model and existing track-lines:
                  TrackModel =               obj.LoadedMovie.Tracking.Tracking;
                  
                  switch obj.LoadedMovie.DriftCorrectionOn
@@ -567,10 +566,12 @@ classdef PMMovieController < handle
                          TrackModel(:,3:5) = obj.LoadedMovie.Tracking.TrackingWithDriftCorrection(:,3:5);
                                 
                  end
+                 
+                 ListWithTrackViews =       obj.ListOfTrackViews;
 
-                ListWithTrackViews =       obj.ListOfTrackViews;
-                NumberOfTracksToDraw=        size(TrackModel,1);
-                NumbersInTrackViews =      cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
+                
+                NumberOfTracksToDraw=           size(TrackModel,1);
+                NumbersInTrackViews =           cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
                 for TrackIndex=1:NumberOfTracksToDraw
 
                     TrackID =                   TrackModel{TrackIndex,2};
@@ -609,7 +610,7 @@ classdef PMMovieController < handle
               end
             %% read data from model:
                 ListWithTrackViews =                        obj.ListOfTrackViews;
-               
+                ParentAxes =                                obj.Views.MovieView.ViewMovieAxes;
             
                 %% find all the track numbers that don't have a line view yet, and create a cell of views (each line has its number as a tag);
                 ListWithVisibleTrackNumbers =               cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
@@ -621,7 +622,7 @@ classdef PMMovieController < handle
                     return
                 end
                 
-                CellWithNewLineHandles =                    (arrayfun(@(x) line, 1:length(IDsOfTracksThatNeedToBeAdded), 'UniformOutput', false))';
+                CellWithNewLineHandles =                    (arrayfun(@(x) line(ParentAxes), 1:length(IDsOfTracksThatNeedToBeAdded), 'UniformOutput', false))';
                 CellWithNewLineHandles =                    cellfun(@(x,y) setTagOfTrackLines(x,y), CellWithNewLineHandles, num2cell(IDsOfTracksThatNeedToBeAdded), 'UniformOutput', false);
 
                 
@@ -633,10 +634,8 @@ classdef PMMovieController < handle
         function [obj] = deleteNonMatchingTrackLineViews(obj)
             
             
-            %% read data from model:
+                %% read data from movie view and track-model:
                 ListWithTrackViews =                        obj.ListOfTrackViews;
-                
-                
                 CurrentlyLoadedTrackModel =                 obj.LoadedMovie.Tracking.Tracking;
                 
                 if isempty(CurrentlyLoadedTrackModel)
@@ -645,20 +644,15 @@ classdef PMMovieController < handle
                 else
                     
                     
-
                     %% delete all tracks views that are not supported by a model;
-                    ListWithViewTrackNumbers =               cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
-                    ListWithModelTrackNumbers =             cell2mat(CurrentlyLoadedTrackModel(:,2));
+                    ListWithViewTrackNumbers =                          cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
+                    ListWithModelTrackNumbers =                         cell2mat(CurrentlyLoadedTrackModel(:,2));
 
                     TracksThatNeedToBeDeleted =                        ~ismember(ListWithViewTrackNumbers, ListWithModelTrackNumbers);
-
 
                     cellfun(@(x) delete(x), obj.ListOfTrackViews(TracksThatNeedToBeDeleted))
                     obj.ListOfTrackViews(TracksThatNeedToBeDeleted,:) = [];
 
-               
-                    
-                    
                 end
                 
                 
@@ -828,17 +822,24 @@ classdef PMMovieController < handle
          
          
          
-    end
+         end
         
+    
+         function [obj] =       filterTrackModelByFrame(obj, frames)
+             
+             
+             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.filterTracksByTimeFrames(frames);
+             
+         end
          
          function [obj] =       createSegmentationWithPlaneFilter(obj)
              
-             obj.SegmentationOfCurrentFramePlaneFilter =        obj.SegmentationOfCurrentFrame;
+            obj.SegmentationOfCurrentFramePlaneFilter =                    obj.SegmentationOfCurrentFrame;
              
-            pixelColumn =                                       obj.ColumnWithPixelList;  
-            SelectedPlane =                                     obj.LoadedMovie.SelectedPlanes(1);
-            [~, ~, SelectedPlaneWithoutDriftCorrection] =           obj.removeDriftCorrection(0,0,SelectedPlane);
-            FilteredPixelLists =                                cellfun(@(x) obj.filterPixelListForPlane(x,SelectedPlaneWithoutDriftCorrection), obj.SegmentationOfCurrentFrame(:,pixelColumn), 'UniformOutput', false);
+            pixelColumn =                                                   obj.ColumnWithPixelList;  
+            SelectedPlane =                                                 obj.LoadedMovie.SelectedPlanes(1);
+            [~, ~, SelectedPlaneWithoutDriftCorrection] =                   obj.removeDriftCorrection(0,0,SelectedPlane);
+            FilteredPixelLists =                                            cellfun(@(x) obj.filterPixelListForPlane(x,SelectedPlaneWithoutDriftCorrection), obj.SegmentationOfCurrentFrame(:,pixelColumn), 'UniformOutput', false);
             
             obj.SegmentationOfCurrentFramePlaneFilter(:,pixelColumn) =               FilteredPixelLists;
             
@@ -1154,13 +1155,13 @@ classdef PMMovieController < handle
         
         function obj = updateHighlightingOfActiveTrack(obj)
             
-               obj.TrackingViews.ActiveTrack.Value = obj.LoadedMovie.ActiveTrackIsHighlighted;
-              
+            
+               obj.TrackingViews.ActiveTrack.Value =                                obj.LoadedMovie.ActiveTrackIsHighlighted;
                if isnan(obj.LoadedMovie.IdOfActiveTrack)
-                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible = false;
+                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible =         false;
                     
                else
-                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible = obj.LoadedMovie.ActiveTrackIsHighlighted;
+                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible =         obj.LoadedMovie.ActiveTrackIsHighlighted;
                    
                end
                
@@ -1191,22 +1192,15 @@ classdef PMMovieController < handle
             obj.TrackingViews.ShowMasks.Value =                obj.LoadedMovie.MasksAreVisible;
             obj.TrackingViews.ShowTracks.Value =               obj.LoadedMovie.TracksAreVisible;
             obj.TrackingViews.ShowMaximumProjection.Value =    obj.LoadedMovie.CollapseAllTracking;
+            obj =                                              obj.updateTrackList;
             
-            
-            %obj.TrackingViews.ActiveTrack
-            %obj.TrackingViews.ListWithFilteredTracksTitle
-            %obj.TrackingViews.ListWithFilteredTracks
-            
-            
-            
+            %% tracking views and movie views:
             obj =                                               obj.updateCentroidVisibility;
             obj =                                               obj.updateMaskVisibility;
-            
             obj =                                               obj.updateHighlightingOfActiveTrack;
             
-            obj =                                               obj.updateTrackList;
+            %% track model and track views of model controller:
             
-           % obj  = obj.deleteAllTrackLineViews; % when a movie is loaded delete all track lines; otherwise tracks;
             obj =                                               obj.updateTrackView;
             obj =                                               obj.updateTrackVisibility;
             
@@ -1214,7 +1208,7 @@ classdef PMMovieController < handle
         end
         
         function obj = updateTrackList(obj)
-            %REPOPULATETRACKINGHANDLES Summary of this function goes here
+            %REPOPULATETRACKINGHANDLES updates view of available track details;
             %   Detailed explanation goes here
                     
             ListWithFilteredTracksView =            obj.TrackingViews.ListWithFilteredTracks;
@@ -1502,6 +1496,19 @@ classdef PMMovieController < handle
            end
         
          %% change model and view:
+         
+         
+         function [obj] =       synchronizeTrackingResults(obj)
+             
+             
+             obj.LoadedMovie.Tracking.Tracking =                                obj.LoadedMovie.TrackingAnalysis.TrackingListForMovieDisplay;
+            obj.LoadedMovie.Tracking.TrackingWithDriftCorrection =             obj.LoadedMovie.TrackingAnalysis.TrackingListWithDriftForMovieDisplay;
+
+             
+             
+         end
+         
+         
          
         function [obj] =    resetChannelSettings(obj, selectedChannel)
             obj.LoadedMovie.SelectedChannelForEditing = selectedChannel;

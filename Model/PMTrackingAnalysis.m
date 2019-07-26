@@ -14,12 +14,17 @@ classdef PMTrackingAnalysis
 % 
 
         
+        % this contains the entire tracking information and should be used primarily for reading data;
         FieldNamesOfMaskInformation
         ListWithCompleteMaskInformation
         ListWithCompleteMaskInformationWithDrift
         
+        ListWithFilteredMaskInformation
+        ListWithFilteredMaskInformationWithDrift
+        
         DriftCorrection
         
+        % track cell is created by original movie data and can be used to filter for specific data (specific track, time-frames etc.);
         TrackCell
         TrackCellFieldNames
         NumberOfColumnsInTrackingMatrix =       12
@@ -57,7 +62,7 @@ classdef PMTrackingAnalysis
         
         
         
-          function [ obj ] =                                      createListWithCompleteMaskInformation(obj, TrackingAnalysisBasis)
+          function [ obj ] =                                                createListWithCompleteMaskInformation(obj, TrackingAnalysisBasis)
             %CONVERTTRACKINGSTRUCTURETOCELL Summary of this function goes here
             %   Detailed explanation goes here
 
@@ -76,27 +81,35 @@ classdef PMTrackingAnalysis
                 
                 %% sort by track ID and time-frames:
                 if ~isempty(DataIn_ListWithCellMasks_Matrix)
-                    DataIn_ListWithCellMasks_Matrix=                sortrows(DataIn_ListWithCellMasks_Matrix,[Column_TrackID Column_AbsoluteFrame]);   
+                    DataIn_ListWithCellMasks_Matrix=                        sortrows(DataIn_ListWithCellMasks_Matrix,[Column_TrackID Column_AbsoluteFrame]);   
                 end
                 
                 %% remove rows that contain nan (this should anyway not be the case);
                 
-                BadRows =                                           cellfun(@(x) isnan(x), DataIn_ListWithCellMasks_Matrix(:,Column_CentroidY));
-                DataIn_ListWithCellMasks_Matrix(BadRows,:) =        [];
+                BadRows =                                                   cellfun(@(x) isnan(x), DataIn_ListWithCellMasks_Matrix(:,Column_CentroidY));
+                DataIn_ListWithCellMasks_Matrix(BadRows,:) =                [];
                 
-                obj.FieldNamesOfMaskInformation =               ListWithFieldNames;
-                obj.ListWithCompleteMaskInformation =           DataIn_ListWithCellMasks_Matrix;
+                obj.FieldNamesOfMaskInformation =                           ListWithFieldNames;
+                obj.ListWithCompleteMaskInformation =                       DataIn_ListWithCellMasks_Matrix;
                 
-                obj =                                           obj.addDriftCorrectionToMaskInformation;
+                obj =                                                       obj.addDriftCorrectionToMaskInformation;
+                
+                
+                obj.ListWithFilteredMaskInformation =                       obj.ListWithCompleteMaskInformation;
+                obj.ListWithFilteredMaskInformationWithDrift =              obj.ListWithCompleteMaskInformationWithDrift;
+        
 
         end
 
 
         
-          function [obj]=                                       ConvertTrackingResultsIntoTrackCell(obj)
+          function [obj]=                                                   ConvertTrackingResultsIntoTrackCell(obj)
+              
+              
+              
             
 
-                 DataIn_ListWithCellMasks_Matrix =              obj.ListWithCompleteMaskInformation;
+                 DataIn_ListWithCellMasks_Matrix =              obj.ListWithFilteredMaskInformation;
                  ListWithFieldNames  =                          obj.FieldNamesOfMaskInformation;
                  
                 if isempty(DataIn_ListWithCellMasks_Matrix)
@@ -139,12 +152,10 @@ classdef PMTrackingAnalysis
                 obj.TrackCellFieldNames =           ListWithFieldNames;
                 obj.TrackCell =                     TrackCellInternal;
 
-
-
           end
         
           
-          function [obj] =                                      addDriftCorrectionToMaskInformation(obj)
+          function [obj] =                                                  addDriftCorrectionToMaskInformation(obj)
               
              %% read data:
             FieldNames =                                obj.FieldNamesOfMaskInformation;
@@ -211,21 +222,46 @@ classdef PMTrackingAnalysis
           % [ CoordinateListWithoutDriftCorrection ] =                                     AddDriftCorrectionToCoordinateList( CoordinateListWithoutDriftCorrection, FieldNamesOfCoordinateList, StructureWithDriftAnalysisData );
 
 
+           
+        
+        
             % get subtracklocation within coordinate list and in loop convert each coordinate list to "tracking-result":
-            obj.TrackingCell =                                                       obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithCompleteMaskInformation);
-            obj.TrackingCellWithDrift =                                              obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithCompleteMaskInformationWithDrift);
-
-
+            obj.TrackingCell =                                                       obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithFilteredMaskInformation);
             obj.TrackingListForMovieDisplay =                                       obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCell, h);
-            obj.TrackingListWithDriftForMovieDisplay =                                       obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCellWithDrift, h);
+            
+            
+            obj.TrackingCellWithDrift =                                              obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithFilteredMaskInformationWithDrift);
+            obj.TrackingListWithDriftForMovieDisplay =                              obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCellWithDrift, h);
             
              close(h)
              
          end
          
+         
+         
+     
+         
+         function [obj] =                                                   filterTracksByTimeFrames(obj, AcceptedFrames)
+             
+             
+             OkRows =                                               ismember(cell2mat(obj.ListWithCompleteMaskInformation(:,2)), AcceptedFrames);
+             
+              
+            obj.ListWithFilteredMaskInformation =                   obj.ListWithCompleteMaskInformation(OkRows,:);
+            obj.ListWithFilteredMaskInformationWithDrift =          obj.ListWithCompleteMaskInformationWithDrift(OkRows,:);
+
+             obj =                                                  obj.updateTrackingResults;
+             
+            
+             
+             
+         end
+         
+       
        
          
-         function [TrackingListForMovieDisplay] =               convertTrackingCellIntoTrackListForMovie(obj, TrackingCell, h)
+     
+         function [TrackingListForMovieDisplay] =                               convertTrackingCellIntoTrackListForMovie(obj, TrackingCell, h)
 
              
                  NumberOfColumnsInMatrix=                                      obj.NumberOfColumnsInTrackingMatrix;
@@ -265,7 +301,7 @@ classdef PMTrackingAnalysis
                 end
 
 
-                TrackingListForMovieDisplay =                       NewTrackingResults;
+                TrackingListForMovieDisplay =                                       NewTrackingResults;
 
 
              
@@ -282,8 +318,6 @@ classdef PMTrackingAnalysis
         %   Detailed explanation goes here
 
             %% get relevant data from object:
-          
-           
             FieldNames =                                obj.FieldNamesOfMaskInformation;
             
             Set_NumberOfFramesInAnalyzedTracks=         obj.NumberOfFramesInSubTracks;
@@ -292,7 +326,7 @@ classdef PMTrackingAnalysis
 
             %% process information:
             
-            [ Tracks_ListWithSourceTrackData ] =        FindAllUniqueTrackIDs(obj);
+            [ Tracks_ListWithSourceTrackData ] =        obj.FindAllUniqueTrackIDsInside(FieldNames, CoordinateList);
             [Start, End,  SourceTrackID] =              obj.FindPositionsOfSubTracks( Tracks_ListWithSourceTrackData , Set_NumberOfFramesInAnalyzedTracks, JumpSize);
             
             StartCell=                                  num2cell(Start);
@@ -326,13 +360,13 @@ classdef PMTrackingAnalysis
             TrackListCell(:,6)=                         num2cell(MissingFrames);
             TrackListCell(:,7)=                         ListWithTrackColors;
 
-            TrackingCell =                          TrackListCell;
+            TrackingCell =                              TrackListCell;
 
         end
         
         
         
-        function [ ExportTrackInformation ] = FindAllUniqueTrackIDs( obj)
+        function [ ExportTrackInformation ] =                           FindAllUniqueTrackIDsInside(obj, FieldNamesOfMaskInformation, DataIn_ListWithCellMasks_Matrix)
                 %FINDALLUNIQUETRACKIDS get duration and start for all tracks
                 
 
@@ -340,9 +374,9 @@ classdef PMTrackingAnalysis
                 %           column 2: track ID
                 %           column 3: start frame (optional)
                 
-                DataIn_ListWithCellMasks_Matrix =               obj.ListWithCompleteMaskInformation;
+                
 
-                Column_TrackID=                             find(strcmp('TrackID', obj.FieldNamesOfMaskInformation));
+                Column_TrackID=                             find(strcmp('TrackID', FieldNamesOfMaskInformation));
 
                 ListWithAllTrackIDs=                   cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID));
 
@@ -397,7 +431,7 @@ classdef PMTrackingAnalysis
 
         
                
-        function [ Start, End,  ExpTrackID, StartFrameOfOriTrack] = FindPositionsOfSubTracks(obj, Tracks_ListWithSourceTrackData, Set_NumberOfFramesInAnalyzedTracks, JumpSize )
+        function [ Start, End,  ExpTrackID, StartFrameOfOriTrack] =     FindPositionsOfSubTracks(obj, Tracks_ListWithSourceTrackData, Set_NumberOfFramesInAnalyzedTracks, JumpSize )
 
                 %FINDPOSITIONSOFSUBTRACKS find start and end rows of subtracks
                 %   Detailed explanation goes here
@@ -490,10 +524,8 @@ classdef PMTrackingAnalysis
         end
 
         
-        
-        
-           
-        function [ ListWithTrackColors ] =                   DefineColorInTrackList(obj, Start )
+
+        function [ ListWithTrackColors ] =                              DefineColorInTrackList(obj, Start )
             %DEFINECOLORINTRACKLIST Summary of this function goes here
             %   Detailed explanation goes here
 
@@ -521,7 +553,7 @@ classdef PMTrackingAnalysis
 
 
             
-        function [ CoordinateList ] =                   AddDriftCorrectionToCoordinateList(CoordinateList, FieldNames, StructureWithDriftAnalysisData )
+        function [ CoordinateList ] =                                   AddDriftCorrectionToCoordinateList(CoordinateList, FieldNames, StructureWithDriftAnalysisData )
             %ADDDRIFTCORRECTIONTOCOORDINATELIST Summary of this function goes here
             %   Detailed explanation goes here
 
@@ -576,7 +608,7 @@ classdef PMTrackingAnalysis
 
 
 
-        function [TrackSegment] =                   extractTrackSegment(obj, TrackID, FrameNumbers)
+        function [TrackSegment] =                                       extractTrackSegment(obj, TrackID, FrameNumbers)
             
             
             

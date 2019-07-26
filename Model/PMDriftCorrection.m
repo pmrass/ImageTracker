@@ -8,7 +8,7 @@ classdef PMDriftCorrection
         % this is a list of points clicked by the user: it is possible to build a drift correction from this;
         
         ManualDriftCorrectionColumnTitles =         {'Frame#','X-cooordinate (pixel)', 'Y-cooordinate (pixel)' 'Z-cooordinate (pixel)'};
-        ManualDriftCorrectionValues = zeros(0,4);
+        ManualDriftCorrectionValues =               zeros(0,4);
         
         % this collectes detailed information about how the drift correction was generated;
         % it can be created fromt the manual drift correction or with and automated algorithm;
