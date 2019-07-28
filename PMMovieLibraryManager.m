@@ -143,6 +143,9 @@ classdef PMMovieLibraryManager < handle
             obj.Viewer.ProjectMenu.AddAllCaptures.MenuSelectedFcn =                     @obj.addAllMissingCaptures;
             
             obj.Viewer.ProjectMenu.Mapping.MenuSelectedFcn=                             @obj.mapUnMappedMovies;
+            obj.Viewer.ProjectMenu.UnMapping.MenuSelectedFcn=                             @obj.unmapAllMovies;
+            
+            
             obj.Viewer.ProjectMenu.Info.MenuSelectedFcn =                               @obj.toggleProjectInfo;
 
             
@@ -531,33 +534,34 @@ classdef PMMovieLibraryManager < handle
             
             
             %% reset filter so that live watching of mapping update can be seen;
-            RowWithMapped =                                             strcmp(obj.Viewer.ProjectViews.FilterForKeywords.String, 'Show all unmapped movies');
-            obj.Viewer.ProjectViews.FilterForKeywords.Value =           find(RowWithMapped);
+            WantedFilterRow =                                           strcmp(obj.Viewer.ProjectViews.FilterForKeywords.String, 'Show all unmapped movies');
+            obj.Viewer.ProjectViews.FilterForKeywords.Value =           find(WantedFilterRow);
            
             
             %% get data
-            ListWithAllNicknames =                                      cellfun(@(x) x.NickName, obj.MovieLibrary.ListhWithMovieObjects, 'UniformOutput', false);
-            myCurrentFilter =                                           find(obj.MovieLibrary.FilterList);
+            listWithAllNicknames =                                      cellfun(@(x) x.NickName, obj.MovieLibrary.ListhWithMovieObjects, 'UniformOutput', false);
+            listWithWantedRowsInLibrary =                               find(obj.MovieLibrary.FilterList);
+            
             
             h =                                                         waitbar(0, 'Mapping image files');
-            numberOfNickNamesToMap =                                    length(myCurrentFilter);
+            numberOfNickNamesToMap =                                    length(listWithWantedRowsInLibrary);
 
             for movieIndex = 1:numberOfNickNamesToMap
 
-                currentIndex =                      myCurrentFilter(movieIndex,1);
+                currentIndex =                              listWithWantedRowsInLibrary(movieIndex,1);
                 
                 % update waitbar:
-                currentNickName =                   ListWithAllNicknames{currentIndex,1};
-                currentNickName(currentNickName=='_') = ' ';
-                waitBarNumber =                     movieIndex/numberOfNickNamesToMap;
+                currentNickName =                           listWithAllNicknames{currentIndex,1};
+                currentNickName(currentNickName=='_') =     ' ';
+                waitBarNumber =                             movieIndex/numberOfNickNamesToMap;
                 waitbar(waitBarNumber, h, ['Mapping image file: ' currentNickName]);
                 
                 % do the actual mapping
-                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.Folder =                  obj.MovieLibrary.PathOfMovieFolder;
-                obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1} =                         obj.MovieLibrary.ListhWithMovieObjects{myCurrentFilter(movieIndex),1}.AddImageMap;
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.Folder =                  obj.MovieLibrary.PathOfMovieFolder;
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1} =                         obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.AddImageMap;
 
                 % update filter view (i.e. remove mapped movie from "unmapped list";
-                [obj] =                                                                                         obj.callbackForFilterChange(src, 0);
+                [obj] =                                                                                                     obj.callbackForFilterChange(src, 0);
 
             end
 
@@ -565,6 +569,55 @@ classdef PMMovieLibraryManager < handle
             close(h)
             
         end
+        
+        function obj = unmapAllMovies(obj,src,~)
+            
+            
+            
+            %% reset filter so that live watching of mapping update can be seen;
+            WantedFilterRow =                                           strcmp(obj.Viewer.ProjectViews.FilterForKeywords.String, 'Show all unmapped movies');
+            obj.Viewer.ProjectViews.FilterForKeywords.Value =           find(WantedFilterRow);
+            [obj] =                                                                                                     obj.callbackForFilterChange(src, 0);
+            
+            %% get data
+            listWithAllNicknames =                                      cellfun(@(x) x.NickName, obj.MovieLibrary.ListhWithMovieObjects, 'UniformOutput', false);
+             numberOfNickNamesToUnMap =                                    length(listWithAllNicknames);
+            listWithWantedRowsInLibrary =                               (1:numberOfNickNamesToUnMap)';
+            
+            
+            h =                                                         waitbar(0, 'Unampping image files');
+           
+
+            for movieIndex = 1:numberOfNickNamesToUnMap
+
+                currentIndex =                              listWithWantedRowsInLibrary(movieIndex,1);
+                
+                % update waitbar:
+                currentNickName =                           listWithAllNicknames{currentIndex,1};
+                currentNickName(currentNickName=='_') =     ' ';
+                waitBarNumber =                             movieIndex/numberOfNickNamesToUnMap;
+                waitbar(waitBarNumber, h, ['Unampping image file: ' currentNickName]);
+                
+                % remove mapping:
+      
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.ImageMapPerFile =                 [];
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.ImageMap =                        [];
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.MetaData =                        [];
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1}.MetaDataOfSeparateMovies =        [];
+
+                % update filter view (i.e. remove mapped movie from "unmapped list";
+                [obj] =                                                                                                     obj.callbackForFilterChange(src, 0);
+
+            end
+
+            waitbar(1, h, 'Finished unmapping')
+            close(h)
+            
+            
+            
+        end
+        
+        
         
         
  
@@ -1116,7 +1169,7 @@ classdef PMMovieLibraryManager < handle
              % then replace the image maps:
              obj.ActiveMovieController.LoadedMovie =            obj.ActiveMovieController.LoadedMovie.AddImageMap;
              [obj] =                                            obj.synchronizeMovieLibraryWithActiveMovie;
-             obj =                                                obj.changeDisplayedMovie;
+             obj =                                              obj.changeDisplayedMovie;
              
               
           end
@@ -1306,7 +1359,7 @@ classdef PMMovieLibraryManager < handle
              
              obj.ActiveMovieController.LoadedMovie.ChannelTransformsLowIn(channelNumber) = newIntensity;
              
-             obj = obj.ActiveMovieController.updateViewsAfterChannelChange;
+             obj.ActiveMovieController = obj.ActiveMovieController.updateViewsAfterChannelChange;
             
          end
          
@@ -1315,7 +1368,7 @@ classdef PMMovieLibraryManager < handle
              channelNumber =            obj.ActiveMovieController.LoadedMovie.SelectedChannelForEditing;
              obj.ActiveMovieController.LoadedMovie.ChannelTransformsHighIn(channelNumber) = newIntensity;
              
-            obj = obj.ActiveMovieController.updateViewsAfterChannelChange;
+            obj.ActiveMovieController = obj.ActiveMovieController.updateViewsAfterChannelChange;
             
              
          end
@@ -1325,7 +1378,7 @@ classdef PMMovieLibraryManager < handle
               channelNumber = obj.ActiveMovieController.LoadedMovie.SelectedChannelForEditing;
               obj.ActiveMovieController.LoadedMovie.ChannelColors{channelNumber} = NewColor;
            
-              obj = obj.ActiveMovieController.updateViewsAfterChannelChange;
+              ob.ActiveMovieControllerj = obj.ActiveMovieController.updateViewsAfterChannelChange;
              
           end
           
@@ -1335,7 +1388,7 @@ classdef PMMovieLibraryManager < handle
               obj.ActiveMovieController.LoadedMovie.ChannelComments{channelNumber} = newComment;
             
             
-              obj = obj.ActiveMovieController.updateViewsAfterChannelChange;
+              obj.ActiveMovieController = obj.ActiveMovieController.updateViewsAfterChannelChange;
              
           end
           
@@ -1344,7 +1397,7 @@ classdef PMMovieLibraryManager < handle
               channelNumber = obj.ActiveMovieController.LoadedMovie.SelectedChannelForEditing;
                obj.ActiveMovieController.LoadedMovie.SelectedChannels(channelNumber) = newSelection;
              
-               obj = obj.ActiveMovieController.updateViewsAfterChannelChange;
+               obj.ActiveMovieController = obj.ActiveMovieController.updateViewsAfterChannelChange;
                
           end
           
@@ -1365,7 +1418,7 @@ classdef PMMovieLibraryManager < handle
               
               obj.ActiveMovieController.LoadedMovie.ScaleBarSize =  obj.ActiveMovieController.Views.Annotation.SizeOfScaleBar.Value;
               obj.ActiveMovieController.LoadedMovie =                obj.ActiveMovieController.LoadedMovie.updateScaleBarString;
-              obj =                                                     obj.ActiveMovieController.updateViewsAfterScaleBarChange;
+              obj.ActiveMovieController =                                                     obj.ActiveMovieController.updateViewsAfterScaleBarChange;
               
           end
          

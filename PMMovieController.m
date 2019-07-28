@@ -413,8 +413,8 @@ classdef PMMovieController < handle
             MyCroppingGate=                                 obj.LoadedMovie.CroppingGate;
 
             CurrentFrame =                                  obj.LoadedMovie.SelectedFrames(1);    
-             CurrentColumnShift=                               obj.AplliedColumnShifts(CurrentFrame);
-             CurrentRowShift=                            obj.AplliedRowShifts(CurrentFrame);
+             CurrentColumnShift=                            obj.AplliedColumnShifts(CurrentFrame);
+             CurrentRowShift=                               obj.AplliedRowShifts(CurrentFrame);
             CurrentPlaneShift =                             obj.AplliedPlaneShifts(CurrentFrame);
            
             %% calculate new cropping gate as to be shown (with drift correction)
@@ -511,17 +511,47 @@ classdef PMMovieController < handle
         end
         
 
-        function obj = updateTrackView(obj)
+       
+        
+        %% update views of tracks (and model that defines the appearance of the views):
+        
+        
+         function obj = updateTrackView(obj)
             
-
-                %% make line of active track thicker
+             obj =              obj.resetThicknessOfActiveTrack;
+             obj =              obj.deleteNonMatchingTrackLineViews;
+             obj =              obj.addMissingTrackLineViews;
+             obj =              obj.updatePropertiesOfTrackLineViews;
+       
+            
+         end
+         
+         function obj =     resetColorOfAllTracks(obj, color)
+             
+             %% read:
+             MyTrackModel =                              obj.LoadedMovie.Tracking.Tracking;
+             
+             %process
+             ColumnWithLineThickness =                   strcmp(obj.LoadedMovie.Tracking.ColumnsInTrackingCell, 'LineColor');
+             MyTrackModel(:,ColumnWithLineThickness) =        {color};
+             
+             %% apply
+             obj.LoadedMovie.Tracking.Tracking =            MyTrackModel;
+                
+             
+         end
+        
+         function [obj] =   resetThicknessOfActiveTrack(obj)
+             
+               
+             
                 IDOfActiveTrack =                           obj.LoadedMovie.IdOfActiveTrack;
                 MyTrackModel =                              obj.LoadedMovie.Tracking.Tracking;
-                ColumnWithLineThickness =                   7;
+                ColumnWithLineThickness =                   strcmp(obj.LoadedMovie.Tracking.ColumnsInTrackingCell, 'LineWidth');
                 
-                
-                %% in the tracking model, make the active track line thicker;
-                if  ~isempty(IDOfActiveTrack) && ~isempty(MyTrackModel)
+ 
+
+              if  ~isempty(IDOfActiveTrack) && ~isempty(MyTrackModel)
 
                    MyTrackModel(:,ColumnWithLineThickness) =        {1};
 
@@ -534,18 +564,12 @@ classdef PMMovieController < handle
                     obj.LoadedMovie.Tracking.Tracking = MyTrackModel;
 
                end
-
- 
-            %% use tracking model and track views;;
-             obj =              obj.deleteNonMatchingTrackLineViews;
-             obj =              obj.addMissingTrackLineViews;
-             obj =              obj.updatePropertiesOfTrackLineViews;
              
-       
-            
-        end
-        
-        
+             
+         end
+         
+         
+             
         
         
         function [obj] = updatePropertiesOfTrackLineViews(obj)
@@ -558,8 +582,7 @@ classdef PMMovieController < handle
                  
                  
                  %% read model and existing track-lines:
-                 TrackModel =               obj.LoadedMovie.Tracking.Tracking;
-                 
+                 TrackModel =                               obj.LoadedMovie.Tracking.Tracking;
                  switch obj.LoadedMovie.DriftCorrectionOn
                      
                      case true
@@ -567,30 +590,43 @@ classdef PMMovieController < handle
                                 
                  end
                  
-                 ListWithTrackViews =       obj.ListOfTrackViews;
+                ListWithTrackViews =                       obj.ListOfTrackViews;
 
                 
-                NumberOfTracksToDraw=           size(TrackModel,1);
-                NumbersInTrackViews =           cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
+                
+                NumberOfTracksToDraw=                       size(TrackModel,1);
+                ListOfTrackTags =                       cellfun(@(x) str2double(x.Tag), ListWithTrackViews);
                 for TrackIndex=1:NumberOfTracksToDraw
 
-                    TrackID =                   TrackModel{TrackIndex,2};
-                    X=                          TrackModel{TrackIndex,3};
-                    Y=                          TrackModel{TrackIndex,4};
-                    Z=                          TrackModel{TrackIndex,5};
-                    TrackColor=                 TrackModel{TrackIndex,6};
-                    LineWidth=                  TrackModel{TrackIndex,7};
+                    % get model of current track
+                    ModelForCurrentTrack =                  TrackModel(TrackIndex,:);
                     
-                    RowInTrackViews =               NumbersInTrackViews == TrackID;
-
-                    LineOfInterest =                ListWithTrackViews{RowInTrackViews};
-                    LineOfInterest.XData=           X;    
-                    LineOfInterest.YData=           Y;  
-                    LineOfInterest.ZData=           Z;  
-                    LineOfInterest.Color=           TrackColor;  
-                    LineOfInterest.LineWidth=       LineWidth;  
+                    % find correct line handle for current track:
+                    TrackID =                               ModelForCurrentTrack{1,2};               
+                    RowInTrackViews =                       ListOfTrackTags == TrackID;
+                    HandleForCurrentTrack =                 ListWithTrackViews{RowInTrackViews};
+                    
+                    % apply model to current line handle:
+                    obj.updateLineWithInputTrack(ModelForCurrentTrack, HandleForCurrentTrack);
 
                 end
+            
+        end
+        
+        
+        function updateLineWithInputTrack(~, ModelForCurrentTrack, HandleForCurrentTrack)
+            
+                    X=                                      ModelForCurrentTrack{1,3};
+                    Y=                                      ModelForCurrentTrack{1,4};
+                    Z=                                      ModelForCurrentTrack{1,5};
+                    TrackColor=                             ModelForCurrentTrack{1,6};
+                    LineWidth=                              ModelForCurrentTrack{1,7};
+                    
+                    HandleForCurrentTrack.XData=            X;    
+                    HandleForCurrentTrack.YData=            Y;  
+                    HandleForCurrentTrack.ZData=            Z;  
+                    HandleForCurrentTrack.Color=            TrackColor;  
+                    HandleForCurrentTrack.LineWidth=        LineWidth;  
             
         end
         
@@ -677,6 +713,8 @@ classdef PMMovieController < handle
             
  
         end
+        
+        
         
         
         %% change tracking model:
@@ -824,6 +862,13 @@ classdef PMMovieController < handle
          
          end
         
+         function [obj] =       filterTrackModelByTrackID(obj, trackIDs)
+             
+             
+             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.filterTracksByTrackIDs(trackIDs);
+             
+         end
+         
     
          function [obj] =       filterTrackModelByFrame(obj, frames)
              
@@ -1501,6 +1546,9 @@ classdef PMMovieController < handle
          function [obj] =       synchronizeTrackingResults(obj)
              
              
+             
+             
+             obj.LoadedMovie.Tracking.ColumnsInTrackingCell =                                obj.LoadedMovie.TrackingAnalysis.ColumnsInTracksForMovieDisplay;
              obj.LoadedMovie.Tracking.Tracking =                                obj.LoadedMovie.TrackingAnalysis.TrackingListForMovieDisplay;
             obj.LoadedMovie.Tracking.TrackingWithDriftCorrection =             obj.LoadedMovie.TrackingAnalysis.TrackingListWithDriftForMovieDisplay;
 
@@ -1543,11 +1591,7 @@ classdef PMMovieController < handle
         
         
         %% change model:
-        
-          
-        
 
-        
         function obj  = updateAppliedDriftCorrectionFromCheckBox(obj, state)
             obj.LoadedMovie.DriftCorrectionOn =             state;
             obj =                                           obj.updateAppliedPositionShift;
@@ -1620,7 +1664,7 @@ classdef PMMovieController < handle
 
                      case 1
                          
-                          CurrentFrame =                                        obj.LoadedMovie.SelectedFrames(1);    
+                            CurrentFrame =                                        obj.LoadedMovie.SelectedFrames(1);    
                             CurrentColumnShift=                                 obj.AplliedColumnShifts(CurrentFrame);
                             CurrentRowShift =                                   obj.AplliedRowShifts(CurrentFrame);
                             CurrentPlaneShift =                                 obj.AplliedPlaneShifts(CurrentFrame);
@@ -1931,6 +1975,14 @@ classdef PMMovieController < handle
                 %% read data:
                 obj =                                               obj.updateAppliedCroppingLimits;
 
+                obj =                                               obj.resetLimitsOfImageAxesWithAppliedCroppingGate;
+            
+           end
+        
+           function obj =       resetLimitsOfImageAxesWithAppliedCroppingGate(obj)
+               
+               
+               
                 currentAppliedCroppingGate =                        obj.LoadedMovie.AppliedCroppingGate;
 
 
@@ -1948,8 +2000,7 @@ classdef PMMovieController < handle
                 obj.Views.MovieView.ViewMovieAxes.YLim =        [min(YLimit), max(YLimit)];
                 
                
-            
-        end
+           end
         
          
          

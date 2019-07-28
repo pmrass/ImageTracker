@@ -14,6 +14,8 @@ classdef PMTrackingNavigation
         
         OldCellMaskStructure
         
+        
+        ColumnsInTrackingCell
         Tracking
         TrackingWithDriftCorrection
         

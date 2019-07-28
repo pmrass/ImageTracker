@@ -168,10 +168,18 @@ classdef PMImagingProjectViewer
                     obj.ProjectMenu.AddAllCaptures.Tag=                   'Movies_AddAllImagesInDir';
                     obj.ProjectMenu.AddAllCaptures.Enable=                'on';
 
+                    
+                    
+                    
                     obj.ProjectMenu.Mapping=                                   uimenu(ProjectMenuInside);
                     obj.ProjectMenu.Mapping.Label=                             'Map all unmapped images';
                     obj.ProjectMenu.Mapping.Separator=                         'on';
                     obj.ProjectMenu.Mapping.Enable=                            'on';
+                    
+                    obj.ProjectMenu.UnMapping=                                   uimenu(ProjectMenuInside);
+                    obj.ProjectMenu.UnMapping.Label=                             'Unmapping all movies';
+                    obj.ProjectMenu.UnMapping.Separator=                         'off';
+                    obj.ProjectMenu.UnMapping.Enable=                            'on';
                    
                     
                     

@@ -75,7 +75,7 @@ classdef PMMovieTracking
         % tracking model content used for displaying data
         % there are now several different formats of the tracking data: maybe add a method to remove duplicate analysis to not boost storage space unnecessarily;
         Tracking % for storing basic migration data on file (new tracking data are moved directly here);
-        TrackingAnalysis % is built from basic migration data and enables sophisticated analysis;
+        TrackingAnalysis % is built from basic migration data and enables sophisticated analysis on tracks;
         
        
         
@@ -316,7 +316,17 @@ classdef PMMovieTracking
              obj.ScaleBarVisible =          tru;
             
             
-        end
+         end
+        
+         
+         function obj = applyManualDriftCorrection(obj)
+             
+             
+             obj.DriftCorrection =  obj.DriftCorrection.updateByManualDriftCorrection(obj.MetaData);
+             
+             
+             
+         end
         
           
           
@@ -368,9 +378,7 @@ classdef PMMovieTracking
                         obj.PointersPerFile =                   -1;
                         obj.FileCouldNotBeRead =               0;
                         
-                        % update tracking data and drift correction
-                        
-                        
+ 
                         
                     end
                     
@@ -435,13 +443,29 @@ classdef PMMovieTracking
         
         function obj =                      refreshTrackingResults(obj)
 
-             obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection);
+             obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
              obj =                                                  obj.synchronizeTrackingResults;
+             
+        end
+        
+        function obj = resetTrackingAnalysisToPhysicalUnits(obj)
+            
+            
+            obj.TrackingAnalysis =      obj.TrackingAnalysis.convertDistanceUnitsIntoUm;
+            obj.TrackingAnalysis =      obj.TrackingAnalysis.convertTimeUnitsIntoSeconds;
+            
+            
+            
+              
+        
+            
+            
         end
         
         function obj =                  synchronizeTrackingResults(obj)
             
 
+            obj.Tracking.ColumnsInTrackingCell =                   obj.TrackingAnalysis.ColumnsInTracksForMovieDisplay;
             obj.Tracking.Tracking =                                obj.TrackingAnalysis.TrackingListForMovieDisplay;
             obj.Tracking.TrackingWithDriftCorrection =             obj.TrackingAnalysis.TrackingListWithDriftForMovieDisplay;
 
@@ -686,44 +710,59 @@ classdef PMMovieTracking
 
 
 
-            NumberOfStrips =        size(FilteredImageMap,1);
+            NumberOfImageDirectories =        size(FilteredImageMap,1);
 
-            for StripIndex=1:NumberOfStrips
+            for StripIndex=1:NumberOfImageDirectories
 
-                CurrentStripInfo =                  FilteredImageMap(StripIndex,:);
+                CurrentImageDirectory =             FilteredImageMap(StripIndex,:);
 
-
+                
                 %% place file pointer to beginning of strip
                  % 'source' info:
-                fileID =                            CurrentStripInfo{3};
-                CurrentStripOffset =                CurrentStripInfo{1};
-                fseek(fileID,  CurrentStripOffset, -1);
-                
-                CurrentStripByteCount=              CurrentStripInfo{2};
-                BytesPerSample =                    CurrentStripInfo{5}/8; % bits per sample divided by 8
-                CurrentStripLength =                CurrentStripByteCount / BytesPerSample;
-                Precision=                          CurrentStripInfo{6};
-                byteOrder=                          CurrentStripInfo{4};
-                CurrentStripData =                  cast((fread(fileID, CurrentStripLength, Precision, byteOrder))', Precision);    
-
-
-                %% reshape the strip so that it fits:
-                % 'target' info
-
-                TotcalColumnsOfImage =              CurrentStripInfo{8};
-                RowsPerStrip =                      CurrentStripInfo{12};
-                CurrentStripImage=                  (reshape(CurrentStripData, TotcalColumnsOfImage, RowsPerStrip ))'; 
-                 
-                %% finally put the created image into the target volume:
-                CurrentPlane =                      CurrentStripInfo{ColumnForPlanes};
-                CurrentFrame =                      CurrentStripInfo{ColumnForFrames};    
+                fileID =                            CurrentImageDirectory{3};
+                CurrentPlane =                      CurrentImageDirectory{ColumnForPlanes};
+                CurrentFrame =                      CurrentImageDirectory{ColumnForFrames};    
+                CurrentChannel =                    CurrentImageDirectory{15};
                
-                CurrentUpperRow=                   CurrentStripInfo{13};
-                CurrentBottomRow=                   CurrentStripInfo{14};
+                BytesPerSample =                    CurrentImageDirectory{5}/8; % bits per sample divided by 8
+               
+                Precision=                          CurrentImageDirectory{6};
+                byteOrder=                          CurrentImageDirectory{4};
+                
+                TotcalColumnsOfImage =              CurrentImageDirectory{8};
+                RowsPerStrip =                      CurrentImageDirectory{12};
+               
+                
+                ListWithStripOffsets =              CurrentImageDirectory{1};
+                ListWithStripByteCounts=              CurrentImageDirectory{2};
+                 ListWithUpperRows=                   CurrentImageDirectory{13};
+                ListWithLowerRows=                   CurrentImageDirectory{14};
+                
+                NumberOfStrips =                    size(ListWithStripOffsets,1);          
+                
+                
+                for CurrentStripIndex = 1:NumberOfStrips
+                    
+                    
+                    CurrentStripOffset =            ListWithStripOffsets(CurrentStripIndex,1);
+                    CurrentStripByteCount =         ListWithStripByteCounts(CurrentStripIndex,1);
+                    
+                    CurrentUpperRow =               ListWithUpperRows(CurrentStripIndex,1);
+                    CurrentBottomRow =              ListWithLowerRows(CurrentStripIndex,1);
+                 
+                    fseek(fileID,  CurrentStripOffset, -1);
 
-                CurrentChannel =                    CurrentStripInfo{15};
-                CurrentImageVolume(CurrentUpperRow:CurrentBottomRow,1:TotcalColumnsOfImage, CurrentPlane, CurrentFrame, CurrentChannel)=     CurrentStripImage;
+                    CurrentStripLength =                CurrentStripByteCount / BytesPerSample;
+                    CurrentStripData =                  cast((fread(fileID, CurrentStripLength, Precision, byteOrder))', Precision);    
 
+
+                    %% reshape the strip so that it fits:
+                    % 'target' info
+                    CurrentStripImage=                  (reshape(CurrentStripData, TotcalColumnsOfImage, RowsPerStrip ))';                
+                    CurrentImageVolume(CurrentUpperRow:CurrentBottomRow,1:TotcalColumnsOfImage, CurrentPlane, CurrentFrame, CurrentChannel)=     CurrentStripImage;
+                    
+
+                end
             end
             
             

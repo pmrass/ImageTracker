@@ -17,35 +17,78 @@ classdef PMTIFFDocument
     methods
         
         %% initialize
-        function TIFFDoc =                                                          PMTIFFDocument(FileName)
+        function obj =                                                          PMTIFFDocument(FileName)
             
-            %% reading from file
-            TIFFDoc.FileName =                                      FileName;
-            TIFFDoc.FilePointer =                                   fopen(FileName,'r','l');
+            %% reading from file: get header and image directories: this should be the same for all TIFF-files:
+            obj.FileName =                                      FileName;
+            obj.FilePointer =                                   fopen(FileName,'r','l');
  
-            if TIFFDoc.FilePointer == -1
+            if obj.FilePointer == -1
                 return
             end
             
-            TIFFDoc.Header =                                        GetTIFFHeader(TIFFDoc);
-            TIFFDoc.ImageFileDirectories =                          GetImageFileDirectories(TIFFDoc);
+            obj.Header =                                        GetTIFFHeader(obj);
+            obj.ImageFileDirectories =                          GetImageFileDirectories(obj);
             
             
             
-            %% parsing and refinding read data:
-            TIFFDoc.Type =                                          DetermineTIFFType(TIFFDoc);
-            TIFFDoc.MetaData =                                      ExtractMetaData(TIFFDoc);
+            %% get specific TIFF-type and parse specifically for type:
+            obj.Type =                                          DetermineTIFFType(obj);
             
-             DimensionX=                                            TIFFDoc.MetaData.EntireMovie.NumberOfRows;
-             DimensionY=                                            TIFFDoc.MetaData.EntireMovie.NumberOfColumns;
-            [TIFFDoc] =                                             TIFF_KeepOnlySizedImages(TIFFDoc, DimensionX, DimensionY);
+            switch obj.Type
+                
+                case 'LSM'
+
+                    %% extract metadata:
+                    obj.MetaData =                                          ExtractLSMMetaData(obj);
+
+                    %% remove thumbnails from image-directories:
+                    DimensionX=                                             obj.MetaData.EntireMovie.NumberOfRows;
+                    DimensionY=                                             obj.MetaData.EntireMovie.NumberOfColumns;
+                    [obj] =                                                 TIFF_KeepOnlySizedImages(obj, DimensionX, DimensionY);
+
+                    %% extract image map:
+                    [OrderOfImages] =                                       LSM_ExtractImageOrder(obj );  
+                    
+                    
+                    
+                   [CellMapContents, CellMapTitles] =              cellfun(@(dir,x,y) obj.ExtractFieldsForImageReading(dir,x,y), obj.ImageFileDirectories, OrderOfImages(:,1), OrderOfImages(:,2), 'UniformOutput', false);
+                   ListWithAllDirectories =                                vertcat(CellMapContents{:});
+                    obj.ImageMap=                                       [CellMapTitles{1,1};ListWithAllDirectories];
+
+
+                case 'OME'
+                    
+                    
+                    
+                    
+                    ParsedOMEMetaData =                                      ExtractOMESpecificMappingData(obj);
+                    
+                     obj.MetaData =                                         obj.ExtractMetaDataFromOMEContent(ParsedOMEMetaData);
+                     
+                     
+                    [ OrderOfImages ] =                                        obj.OME_ExtractImageOrder(ParsedOMEMetaData );
+
+                      
+                   
+                    [CellMapContents, CellMapTitles] =              cellfun(@(dir,x,y,z) obj.ExtractFieldsForImageReading(dir,x,y,z), obj.ImageFileDirectories, OrderOfImages(:,1), OrderOfImages(:,2), OrderOfImages(:,3), 'UniformOutput', false);
+                   ListWithAllDirectories =                                vertcat(CellMapContents{:});
+                    obj.ImageMap=                                       [CellMapTitles{1,1};ListWithAllDirectories];
+
+                    disp('test')
+                    
+                otherwise
+                    
+                    error('TIFF type not supported')
+                
+                
+                
+            end
             
-            [CellMapContents, CellMapTitles] =                      LSM_ExtractImageOrder(TIFFDoc );  
-            ListWithAllDirectories =                                vertcat(CellMapContents{:});
             
-            TIFFDoc.ImageMap=                                       [CellMapTitles{1,1};ListWithAllDirectories];
             
-            fclose(TIFFDoc.FilePointer);
+           
+            fclose(obj.FilePointer);
             
             
             
@@ -413,25 +456,41 @@ classdef PMTIFFDocument
 
              ContainsLSMInfo=                           max(max(cellfun(@(x) x==34412, DirectoryList{1}(:,1))));    %check first IFD for lsm
 
-             if ContainsLSMInfo
+             if ContainsLSMInfo % first check whether file is an LSM TIFF
                  Type = 'LSM';
-             else
-                 Type = '';
+                 
+             else %then check whether it is an OME file
+                 
+                 
+            %% check whether this is an OME-file (each image description contains OME):
+
+            ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
+            ContainOMEString =                    cellfun(@(x)  ~isempty(strfind(x, 'OME')), ContentOfAllImageDescriptionFields);
+
+            AllRowsContainOMEString=                                                 min(ContainOMEString)==1;
+            if AllRowsContainOMEString
+                Type=                                                   'OME';
+            else
+                error('Unsupported TIFF type')
+            end
+
+           
+                
              end
 
 
         end
-
-        %% extract meta-data:
-        function [MetaData] =                                                       ExtractMetaData(obj)
-
-            TIFFType = obj.Type;
-
-             switch TIFFType
-
-                case 'LSM'
-
-                    RowWithLSMData=                                             cell2mat(obj.ImageFileDirectories{1,1}(:,1))==34412;
+        
+        function [ContentOfAllImageDescriptionFields] = getAllImageDescriptionFieldContents(obj)
+            
+             DirectoryList =                  obj.ImageFileDirectories;
+            ContentOfAllImageDescriptionFields =  cellfun(@(x) x{cell2mat(x(:,1))==270,4}, DirectoryList, 'UniformOutput', false);
+            
+        end
+        
+        function [MetaData] =                    ExtractLSMMetaData(obj)
+            
+            RowWithLSMData=                                             cell2mat(obj.ImageFileDirectories{1,1}(:,1))==34412;
                     LSMFieldData=                                               obj.ImageFileDirectories{1,1}{RowWithLSMData, 4};
 
                     NumberOfRows=                                                   LSMFieldData.DimensionY;
@@ -458,29 +517,143 @@ classdef PMTIFFDocument
                     MetaData.EntireMovie.VoxelSizeX=                                VoxelSizeX; 
                     MetaData.EntireMovie.VoxelSizeY=                                VoxelSizeY; 
                     MetaData.EntireMovie.VoxelSizeZ=                                VoxelSizeZ;
+                    
+                    
+                    [MetaData] =                                                   obj.AutoCompleteTimeFrameMetaData(MetaData, ListWithAbsoluteTimeStamps_Sec);
+
+            
+            
+        end
+
+        %% extract meta-data:
+        function [ParsedOMEMetaData] =                                                       ExtractOMESpecificMappingData(obj)
+
+            
+            
+            %% get first image-description content (contains information for entire file);
+                     ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
+                     ImageDescriptionField_FirstEntry=               ContentOfAllImageDescriptionFields{1,1};
+
+                   
+                     %% parse OME-XML field:
+                    ElementName =                       'Image';
+                    
+                    StartTag=                           ['<' ElementName];
+                    EndTag=                             ['</' ElementName '>'];
+
+                    StartPositions=                     (strfind(ImageDescriptionField_FirstEntry, StartTag))';
+                    EndPositions=                       (strfind(ImageDescriptionField_FirstEntry, EndTag))';
+
+                    ImageElements_EachTimeFrame=       arrayfun(@(start, stop) ImageDescriptionField_FirstEntry(start:stop), StartPositions, EndPositions, 'UniformOutput', false);
 
 
+    
+                    [ name_pixels, value_pixels ] =                                 cellfun(@(x) XML_GetAttributes( x,  'Pixels'), ImageElements_EachTimeFrame, 'UniformOutput', false);
+                    [ name_tiff, value_tiff ] =                                     cellfun(@(x) XML_GetAttributes( x,  'TiffData'), ImageElements_EachTimeFrame, 'UniformOutput', false);
+                    [ uuid_contents ] =                                             cellfun(@(x) XML_GetElementContents( x, 'UUID' ), ImageElements_EachTimeFrame, 'UniformOutput', false);
+                    [AcquisitionDates]=                                             cellfun(@(x) XML_GetElementContents( x, 'AcquisitionDate' ), ImageElements_EachTimeFrame, 'UniformOutput', false);
 
 
-                 otherwise
-                     error('TIFF type is not supported')
+                    %% extract from time-frame cells:
+                    uuid_contents=                                              vertcat(uuid_contents{:});
+                    AcquisitionDates=                                           vertcat(AcquisitionDates{:});
+
+                    %% extract from time-frame cells cell (two times)
+                    value_tiff=                                                 vertcat(value_tiff{:});
+                    name_tiff=                                                  vertcat(name_tiff{:});
+
+                    value_tiff=                                                 vertcat(value_tiff{:});
+                    name_tiff=                                                  vertcat(name_tiff{:});
+
+                    name_pixels=                                                vertcat(name_pixels{:});
+                    value_pixels=                                               vertcat(value_pixels{:});
+
+                    name_pixels=                                                vertcat(name_pixels{:});
+                    value_pixels=                                               vertcat(value_pixels{:});
+
+                    ParsedOMEMetaData.uuid_contents=                            uuid_contents;
+                    ParsedOMEMetaData.AcquisitionDates=                         AcquisitionDates;
+
+                    ParsedOMEMetaData.value_tiff=                               value_tiff;
+                    ParsedOMEMetaData.name_tiff=                                name_tiff;
+
+                    ParsedOMEMetaData.name_pixels=                              name_pixels;
+                    ParsedOMEMetaData.value_pixels=                             value_pixels;
 
 
+                    
 
-             end
+        end
+        
+        function [MetaData]=        ExtractMetaDataFromOMEContent(obj,ParsedOMEMetaData)
+            
+            
+             %% get meta-data that describe the entire image-sequence:
+
+                    FirstRowForDimensionsName=                                      ParsedOMEMetaData.name_pixels(1,:);
+                    FirstRowForDimensionsValues=                                    ParsedOMEMetaData.value_pixels(1,:);
+
+                    ColumnForVoxelSizeX=                                            strcmp(FirstRowForDimensionsName, 'PhysicalSizeX');
+                    ColumnForVoxelSizeY=                                            strcmp(FirstRowForDimensionsName, 'PhysicalSizeY');
+                    ColumnForVoxelSizeZ=                                            strcmp(FirstRowForDimensionsName, 'PhysicalSizeZ');
+
+                    ColumnForNumberOfChannels=                                      strcmp(FirstRowForDimensionsName, 'SizeC');
+                    % ColumnForSizeT=                                               strcmp(FirstRowForDimensionsName, 'SizeT');
+                    ColumnForNumberOfColumns=                                       strcmp(FirstRowForDimensionsName, 'SizeX');
+                    ColumnForNumberOfRows=                                          strcmp(FirstRowForDimensionsName, 'SizeY');
+                    ColumnForSizeZ=                                                 strcmp(FirstRowForDimensionsName, 'SizeZ');
+
+                    VoxelSizeX=                                                     str2double(FirstRowForDimensionsValues{ColumnForVoxelSizeX})/10^6; % convert to m
+                    VoxelSizeY=                                                     str2double(FirstRowForDimensionsValues{ColumnForVoxelSizeY})/10^6; % convert to m
+                    VoxelSizeZ=                                                     str2double(FirstRowForDimensionsValues{ColumnForVoxelSizeZ})/10^6; % convert to m
+
+                    NumberOfChannels=                                               str2double(FirstRowForDimensionsValues{ColumnForNumberOfChannels});
+                    NumberOfPlanes=                                                 str2double(FirstRowForDimensionsValues{ColumnForSizeZ});
+                    %NumberOfFrames=                                                FirstRowForDimensionsValues(ColumnForVoxelSizeX);
+                    NumberOfRows=                                                   str2double(FirstRowForDimensionsValues{ColumnForNumberOfRows});
+                    NumberOfColumns=                                                str2double(FirstRowForDimensionsValues{ColumnForNumberOfColumns});
+
+                    NumberOfFrames=                                                 size(ParsedOMEMetaData.AcquisitionDates,1);
 
 
-              SecondsOfFirstFrame=                                            ListWithAbsoluteTimeStamps_Sec(1,1);
+                    %% get timestamps
+                    ListWithDates=                                                  ParsedOMEMetaData.AcquisitionDates;
+
+                    ListWithDates_Reformatted=                                      cellfun(@(x) [ x(1:10) ' ' x(12:end)], ListWithDates, 'UniformOutput', false);
+                    ListWithAbsoluteTimeStamps_Sec=                                 cell2mat(cellfun(@(x) datenum(x)*3600*24, ListWithDates_Reformatted, 'UniformOutput', false));
+
+
+                    %% assign results to appropriate meta-data fields:
+                    MetaData.EntireMovie.NumberOfRows=                              NumberOfRows; 
+                    MetaData.EntireMovie.NumberOfColumns=                           NumberOfColumns; 
+                    MetaData.EntireMovie.NumberOfPlanes=                            NumberOfPlanes;
+                    MetaData.EntireMovie.NumberOfTimePoints=                        NumberOfFrames;
+                    MetaData.EntireMovie.NumberOfChannels=                          NumberOfChannels;
+
+                    MetaData.EntireMovie.VoxelSizeX=                                VoxelSizeX; 
+                    MetaData.EntireMovie.VoxelSizeY=                                VoxelSizeY;  
+                    MetaData.EntireMovie.VoxelSizeZ=                                VoxelSizeZ; 
+
+                   [MetaData] =                                                   obj.AutoCompleteTimeFrameMetaData(MetaData, ListWithAbsoluteTimeStamps_Sec);
+
+            
+            
+            
+        end
+        
+        function [MetaData] =       AutoCompleteTimeFrameMetaData(obj, MetaData, ListWithAbsoluteTimeStamps_Sec)
+            
+            SecondsOfFirstFrame=                                            ListWithAbsoluteTimeStamps_Sec(1,1);
+            NumberOfFrames =                                             MetaData.EntireMovie.NumberOfTimePoints;
             for FrameIndex=1:NumberOfFrames
-
                 CurrentFrame=                                               ListWithAbsoluteTimeStamps_Sec(FrameIndex);
                 MetaData.TimeStamp(FrameIndex,1)=                    CurrentFrame;
                 MetaData.RelativeTimeStamp(FrameIndex,1)=           CurrentFrame- SecondsOfFirstFrame;
 
             end
-
-
-
+            
+            
+            
         end
 
         
@@ -511,7 +684,7 @@ classdef PMTIFFDocument
 
         end
 
-        function [ CellMapContents, CellMapTitles ] =                                LSM_ExtractImageOrder(obj )
+        function [ OrderOfImages ] =                                LSM_ExtractImageOrder(obj )
         %LSM_EXTRACTIMAGEORDER Summary of this function goes here
         %   Detailed explanation goes here
 
@@ -550,15 +723,76 @@ classdef PMTIFFDocument
                     OrderOfImages =                         num2cell(OrderOfImages);
                     
                     
-            
-                    [CellMapContents, CellMapTitles] =              cellfun(@(x,y,z) ExtractFieldsForImageReading(obj,x,y,z), obj.ImageFileDirectories, OrderOfImages(:,1), OrderOfImages(:,2), 'UniformOutput', false);
-                    
                      
                      
 
         end
         
-        function [CellMapContents, CellMapTitles] =                                 ExtractFieldsForImageReading(obj, CurrentDirectory, FrameNumber, PlaneNumber)
+        
+        function [OrderOfImages] =         OME_ExtractImageOrder(obj, ParsedOMEMetaData)
+            
+            
+            %% check that header and each IFD match:
+
+            MetaDataInternal =                                  obj.MetaData;
+            
+            
+            
+            ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
+            
+            
+            [ name_ome, value_ome ] =                cellfun(@(x) XML_GetAttributes( x,  'OME'), ContentOfAllImageDescriptionFields, 'UniformOutput', false);
+         
+             %  [ name_ome, value_ome ] =                cellfun(@(x) XML_GetAttributes( x,  'OME'), ImageDescriptionEntries, 'UniformOutput', false);
+         
+             
+                name_ome=                               vertcat(name_ome{:});
+                name_ome=                               vertcat(name_ome{:});
+                
+                value_ome=                              vertcat(value_ome{:});
+                value_ome=                              vertcat(value_ome{:});
+             
+                ListWithCorrectRows=                    strcmp(name_ome, 'UUID');
+                
+                ListWithFileNamesInOMEHeader=           ParsedOMEMetaData.uuid_contents;
+                ListWithFileNamesInEachIFD=             value_ome(ListWithCorrectRows);
+                
+                ListWithMatchedFileNames=               [ListWithFileNamesInOMEHeader ListWithFileNamesInEachIFD];
+                
+                CompareIFDHeaderAndEachIFDFileName= strcmp(ListWithMatchedFileNames(:,1), ListWithMatchedFileNames(:,2));
+                
+                if min(CompareIFDHeaderAndEachIFDFileName)==0
+                    input('Not all filenames of individual IFDs match. Do you want to continue?')
+                end
+
+                %% get matrix that specifices where in the images-sequence the read files should be placed:
+                NumberOfFrames=                         MetaDataInternal.EntireMovie.NumberOfTimePoints;
+                NumberOfPlanes=                         MetaDataInternal.EntireMovie.NumberOfPlanes;
+                NumberOfChannels=                       MetaDataInternal.EntireMovie.NumberOfChannels;
+                
+                % timeframes need to be reconstructed because they are not explictly written down in Prairie-OME;
+                ListWithTimeFrames =                    1:NumberOfFrames;
+                ListWithTimeFramesForAllIFD =           repmat(ListWithTimeFrames,NumberOfPlanes*NumberOfChannels,1);
+                ListWithTimeFramesForAllIFD=            reshape(ListWithTimeFramesForAllIFD, numel(ListWithTimeFramesForAllIFD), 1);
+                
+                OrderOfImages(:,3)=                     str2double(ParsedOMEMetaData.value_tiff(:,1))+1;   % channel
+                OrderOfImages(:,2)=                     str2double(ParsedOMEMetaData.value_tiff(:,3))+1;      % Z;      
+                OrderOfImages(:,1)=                     ListWithTimeFramesForAllIFD;
+                
+            
+                OrderOfImages =                         num2cell(OrderOfImages);
+            
+            
+        end
+        
+        function [CellMapContents, CellMapTitles] =                                 ExtractFieldsForImageReading(obj, CurrentDirectory, FrameNumber, PlaneNumber, varargin)
+            
+            
+            if length(varargin) == 1
+                
+                ChannelNumber = varargin{1};
+                
+            end
             
             
                           RowWithPlanarConfiguration=                                 find(cell2mat(CurrentDirectory(:,1))== 284); %'PlanarConfiguration'
@@ -571,17 +805,17 @@ classdef PMTIFFDocument
                         %% collect information for reading images
                            % get offsets and sizes of strips:
                         RowWithOffsets=                                                     cell2mat(CurrentDirectory(:,1))== 273; %'StripOffsets'
-                        FieldsForImageReading.ListWithStripOffsets=                     	num2cell(CurrentDirectory{RowWithOffsets, 4});
+                        FieldsForImageReading.ListWithStripOffsets(:,1)=                     	CurrentDirectory{RowWithOffsets, 4};
 
                         RowWithOffsetsByteCounts=                                           cell2mat(CurrentDirectory(:,1))== 279; %'StripByteCounts'
-                        FieldsForImageReading.ListWithStripByteCounts=                      num2cell(CurrentDirectory{RowWithOffsetsByteCounts, 4});
+                        FieldsForImageReading.ListWithStripByteCounts(:,1)=                      CurrentDirectory{RowWithOffsetsByteCounts, 4};
 
                         NumberOfStrips =                                                    length(FieldsForImageReading.ListWithStripOffsets);
                         
                  
                         
-                        FieldsForImageReading.FilePointer =                         (arrayfun(@(x) obj.FilePointer, 1:NumberOfStrips, 'UniformOutput', false))';
-                        FieldsForImageReading.ByteOrder =                           (arrayfun(@(x) obj.Header.byteOrder, 1:NumberOfStrips, 'UniformOutput', false))';
+                        FieldsForImageReading.FilePointer =                         obj.FilePointer;
+                        FieldsForImageReading.ByteOrder =                           obj.Header.byteOrder;
                         
                
                         
@@ -602,7 +836,7 @@ classdef PMTIFFDocument
                             assert(length(Identical)== 1, 'Cannot read this file. Reason: All samples must have identical bit number')
                         end
 
-                        FieldsForImageReading.BitsPerSample=                        (arrayfun(@(x) BitsPerSample(1), 1:NumberOfStrips, 'UniformOutput', false))';
+                        FieldsForImageReading.BitsPerSample=                        BitsPerSample(1);
                         
 
 
@@ -618,18 +852,18 @@ classdef PMTIFFDocument
                         switch( SampleFormat )
 
                             case 1
-                                FieldsForImageReading.Precisision =                 (arrayfun(@(x) sprintf('uint%i', BitsPerSample(1)), 1:NumberOfStrips, 'UniformOutput', false))';
+                                FieldsForImageReading.Precisision =                  sprintf('uint%i', BitsPerSample(1));
 
                             case 2
-                                FieldsForImageReading.Precisision =                 (arrayfun(@(x) sprintf('int%i', BitsPerSample(1)), 1:NumberOfStrips, 'UniformOutput', false))';
+                                FieldsForImageReading.Precisision =                  sprintf('int%i', BitsPerSample(1));
 
                             case 3
 
                                 if ( FieldsForImageReading.BitsPerSample(1) == 32 )
-                                    FieldsForImageReading.Precisision = (arrayfun(@(x) 'single', 1:NumberOfStrips, 'UniformOutput', false))';
+                                    FieldsForImageReading.Precisision =  'single';
 
                                 else
-                                    FieldsForImageReading.Precisision = (arrayfun(@(x) 'double', 1:NumberOfStrips, 'UniformOutput', false))';
+                                    FieldsForImageReading.Precisision = 'double';
                                 end
 
                             otherwise
@@ -648,17 +882,17 @@ classdef PMTIFFDocument
                             SamplesPerPixel =                         CurrentDirectory{ListWithSamplesPerPixelRows,4};
                         end
                         
-                        FieldsForImageReading.SamplesPerPixel =                             (arrayfun(@(x) SamplesPerPixel, 1:NumberOfStrips, 'UniformOutput', false))';
+                        FieldsForImageReading.SamplesPerPixel =                             SamplesPerPixel;
 
                         
                         RowOfImageWidth=                                                   cell2mat(CurrentDirectory(:,1))== 256;% 'ImageWidth'); 
-                        FieldsForImageReading.TotcalColumnsOfImage=                        (arrayfun(@(x) CurrentDirectory{RowOfImageWidth,4}, 1:NumberOfStrips, 'UniformOutput', false))';                   
+                        FieldsForImageReading.TotcalColumnsOfImage=                        CurrentDirectory{RowOfImageWidth,4};                   
                         
 
                         
                         RowForImageLength=                                                  cell2mat(CurrentDirectory(:,1))== 257; %'ImageLength');
                         TotalRowsOfImage =                                                  CurrentDirectory{RowForImageLength,4};
-                        FieldsForImageReading.TotalRowsOfImage=                             (arrayfun(@(x) TotalRowsOfImage, 1:NumberOfStrips, 'UniformOutput', false))';
+                        FieldsForImageReading.TotalRowsOfImage=                             TotalRowsOfImage;
                         
 
                        
@@ -666,8 +900,8 @@ classdef PMTIFFDocument
                         %% specific information for reading image data
                        
                         %% collect "target information": where in the image do we need to place the read information:
-                        FieldsForImageReading.TargetFrameNumber =                           (arrayfun(@(x) FrameNumber, 1:NumberOfStrips, 'UniformOutput', false))';
-                        FieldsForImageReading.TargetPlaneNumber =                           (arrayfun(@(x) PlaneNumber, 1:NumberOfStrips, 'UniformOutput', false))';
+                        FieldsForImageReading.TargetFrameNumber =                           FrameNumber;
+                        FieldsForImageReading.TargetPlaneNumber =                           PlaneNumber;
                        
                         RowOfRowsPerStrip=                                                  cell2mat(CurrentDirectory(:,1))== 278; %'RowsPerStrip')
                         if sum(RowOfRowsPerStrip)==0 % if there are no strips, act like the whole image is a single strip;
@@ -678,19 +912,22 @@ classdef PMTIFFDocument
 
                         end
 
-                         FieldsForImageReading.RowsPerStrip =                          (arrayfun(@(x) RowsPerStrip, 1:NumberOfStrips, 'UniformOutput', false))';
+                         FieldsForImageReading.RowsPerStrip =                          RowsPerStrip;
                          
                         
-                       FieldsForImageReading.TargetStartRows=                              (arrayfun(@(x) 1:RowsPerStrip:TotalRowsOfImage, 1:NumberOfStrips, 'UniformOutput', false))';
+                       FieldsForImageReading.TargetStartRows(:,1)=                              1:RowsPerStrip:TotalRowsOfImage;
                         
                      
-                       FieldsForImageReading.TargetEndRows=                               (arrayfun(@(x) RowsPerStrip:RowsPerStrip:TotalRowsOfImage, 1:NumberOfStrips, 'UniformOutput', false))';
+                       FieldsForImageReading.TargetEndRows(:,1)=                               RowsPerStrip:RowsPerStrip:TotalRowsOfImage;
                         
                        
                        
                       
                          switch PlanarConfiguration
-                            
+                             
+                             case 0 
+                                FieldsForImageReading.TargetChannelIndex=                       ChannelNumber;
+                                
                             case 2
                                 assert(SamplesPerPixel == length(FieldsForImageReading.ListWithStripOffsets), 'Cannot read file. Reason: number of strips must be identical to number of samples per pixel')
                                 
@@ -705,24 +942,11 @@ classdef PMTIFFDocument
                                    
                          end
                         
-                          [Cell] = (struct2cell(FieldsForImageReading))';
+                          [CellMapContents] = (struct2cell(FieldsForImageReading))';
                           CellMapTitles =    (fieldnames(FieldsForImageReading))';
                         
-                        %  this is not elegant: need to change at some point:
-                        NumberOfColumns =   size(Cell,2);
-                        CellMapContents = cell(0,NumberOfColumns);
-                        
-                        for CurrentColumn = 1:NumberOfColumns
-                            CellMapContents(1:size(Cell{1,CurrentColumn},1),CurrentColumn) =      Cell{1,CurrentColumn};
-                        end
-                        
-                        
-                       
-                        a =      cellfun(@(x) squeeze(x), Cell, 'UniformOutput' , false);
-                       
-                        
-                     %   FieldsForImageReading.PlanarConfiguration =                             PlanarConfiguration;
-                       
+                          
+                    
             
             
             

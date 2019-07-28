@@ -94,8 +94,15 @@ classdef PMDriftCorrection
         end
         
       
-        function obj =  updateByManualDriftCorrection(obj)
+        function obj =  updateByManualDriftCorrection(obj, MetaData)
             
+            
+            manualDriftCorrectionExists =           obj.testForExistenceOfManualDriftCorrection;
+                if ~manualDriftCorrectionExists
+                    [obj] =                             obj.autoPopulateDefaultManualValues(MetaData);
+                    
+                end
+                
             obj =           obj.createDetailedDriftAnalysisFromManualAnalysis; 
             obj =           obj.createFinalDriftAnalysisFromDetailedAnalysis;
 

@@ -108,7 +108,7 @@ classdef PMMovieLibrary
         end
         
         
-        
+       
         
         function [Selection, obj] =     selectMovieObject(obj, NickName)
             %METHOD1 Summary of this method goes here
