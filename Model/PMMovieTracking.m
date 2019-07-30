@@ -443,7 +443,12 @@ classdef PMMovieTracking
         
         function obj =                      refreshTrackingResults(obj)
 
-             obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
+            
+            if isempty(obj.TrackingAnalysis)
+                obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
+             
+            end
+             
              obj =                                                  obj.synchronizeTrackingResults;
              
         end

@@ -6,47 +6,60 @@ classdef PMTrackingAnalysis
         
         
         % fields that could be of interest for future use:
-%             ListhWithCurrentDefaultFields=      {'MaskID', 'TrackID', 'AbsoluteFrame', 'CentroidY', 'CentroidX', 'CentroidZ', 'TopZPlane', 'BottomZPlane', 'NumberOfZPlanes', ... 
-%                                         'ListWithPixels_3D', 'ListWithPixels', 'NumberOfPixels', 'NumberOfPixels_3D', 'MeanPixelIntensity', ...
-%                                         'MergeIndex', 'NumberOfFollowUpCells_Interpretation', 'DesignationOfFollowUpCell_Interpretation', ...
-%                                         'NumberOfFollowUpCells', 'IDsOfFollowUpCells', 'NumberOfPrecedingCells', 'IDsOfPrecedingCells', 'DesignationOfTrackingScenario', ...
-%                                         'I', 'PrincipalI_1', 'PrincipalI_2',  'PrincipalI_3','UX_MinI', 'UY_MinI', 'UZ_MinI', 'PolarityIndex'};
-% 
+        %             ListhWithCurrentDefaultFields=      {'MaskID', 'TrackID', 'AbsoluteFrame', 'CentroidY', 'CentroidX', 'CentroidZ', 'TopZPlane', 'BottomZPlane', 'NumberOfZPlanes', ... 
+        %                                         'ListWithPixels_3D', 'ListWithPixels', 'NumberOfPixels', 'NumberOfPixels_3D', 'MeanPixelIntensity', ...
+        %                                         'MergeIndex', 'NumberOfFollowUpCells_Interpretation', 'DesignationOfFollowUpCell_Interpretation', ...
+        %                                         'NumberOfFollowUpCells', 'IDsOfFollowUpCells', 'NumberOfPrecedingCells', 'IDsOfPrecedingCells', 'DesignationOfTrackingScenario', ...
+        %                                         'I', 'PrincipalI_1', 'PrincipalI_2',  'PrincipalI_3','UX_MinI', 'UY_MinI', 'UZ_MinI', 'PolarityIndex'};
+        % 
 
         
-        % this contains the entire tracking information and should be used primarily for reading data;
+        % this contains the entire tracking information and should be used primarily for reading data, units may be changed;
         
         CurrentDistanceUnits =                          'pixels';
         CurrentTimeUnits =                              'imageFrames';
         
         FieldNamesOfMaskInformation
         ListWithCompleteMaskInformation =               cell(0,6)
-        ListWithCompleteMaskInformationWithDrift =      cell(0,6)
-        
-        
-        
-        ListWithFilteredMaskInformation =               cell(0,6)
-        ListWithFilteredMaskInformationWithDrift =      cell(0,6)
-        
+        ListWithCompleteMaskInformationWithDrift =      cell(0,6) % drift information is in duplicate, this makes it easier to switch between drift-corrected and non-drift corrected data with acceptable overhead
+         MaskFilter =                                   true(0,1) % the mask filter filters for masks and determines on what mask;
+
+        % filtered properties: allows  
         DriftCorrection
         MetaData
         
-        % track cell is created by original movie data and can be used to filter for specific data (specific track, time-frames etc.);
-        TrackCell
+        % track cell is created by original movie data and its main use is create track-specific quantitative data:
+        TrackCell =                                     cell(0,1)
         TrackCellFieldNames
-        NumberOfColumnsInTrackingMatrix =       12
+        NumberOfColumnsInTrackingMatrix =               12
         
-        NumberOfFramesInSubTracks =             NaN % this means that the "entire" tracks whill be generated (not subtracks);
-        JumpSizeBetweenSubTracks =              NaN % how much "overlap" between subtracks is wanted
+        % this is for subtrack generation: not used effectively at the moment, need to incoroporate this better;
+        NumberOfFramesInSubTracks =                     NaN % this means that the "entire" tracks whill be generated (not subtracks);
+        JumpSizeBetweenSubTracks =                      NaN % how much "overlap" between subtracks is wanted
         
+        
+        
+        %%  TrackingCell and TrackingListForMovieDisplay are quite similar and are here mostly for historic reasons;
+        % nevertheless, leave for consistency, just prevent extensive proliferation of permanent properties in the future;
+        % their main use is primariy for visual display of track data:
+        ColumnsForTrackingCell =                        {'ParentTrackID', 'SubtrackCoordinates', ... 
+                                                        'FirstTrackedFrame', 'LastTrackedFrame', 'NumberOfTrackedFrames', 'NumberOfFrameGaps', ...
+                                                        'LineColor'};
         TrackingCell
         TrackingCellWithDrift
+        TrackColorScheme =                          'DefinedByFirstTrackedFrame';
         
         
+        % this creates a "track model" that can be used for convenient generation of track views in other contexts;
         ColumnsInTracksForMovieDisplay =        {'OrderNumber', 'TrackID', 'XCoordinateList', 'YCoordinateList', 'ZCoordinateList', ...
-            'LineColor', 'LineWidth',  'FirstTrackedFrame', 'LastTrackedFrame', 'NumberOfTrackedFrames', 'NumberOfFrameGaps', 'Unknown'};
+            'LineColor', 'LineWidth', ...
+            'FirstTrackedFrame', 'LastTrackedFrame', 'NumberOfTrackedFrames', 'NumberOfFrameGaps', 'Unknown'};
+        
         TrackingListForMovieDisplay
         TrackingListWithDriftForMovieDisplay
+        
+        DefaultTrackLineWidth =             1
+        
         
         
         
@@ -54,437 +67,487 @@ classdef PMTrackingAnalysis
     
     methods
         
+        
         function obj = PMTrackingAnalysis(varargin)
-            %PMTRACKINGANALYSIS Construct an instance of this class
-            %   Detailed explanation goes here
-            
-            
-                    NumberOfInputArguments =        length(varargin);
-                    
-                    
-                    switch NumberOfInputArguments
-                        
-                        case 0
-                            
-                            
-                        case 2
-                            
-                            TrackingAnalysisBasis = varargin{1};
-                            DriftCorrection =       varargin{2};
-                            
-                            obj.DriftCorrection =         DriftCorrection;
-                            obj =                      obj.createListWithCompleteMaskInformation(TrackingAnalysisBasis);
-                            [obj]=                      obj.ConvertTrackingResultsIntoTrackCell;
-                            obj =                       obj.updateTrackingResults;
+        %PMTRACKINGANALYSIS Construct an instance of this class
+        %   Detailed explanation goes here
 
-                            
-                        case 3
-                            
-                             TrackingAnalysisBasis =        varargin{1};
-                            DriftCorrection =               varargin{2};
-                            obj.MetaData =                      varargin{3};
-                            
-                            obj.DriftCorrection =         DriftCorrection;
-                            obj =                      obj.createListWithCompleteMaskInformation(TrackingAnalysisBasis);
-                            [obj]=                      obj.ConvertTrackingResultsIntoTrackCell;
-                            obj =                       obj.updateTrackingResults;
-                            
-                            
-                            
-                        otherwise
-                            error('Only 0 or to input arguments supported')
-                        
-                        
-                    end
-                    
-            
-                     
-                    
-               
-                
-        end
-        
-        
-        
-        
-          function [ obj ] =                                                createListWithCompleteMaskInformation(obj, TrackingAnalysisBasis)
-            %CONVERTTRACKINGSTRUCTURETOCELL Summary of this function goes here
-            %   Detailed explanation goes here
 
-                ListWithFieldNames =                        TrackingAnalysisBasis.FieldNamesForTrackingCell;
-                DataIn_ListWithCellMasks_Matrix =           vertcat(TrackingAnalysisBasis.TrackingCellForTime{:});
+                NumberOfInputArguments =        length(varargin);
 
-                Column_TrackID=                             find(strcmp('TrackID', ListWithFieldNames));
-                Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', ListWithFieldNames));
-                Column_CentroidY =                          find(strcmp('CentroidY', ListWithFieldNames));
-                
-                
-                %% remove untracked masks:  % not sure if this is necessary:
-                if isempty(DataIn_ListWithCellMasks_Matrix)
-                    return
+
+                switch NumberOfInputArguments
+
+                    case 0
+
+
+                    case 2
+
+                        TrackingAnalysisBasis = varargin{1};
+                        DriftCorrection =       varargin{2};
+
+                        obj.DriftCorrection =         DriftCorrection;
+                        obj =                       obj.createListWithCompleteMaskInformation(TrackingAnalysisBasis);
+                        [obj]=                      obj.ConvertTrackingResultsIntoTrackCell;
+                        obj =                       obj.updateTrackingResults;
+
+
+                    case 3
+
+                        TrackingAnalysisBasis =         varargin{1};
+                        DriftCorrection =               varargin{2};
+                        obj.MetaData =                  varargin{3};
+
+                        obj.DriftCorrection =           DriftCorrection;
+                        obj =                           obj.createListWithCompleteMaskInformation(TrackingAnalysisBasis);
+                        [obj]=                          obj.ConvertTrackingResultsIntoTrackCell;
+                        obj =                           obj.updateTrackingResults;
+
+                    otherwise
+                        error('Only 0 or to input arguments supported')
+
+
                 end
-                
-                DataIn_ListWithCellMasks_Matrix(cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID))==0,:)=          []; % remove untracked masks;
-                DataIn_ListWithCellMasks_Matrix(isnan(cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID))),:)=      []; % remove untrackable masks
-
-                
-                %% sort by track ID and time-frames:
-                if ~isempty(DataIn_ListWithCellMasks_Matrix)
-                    DataIn_ListWithCellMasks_Matrix=                        sortrows(DataIn_ListWithCellMasks_Matrix,[Column_TrackID Column_AbsoluteFrame]);   
-                end
-                
-                %% remove rows that contain nan (this should anyway not be the case);
-                
-                BadRows =                                                   cellfun(@(x) isnan(x), DataIn_ListWithCellMasks_Matrix(:,Column_CentroidY));
-                DataIn_ListWithCellMasks_Matrix(BadRows,:) =                [];
-                
-                obj.FieldNamesOfMaskInformation =                           ListWithFieldNames;
-                obj.ListWithCompleteMaskInformation =                       DataIn_ListWithCellMasks_Matrix;
-                
-                obj =                                                       obj.addDriftCorrectionToMaskInformation;
-                
-                
-                obj.ListWithFilteredMaskInformation =                       obj.ListWithCompleteMaskInformation;
-                obj.ListWithFilteredMaskInformationWithDrift =              obj.ListWithCompleteMaskInformationWithDrift;
-        
 
         end
 
 
-        
-          function [obj]=                                                   ConvertTrackingResultsIntoTrackCell(obj)
-              
-              
-              
-            
+        function [ obj ] =                                                  createListWithCompleteMaskInformation(obj, TrackingAnalysisBasis)
+        %CONVERTTRACKINGSTRUCTURETOCELL Summary of this function goes here
+        %   Detailed explanation goes here
 
-                 DataIn_ListWithCellMasks_Matrix =              obj.ListWithFilteredMaskInformationWithDrift;
-                 ListWithFieldNames  =                          obj.FieldNamesOfMaskInformation;
-                 
-                if isempty(DataIn_ListWithCellMasks_Matrix)
-                    TrackCellInternal = [];
-                    ListWithFieldNames = [];
-                    
-                else
-                    
-                    FieldNames =                                    obj.FieldNamesOfMaskInformation;
-                    
-                    
-                    Column_TrackID =                                find(strcmp('TrackID', FieldNames));    
-                    Column_AbsoluteFrame=                           find(strcmp('AbsoluteFrame', FieldNames));
-                    Column_CentroidY=                               find(strcmp('CentroidY', FieldNames));
-                    Column_CentroidX=                               find(strcmp('CentroidX', FieldNames));
-                    Column_CentroidZ=                               find(strcmp('CentroidZ', FieldNames));
+            ListWithFieldNames =                        TrackingAnalysisBasis.FieldNamesForTrackingCell;
+            DataIn_ListWithCellMasks_Matrix =           vertcat(TrackingAnalysisBasis.TrackingCellForTime{:});
+
+            Column_TrackID=                             find(strcmp('TrackID', ListWithFieldNames));
+            Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', ListWithFieldNames));
+            Column_CentroidY =                          find(strcmp('CentroidY', ListWithFieldNames));
 
 
-                    % reorganize track-data, so that each track is stored in a specific cell;
-                    ListWithUniqueTrackIDs =                        unique(cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID)));
-                    ListWithAllTrackIDs =                           DataIn_ListWithCellMasks_Matrix(:,Column_TrackID);
-                    
-                    NumberOfTracks =                                size(ListWithUniqueTrackIDs,1);
-                    TrackCellInternal =                             cell(NumberOfTracks,1);
-                    for TrackIndex=1:NumberOfTracks
-                        RowsWithCurrenTrack =                       cell2mat(ListWithAllTrackIDs)== ListWithUniqueTrackIDs(TrackIndex);
-                        TrackCellInternal{TrackIndex,1} =           DataIn_ListWithCellMasks_Matrix(RowsWithCurrenTrack,:);
-
-                    end
-
-                    NumberOfSteps =                                 cellfun(@(x) size(x,1), TrackCellInternal);
-                    TrackCellInternal(NumberOfSteps==1,:) =         [];
-
-                
-                    
-                    
-                end
-                
-                
-                obj.TrackCellFieldNames =           ListWithFieldNames;
-                obj.TrackCell =                     TrackCellInternal;
-
-          end
-        
-          
-          function [obj] =                                                  addDriftCorrectionToMaskInformation(obj)
-              
-             %% read data:
-            FieldNames =                                obj.FieldNamesOfMaskInformation;
-            CoordinateListIn =                          obj.ListWithCompleteMaskInformation;
-            
-            if isempty(obj.DriftCorrection.RowShiftsAbsolute)
+            %% remove untracked masks:  % not sure if this is necessary:
+            if isempty(DataIn_ListWithCellMasks_Matrix)
                 return
             end
-            
-            RowShiftsAbsolute=                          obj.DriftCorrection.RowShiftsAbsolute;
-            ColumnShiftsAbsolute=                       obj.DriftCorrection.ColumnShiftsAbsolute;
-            PlaneShiftsAbsolute=                        obj.DriftCorrection.PlaneShiftsAbsolute;
+
+            DataIn_ListWithCellMasks_Matrix(cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID))==0,:)=          []; % remove untracked masks;
+            DataIn_ListWithCellMasks_Matrix(isnan(cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID))),:)=      []; % remove untrackable masks
 
 
-            Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', FieldNames));
-            Column_CentroidY=                           find(strcmp('CentroidY', FieldNames));
-            Column_CentroidX=                           find(strcmp('CentroidX', FieldNames));
-            Column_CentroidZ=                           find(strcmp('CentroidZ', FieldNames));
-
-           
-            ListWithXCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidX));  
-            ListWithYCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidY));
-            ListWithZCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidZ));
-
-            ListWithAbsoluteFrames=                     cell2mat(CoordinateListIn(:,Column_AbsoluteFrame));
-
-            
-            
-            %% get drift-correction results:
-            
-            ListWithFrames=                                     unique(ListWithAbsoluteFrames);
-            NumberOfUniqueFrames=                               length(ListWithFrames); 
-            for CurrentFrameDriftCorrection=1:NumberOfUniqueFrames
-
-                CurrentFrameNumber=                             ListWithFrames(CurrentFrameDriftCorrection);
-
-                RowShiftForCurrentFrame=                        RowShiftsAbsolute(CurrentFrameNumber);
-                ColumnShiftForCurrentFrame=                     ColumnShiftsAbsolute(CurrentFrameNumber);
-                PlaneShiftForCurrentFrame=                      PlaneShiftsAbsolute(CurrentFrameNumber);
-
-               
-                RelevantRows =                                  ListWithAbsoluteFrames==CurrentFrameNumber;
-                
-                ListWithXCoordinates(RelevantRows)=             ListWithXCoordinates(RelevantRows)+ColumnShiftForCurrentFrame;
-                ListWithYCoordinates(RelevantRows)=             ListWithYCoordinates(RelevantRows)+RowShiftForCurrentFrame;
-                ListWithZCoordinates(RelevantRows)=             ListWithZCoordinates(RelevantRows)+PlaneShiftForCurrentFrame;
-
+            %% sort by track ID and time-frames:
+            if ~isempty(DataIn_ListWithCellMasks_Matrix)
+                DataIn_ListWithCellMasks_Matrix=                        sortrows(DataIn_ListWithCellMasks_Matrix,[Column_TrackID Column_AbsoluteFrame]);   
             end
 
+            %% remove rows that contain nan (this should anyway not be the case);
 
-            CoordinateListIn(:,Column_CentroidX)=               num2cell(ListWithXCoordinates);  
-            CoordinateListIn(:,Column_CentroidY)=               num2cell(ListWithYCoordinates);  
-            CoordinateListIn(:,Column_CentroidZ)=               num2cell(ListWithZCoordinates);  
+            BadRows =                                                   cellfun(@(x) isnan(x), DataIn_ListWithCellMasks_Matrix(:,Column_CentroidY));
+            DataIn_ListWithCellMasks_Matrix(BadRows,:) =                [];
 
-            obj.ListWithCompleteMaskInformationWithDrift =      CoordinateListIn;
             
-          end
-          
-          
-         function [obj] =                                                   updateTrackingResults(obj)         
+            %% create basic mask information plus drift-correction plus reset filter:
+            obj.FieldNamesOfMaskInformation =                           ListWithFieldNames;
+            obj.ListWithCompleteMaskInformation =                       DataIn_ListWithCellMasks_Matrix;
+
+            obj =                                                       obj.createDriftCorrectedMaskInformation;
+            obj =                                                       obj.unFilterTracks;
+
+        end
+
+
+        
+        %% manage track-filters:
+         function [obj] =                                                   unFilterTracks(obj)
              
-
-            h=     waitbar(0, 'Creating tracks');
-
-            % convert tracking structure into cell matrix:    %   drift correction should be added only to first frame:
-            % first update the object
-            
-          % [ CoordinateListWithoutDriftCorrection ] =                                     AddDriftCorrectionToCoordinateList( CoordinateListWithoutDriftCorrection, FieldNamesOfCoordinateList, StructureWithDriftAnalysisData );
-
-
-           
-        
-        
-            % get subtracklocation within coordinate list and in loop convert each coordinate list to "tracking-result":
-            obj.TrackingCell =                                                       obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithFilteredMaskInformation);
-            obj.TrackingListForMovieDisplay =                                       obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCell, h);
-            
-            
-            if ~isempty(obj.ListWithFilteredMaskInformationWithDrift)
-                obj.TrackingCellWithDrift =                                              obj.ConvertCoordinateListIntoTrackingCell(obj.ListWithFilteredMaskInformationWithDrift);
-                obj.TrackingListWithDriftForMovieDisplay =                              obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCellWithDrift, h);
-
-            end
-             close(h)
+                obj.MaskFilter =                                        true(size(obj.ListWithCompleteMaskInformation,1),1);
              
          end
          
          
-         
-         function [obj] =           unFilterTracks(obj)
-             
-             
-        
-             
-             obj.ListWithFilteredMaskInformation =                   obj.ListWithCompleteMaskInformation;
-            obj.ListWithFilteredMaskInformationWithDrift =          obj.ListWithCompleteMaskInformationWithDrift;
-            
-             
-         end
-           function [obj] =                                                   filterTracksByTrackIDs(obj, AcceptedTrackIDs)
+
+         function [obj] =                                                   addFilterForTrackIds(obj, AcceptedTrackIDs)
                
-             
-               
-               ColumnWithTrackID =                      strcmp(obj.FieldNamesOfMaskInformation, 'TrackID');
+              
+                OldMaskFilter =                                             obj.MaskFilter;
+                ColumnWithTrackID =                                         strcmp(obj.FieldNamesOfMaskInformation, 'TrackID');
+                AddedMaskFilter =                                           ~ismember(cell2mat(obj.ListWithCompleteMaskInformation(:,ColumnWithTrackID)), AcceptedTrackIDs);
+                NewMaskFilter =                                             min([AddedMaskFilter    OldMaskFilter], [], 2);
 
-
-               OkRows =                                               ismember(cell2mat(obj.ListWithFilteredMaskInformation(:,ColumnWithTrackID)), AcceptedTrackIDs);
-
-
-            obj.ListWithFilteredMaskInformation =                   obj.ListWithFilteredMaskInformation(OkRows,:);
-            obj.ListWithFilteredMaskInformationWithDrift =          obj.ListWithFilteredMaskInformationWithDrift(OkRows,:);
-
-             obj =                                                  obj.updateTrackingResults;
+                obj.MaskFilter =                                            NewMaskFilter;
+                obj =                                                       obj.updateTrackingResults;
 
            end
      
          
          
-         function [obj] =                                                   filterTracksByTimeFrames(obj, AcceptedFrames)
+         function [obj] =                                                   addFilterForTrackFrames(obj, AcceptedFrames)
              
-             
-             
-               
-                ColumnWithFrameNumber =                      strcmp(obj.FieldNamesOfMaskInformation, 'AbsoluteFrame');
-             
-             OkRows =                                               ismember(cell2mat(obj.ListWithFilteredMaskInformation(:,ColumnWithFrameNumber)), AcceptedFrames);
-             
-              
-            obj.ListWithFilteredMaskInformation =                   obj.ListWithFilteredMaskInformation(OkRows,:);
-            obj.ListWithFilteredMaskInformationWithDrift =          obj.ListWithFilteredMaskInformationWithDrift(OkRows,:);
 
-             obj =                                                  obj.updateTrackingResults;
-             
-            
-             
+            OldMaskFilter =                                             obj.MaskFilter;
+            ColumnWithFrameNumber =                                     strcmp(obj.FieldNamesOfMaskInformation, 'AbsoluteFrame');
+            AddedMaskFilter =                                           ~ismember(cell2mat(obj.ListWithCompleteMaskInformation(:,ColumnWithFrameNumber)), AcceptedFrames);
+            NewMaskFilter =                                             min([AddedMaskFilter    OldMaskFilter], [], 2);
+
+            obj.MaskFilter =                                            NewMaskFilter;
+            obj =                                                       obj.updateTrackingResults;
+
              
          end
          
-       
-       
+         %% manage drift correction:
          
-     
-         function [TrackingListForMovieDisplay] =                               convertTrackingCellIntoTrackListForMovie(obj, TrackingCell, h)
+         
+          function [obj] =                                  createDriftCorrectedMaskInformation(obj)
 
-             
-                 NumberOfColumnsInMatrix=                                      obj.NumberOfColumnsInTrackingMatrix;
-             
-             
-                Column_CentroidY=                                                      strcmp('CentroidY', obj.FieldNamesOfMaskInformation);
-                Column_CentroidX=                                                       strcmp('CentroidX', obj.FieldNamesOfMaskInformation);
-                Column_CentroidZ=                                                       strcmp('CentroidZ', obj.FieldNamesOfMaskInformation);
+              
+                %% read data:
+                FieldNames =                                obj.FieldNamesOfMaskInformation;
+                CoordinateListIn =                          obj.ListWithCompleteMaskInformation;
 
-                Linewidth=                                                              1;
-                TotalNumberOfTracks=                                                    size(TrackingCell,1);
-                NewTrackingResults=                                                     cell(TotalNumberOfTracks,NumberOfColumnsInMatrix);
-
-                NewTrackingResults(:,1)=                                                num2cell(1:TotalNumberOfTracks);
-                NewTrackingResults(:,2)=                                                TrackingCell(:,1);
-
-                NewTrackingResults(:,6)=                                                TrackingCell(:,7); % color-code
-                NewTrackingResults(:,7)=                                                {Linewidth};
-
-                NewTrackingResults(:,8)=                                                TrackingCell(:,3);
-                NewTrackingResults(:,9)=                                                TrackingCell(:,4);
-                NewTrackingResults(:,10)=                                               TrackingCell(:,5);
-                NewTrackingResults(:,11)=                                               TrackingCell(:,6);
+                RowShiftsAbsolute=                          obj.DriftCorrection.RowShiftsAbsolute;
+                ColumnShiftsAbsolute=                       obj.DriftCorrection.ColumnShiftsAbsolute;
+                PlaneShiftsAbsolute=                        obj.DriftCorrection.PlaneShiftsAbsolute;
+                
+                assert(~isempty(obj.DriftCorrection.RowShiftsAbsolute), 'Drift correction object is incomplete. Please fix')
+                
+                Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', FieldNames));
+                Column_CentroidY=                           find(strcmp('CentroidY', FieldNames));
+                Column_CentroidX=                           find(strcmp('CentroidX', FieldNames));
+                Column_CentroidZ=                           find(strcmp('CentroidZ', FieldNames));
 
 
-                %% get coordinates for each track:
-                for SubtrackIndex=1:TotalNumberOfTracks % analyze either entire track or (non-overlapping) pieces (subtracks) of current track;
+                ListWithXCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidX));  
+                ListWithYCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidY));
+                ListWithZCoordinates=                       cell2mat(CoordinateListIn(:,Column_CentroidZ));
 
-                    waitbar(SubtrackIndex/TotalNumberOfTracks,h,'Creating tracks')
+                ListWithAbsoluteFrames=                     cell2mat(CoordinateListIn(:,Column_AbsoluteFrame));
 
-                    CoordinateListOfCurrentSubtrack=                                    TrackingCell{SubtrackIndex,2};
 
-                    NewTrackingResults{SubtrackIndex,3}=                          cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidX));
-                    NewTrackingResults{SubtrackIndex,4}=                          cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidY));
-                    NewTrackingResults{SubtrackIndex,5}=                          cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidZ));  
+
+                %% get drift-correction results:
+
+                ListWithFrames=                                     unique(ListWithAbsoluteFrames);
+                NumberOfUniqueFrames=                               length(ListWithFrames); 
+                for CurrentFrameDriftCorrection=1:NumberOfUniqueFrames
+
+                    CurrentFrameNumber=                             ListWithFrames(CurrentFrameDriftCorrection);
+
+                    RowShiftForCurrentFrame=                        RowShiftsAbsolute(CurrentFrameNumber);
+                    ColumnShiftForCurrentFrame=                     ColumnShiftsAbsolute(CurrentFrameNumber);
+                    PlaneShiftForCurrentFrame=                      PlaneShiftsAbsolute(CurrentFrameNumber);
+
+
+                    RelevantRows =                                  ListWithAbsoluteFrames==CurrentFrameNumber;
+
+                    ListWithXCoordinates(RelevantRows)=             ListWithXCoordinates(RelevantRows)+ColumnShiftForCurrentFrame;
+                    ListWithYCoordinates(RelevantRows)=             ListWithYCoordinates(RelevantRows)+RowShiftForCurrentFrame;
+                    ListWithZCoordinates(RelevantRows)=             ListWithZCoordinates(RelevantRows)+PlaneShiftForCurrentFrame;
 
                 end
 
 
-                TrackingListForMovieDisplay =                                       NewTrackingResults;
+                CoordinateListIn(:,Column_CentroidX)=               num2cell(ListWithXCoordinates);  
+                CoordinateListIn(:,Column_CentroidY)=               num2cell(ListWithYCoordinates);  
+                CoordinateListIn(:,Column_CentroidZ)=               num2cell(ListWithZCoordinates);  
+
+                
+                %% return coordinate list with drift correction back to object;
+                obj.ListWithCompleteMaskInformationWithDrift =      CoordinateListIn;
+
+        end
+
+     
+       
+        
+       
+         %% manage units of tracking-data:
+
+        function [obj] =                                                    convertDistanceUnitsIntoUm(obj)
+
+            OldDistanceUnits =                                              obj.CurrentDistanceUnits;              
+            obj.CurrentDistanceUnits =                                      'um';
+
+            MetaDataInternal =                                              obj.MetaData;
+
+            CoordinateList =                                                obj.ListWithCompleteMaskInformationWithDrift;
+            CoordinateListColumnTitles =                                    obj.FieldNamesOfMaskInformation;
+
+            switch OldDistanceUnits
+
+                case 'pixels'
 
 
-             
-             
-         end
-          
-        
-        
+                    ColumnWithCentroidZ =                                           strcmp(CoordinateListColumnTitles, 'CentroidZ');
+                    ColumnWitCentroidY =                                            strcmp(CoordinateListColumnTitles, 'CentroidY');
+                    ColumnWithCentroidX =                                           strcmp(CoordinateListColumnTitles, 'CentroidX');
+
+
+                    Meta_DistanceBetweenPixels_Z=                                   MetaDataInternal.EntireMovie.VoxelSizeZ*10^6;
+                    Meta_DistanceBetweenPixels_Y=                                   MetaDataInternal.EntireMovie.VoxelSizeY*10^6;
+                    Meta_DistanceBetweenPixels_X=                                   MetaDataInternal.EntireMovie.VoxelSizeX*10^6;
+
+                    CoordinateList_um=                                              CoordinateList;
+
+                    CoordinateList_um(:,ColumnWithCentroidX)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidX))*Meta_DistanceBetweenPixels_X);   % µm 
+                    CoordinateList_um(:,ColumnWitCentroidY)=                        num2cell(cell2mat(CoordinateList(:,ColumnWitCentroidY))*Meta_DistanceBetweenPixels_Y);  % µm
+                    CoordinateList_um(:,ColumnWithCentroidZ)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidZ))*Meta_DistanceBetweenPixels_Z);
+
+
+
+                    obj.ListWithCompleteMaskInformationWithDrift =                  CoordinateList_um;
+
+
+
+                case 'um'
+
+
+
+
+            end
+
+
+
+
+
+
+        end
+
+
+        function [obj] =                                                    convertTimeUnitsIntoSeconds(obj)
+
+
+            CoordinateListColumnTitles =                obj.FieldNamesOfMaskInformation;
+            MetaDataInternal =                          obj.MetaData;
+            CoordinateList =                            obj.ListWithCompleteMaskInformationWithDrift;
+            ColumnWithTime =                            strcmp(CoordinateListColumnTitles, 'AbsoluteFrame');
+
+            OldTimeUnits =                              obj.CurrentTimeUnits;
+
+            obj.CurrentTimeUnits =                      'seconds';
+
+            switch OldTimeUnits
+
+                case 'imageFrames'
+
+                    TimeInSeconds_FirstFrameZero=                                   MetaDataInternal.RelativeTimeStamps;
+
+                    CoordinateList_seconds =                                        CoordinateList;
+                    % time of each frame in seconds:
+                    CoordinateList_seconds(:,ColumnWithTime)=                       num2cell(TimeInSeconds_FirstFrameZero(cell2mat(CoordinateList(:,ColumnWithTime)),:));
+                    obj.ListWithCompleteMaskInformationWithDrift =                  CoordinateList_seconds;
+
+
+                case 'seconds'
+
+
+            end
+
+
+
+
+        end
+
+       
+       
+      
+         %% create tracklist-model to support visual display of tracks:
          
          
+
+        function [obj]=                                                     ConvertTrackingResultsIntoTrackCell(obj)
+
             
-        function [ TrackingCell ] =                                      ConvertCoordinateListIntoTrackingCell( obj, CoordinateList)
+            CoordinateList =                                    obj.ListWithCompleteMaskInformationWithDrift(obj.MaskFilter,:); 
+            ListWithFieldNames =                                obj.FieldNamesOfMaskInformation;
+
+            if isempty(CoordinateList)
+                TrackCellInternal =                                         cell(0,1);
+               
+
+            else
+                
+               
+                ColumnWithTrackID =                                         find(strcmp('TrackID', ListWithFieldNames));    
+                ColumnForAbsoluteFrames =                                   strcmp('AbsoluteFrame', ListWithFieldNames);
+
+                ListWithAllTrackIDs=                                        cell2mat(CoordinateList(:,ColumnWithTrackID));
+                ListWithAllAbsoluteFrameNumbers =                           cell2mat(CoordinateList(:,ColumnForAbsoluteFrames));
+
+                [ MapOfTrackList ] =                                        obj.CreateMapOfTrackList(ListWithAllTrackIDs, ListWithAllAbsoluteFrameNumbers);
+                
+                NumberOfFramesInSubTracksInternal=                          obj.NumberOfFramesInSubTracks;
+                JumpSize=                                                   obj.JumpSizeBetweenSubTracks;
+                [TrackStartRows, TrackEndRows,  ParentTrackID] =            obj.FindPositionsOfSubTracks( MapOfTrackList , NumberOfFramesInSubTracksInternal, JumpSize);
+
+                TrackCellInternal=                                          arrayfun(@(x,y) CoordinateList(x:y,:), TrackStartRows, TrackEndRows, 'UniformOutput', false);
+                   
+            end
+
+            obj.TrackCellFieldNames =                                   ListWithFieldNames;
+            obj.TrackCell =                                             TrackCellInternal;
+
+        end
+
+
+        
+        
+         
+        function [obj] =                                                    updateTrackingResults(obj)         
+
+
+            h=     waitbar(0, 'Creating tracks');
+
+            % convert tracking structure into cell matrix:    %   drift correction should be added only to first frame:
+            % first update the object
+
+            % [ CoordinateListWithoutDriftCorrection ] =                                     AddDriftCorrectionToCoordinateList( CoordinateListWithoutDriftCorrection, FieldNamesOfCoordinateList, StructureWithDriftAnalysisData );
+
+
+            % get subtracklocation within coordinate list and in loop convert each coordinate list to "tracking-result":
+            FilteredCoordinateList =                                                    obj.ListWithCompleteMaskInformation(obj.MaskFilter,:);
+            obj.TrackingCell =                                                          obj.ConvertCoordinateListIntoTrackingCell(FilteredCoordinateList);
+            obj.TrackingListForMovieDisplay =                                           obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCell, h);
+
+            FilteredCoordinateListWithDrift =                                           obj.ListWithCompleteMaskInformationWithDrift(obj.MaskFilter,:);
+            obj.TrackingCellWithDrift =                                                 obj.ConvertCoordinateListIntoTrackingCell(FilteredCoordinateListWithDrift);
+            obj.TrackingListWithDriftForMovieDisplay =                                  obj.convertTrackingCellIntoTrackListForMovie(obj.TrackingCellWithDrift, h);
+
+            close(h)
+
+        end
+
+
+    
+        function [ TrackingCell ] =                                         ConvertCoordinateListIntoTrackingCell( obj, CoordinateList)
         %CONVERTCOORDINATELISTINTOTRACKINGCELL Summary of this function goes here
         %   Detailed explanation goes here
 
             %% get relevant data from object:
-            FieldNames =                                obj.FieldNamesOfMaskInformation;
+            FieldNames =                                                obj.FieldNamesOfMaskInformation;
+            NumberOfFramesInSubTracksInternal=                          obj.NumberOfFramesInSubTracks;
+            JumpSize=                                                   obj.JumpSizeBetweenSubTracks;
+            TrackColorSchemeInternal =                                  obj.TrackColorScheme;
+
+
+            %% process data:
+            % first map subtrack positions in entire coordinate list:
             
-            Set_NumberOfFramesInAnalyzedTracks=         obj.NumberOfFramesInSubTracks;
-            JumpSize=                                   obj.JumpSizeBetweenSubTracks;
+            ColumnForAbsoluteFrames =                                   strcmp('AbsoluteFrame', FieldNames);
+           
+            ListWithAllTrackIDs=                                        cell2mat(CoordinateList(:,strcmp('TrackID', FieldNames)));
+            ListWithAllAbsoluteFrameNumbers =                           cell2mat(CoordinateList(:,ColumnForAbsoluteFrames));
 
-
-            %% process information:
+            [ MapOfTrackList ] =                                        obj.CreateMapOfTrackList(ListWithAllTrackIDs, ListWithAllAbsoluteFrameNumbers);
+            [TrackStartRows, TrackEndRows,  ParentTrackID] =            obj.FindPositionsOfSubTracks( MapOfTrackList , NumberOfFramesInSubTracksInternal, JumpSize);
             
-            [ Tracks_ListWithSourceTrackData ] =        obj.FindAllUniqueTrackIDsInside(FieldNames, CoordinateList);
-            [Start, End,  SourceTrackID] =              obj.FindPositionsOfSubTracks( Tracks_ListWithSourceTrackData , Set_NumberOfFramesInAnalyzedTracks, JumpSize);
+            % then use the subtrack positions to calculate key data from ;
+            CoordinateListPerSubTrack=                                  arrayfun(@(x,y) CoordinateList(x:y,:), TrackStartRows, TrackEndRows, 'UniformOutput', false);
+
+            [MinimumFrames]=                                            cellfun(@(x) min(cell2mat(x(:,ColumnForAbsoluteFrames))), CoordinateListPerSubTrack);
+            [MaximumFrames]=                                            cellfun(@(x) max(cell2mat(x(:,ColumnForAbsoluteFrames))), CoordinateListPerSubTrack);
+            [TotalFrames]=                                              cellfun(@(x) length(cell2mat(x(:,ColumnForAbsoluteFrames))), CoordinateListPerSubTrack);
+            [MissingFrames]=                                            (MaximumFrames-MinimumFrames+1)-TotalFrames;
             
-            StartCell=                                  num2cell(Start);
-            EndCell=                                    num2cell(End);
-            SourceTrackIDCell=                          num2cell(SourceTrackID);
-
-
-            %% transfer track IDs and coordinate lists into track cell;
-            NumberOfSubtracks=                          size(Start,1);
-            TrackListCell(1:NumberOfSubtracks,1)=       SourceTrackIDCell;
-            TrackListCell(1:NumberOfSubtracks,2)=       cellfun(@(x,y) CoordinateList(x:y,:), StartCell, EndCell, 'UniformOutput', false);
-
-
-
-            %% transfer track-range parameters and track color into track cell:
-             Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', FieldNames));
-            if isempty(Column_AbsoluteFrame)
-                Column_AbsoluteFrame= 2;
+            switch   TrackColorSchemeInternal
+        
+                case 'DefinedByFirstTrackedFrame'
+                        [ ListWithTrackColors ] =                                   obj.DefineColorInTrackList( MinimumFrames );
+                        
+                        
             end
-            TrackListCellSpecific=                      TrackListCell(:,2);
 
-            [MinimumFrames]=                            cellfun(@(x) min(cell2mat(x(:,Column_AbsoluteFrame))), TrackListCellSpecific);
-            [MaximumFrames]=                            cellfun(@(x) max(cell2mat(x(:,Column_AbsoluteFrame))), TrackListCellSpecific);
-            [TotalFrames]=                              cellfun(@(x) length(cell2mat(x(:,Column_AbsoluteFrame))), TrackListCellSpecific);
-            [MissingFrames]=                            (MaximumFrames-MinimumFrames+1)-TotalFrames;
-            [ ListWithTrackColors ] =                   obj.DefineColorInTrackList( MinimumFrames );
+            %% transfer data back ;
+            
+            if isempty(ParentTrackID)
+                TrackingCell =                                              cell(0,7);
+                
+            else
+                TrackingCell(:,1)=                                          num2cell(ParentTrackID);
+                TrackingCell(:,2)=                                          CoordinateListPerSubTrack;
+                TrackingCell(:,3)=                                          num2cell(MinimumFrames);
+                TrackingCell(:,4)=                                          num2cell(MaximumFrames);
+                TrackingCell(:,5)=                                          num2cell(TotalFrames);
+                TrackingCell(:,6)=                                          num2cell(MissingFrames);
+                TrackingCell(:,7)=                                          ListWithTrackColors;
+                
+            end
+            
+           
 
-            TrackListCell(:,3)=                         num2cell(MinimumFrames);
-            TrackListCell(:,4)=                         num2cell(MaximumFrames);
-            TrackListCell(:,5)=                         num2cell(TotalFrames);
-            TrackListCell(:,6)=                         num2cell(MissingFrames);
-            TrackListCell(:,7)=                         ListWithTrackColors;
-
-            TrackingCell =                              TrackListCell;
-
+            
         end
         
         
         
-        function [ ExportTrackInformation ] =                           FindAllUniqueTrackIDsInside(obj, FieldNamesOfMaskInformation, DataIn_ListWithCellMasks_Matrix)
-                %FINDALLUNIQUETRACKIDS get duration and start for all tracks
+          function [TrackingListForMovieDisplay] =                               convertTrackingCellIntoTrackListForMovie(obj, TrackingCell, h)
+
+                %% read object data:
+                NumberOfColumnsInMatrix=                                                        obj.NumberOfColumnsInTrackingMatrix;
+                Linewidth=                                                                      obj.DefaultTrackLineWidth;
                 
 
+                Column_CentroidY=                                                               strcmp('CentroidY', obj.FieldNamesOfMaskInformation);
+                Column_CentroidX=                                                               strcmp('CentroidX', obj.FieldNamesOfMaskInformation);
+                Column_CentroidZ=                                                               strcmp('CentroidZ', obj.FieldNamesOfMaskInformation);
+
+                
+                %% process ;
+                TotalNumberOfTracks=                                                             size(TrackingCell,1);
+                TrackingListForMovieDisplay=                                                     cell(TotalNumberOfTracks,NumberOfColumnsInMatrix);
+
+                TrackingListForMovieDisplay(:,1)=                                                num2cell(1:TotalNumberOfTracks);
+                TrackingListForMovieDisplay(:,2)=                                                TrackingCell(:,1);
+
+                TrackingListForMovieDisplay(:,6)=                                                TrackingCell(:,7); % color-code
+                TrackingListForMovieDisplay(:,7)=                                                {Linewidth};
+
+                TrackingListForMovieDisplay(:,8)=                                                TrackingCell(:,3); % 'FirstTrackedFrame'
+                TrackingListForMovieDisplay(:,9)=                                                TrackingCell(:,4); %  'LastTrackedFrame'
+                TrackingListForMovieDisplay(:,10)=                                               TrackingCell(:,5); %  'NumberOfTrackedFrames'
+                TrackingListForMovieDisplay(:,11)=                                               TrackingCell(:,6); %  'NumberOfFrameGaps'
+
+
+                %% each coordinate list (x, y, and z gets its own column):
+                for SubtrackIndex=1:TotalNumberOfTracks
+
+                    waitbar(SubtrackIndex/TotalNumberOfTracks,h,'Creating tracks')
+
+                    CoordinateListOfCurrentSubtrack=                                        TrackingCell{SubtrackIndex,2};
+
+                    TrackingListForMovieDisplay{SubtrackIndex,3}=                           cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidX));
+                    TrackingListForMovieDisplay{SubtrackIndex,4}=                           cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidY));
+                    TrackingListForMovieDisplay{SubtrackIndex,5}=                           cell2mat(CoordinateListOfCurrentSubtrack(:,Column_CentroidZ));  
+
+                end
+
+   
+         end
+          
+        
+        
+        function [ MapOfTrackList ] =                                       CreateMapOfTrackList(obj, ListWithAllTrackIDs, ListWithAllAbsoluteFrameNumbers)
+             
+            
+                %FINDALLUNIQUETRACKIDS get duration and start for all tracks
+                
                 %   export: column 1: number of frames per track
                 %           column 2: track ID
                 %           column 3: start frame (optional)
                 
-                
-
-                Column_TrackID=                             find(strcmp('TrackID', FieldNamesOfMaskInformation));
-
-                ListWithAllTrackIDs=                   cell2mat(DataIn_ListWithCellMasks_Matrix(:,Column_TrackID));
-
 
                 %% get unique track-IDs contained in tracking-results:
                 if isempty(ListWithAllTrackIDs)
-                    ExportTrackInformation=                   [];
+                    MapOfTrackList=                                 [];
                     return
                 end
 
-                if size(ListWithAllTrackIDs,2)<2
-                    ListWithAllTrackIDs(1:end,2)=  NaN;
-                end
 
                 %% get list with unique track-IDs:
                 Tracks_ListWithAllUniqueTrackIDs=                  unique(ListWithAllTrackIDs(:,1));
-                assert(min(isnan(Tracks_ListWithAllUniqueTrackIDs))==0, 'Non-track associated masks present. Please fix')
+                assert(min(isnan(Tracks_ListWithAllUniqueTrackIDs))==0, 'The analysis cannot be performed. Reason: some of the masks are NaN, i.e. they have no assigned track')
 
-
-
+                
                 %% summarize track and subtrack-information:
-                ExportTrackInformation=                         nan(length(Tracks_ListWithAllUniqueTrackIDs),3);
+                MapOfTrackList=                                     nan(length(Tracks_ListWithAllUniqueTrackIDs),3);
                 ExportRow=  0;
                 for CurrentTrackID= Tracks_ListWithAllUniqueTrackIDs' 
 
@@ -496,20 +559,31 @@ classdef PMTrackingAnalysis
                     FirstFrameMatchingTrack=                        find(RowsAssociatedWithCurrentTrackID==1, 1, 'first');
                     LastFrameMatchingTrack=                         find(RowsAssociatedWithCurrentTrackID==1, 1, 'last');
 
-                    ExportRow=                                      ExportRow+ 1;
-                    ExportTrackInformation(ExportRow,1)=            TotalNumberOfFramesMatchingTrackID;
-                    ExportTrackInformation(ExportRow,2)=            CurrentTrackID;
-                    ExportTrackInformation(ExportRow,3)=            FirstFrameMatchingTrack;
-                    ExportTrackInformation(ExportRow,4)=            LastFrameMatchingTrack;
+                    ExportRow=                                      ExportRow + 1;
+                    MapOfTrackList(ExportRow,1)=                    TotalNumberOfFramesMatchingTrackID;
+                    MapOfTrackList(ExportRow,2)=                    CurrentTrackID;
+                    MapOfTrackList(ExportRow,3)=                    FirstFrameMatchingTrack;
+                    MapOfTrackList(ExportRow,4)=                    LastFrameMatchingTrack;
 
                 end
 
+                
+                MapOfTrackList(:,5)=                                MapOfTrackList(:,4) - MapOfTrackList(:,3) + 1;
 
-                ExportTrackInformation(:,5)=        ExportTrackInformation(:,4)-ExportTrackInformation(:,3)+1;
-                TrackDurationConsistent=            ExportTrackInformation(:,1)==ExportTrackInformation(:,5);  
-                TotalNumberOfTracks=                size(TrackDurationConsistent,1);
-                NumberOfConsistentTracks=           sum(TrackDurationConsistent);
-                assert(TotalNumberOfTracks==NumberOfConsistentTracks, 'Gaps between consecutive tracks. Check whether multiple movies are merged')
+                
+                %% this is a test for whether track numbers follow certain guidelines;
+                % if guidelines are not met: use throw an error:
+                % it will be possible to use an alternative approach for this;
+                % the guidelines are very specific and may not catch all constituencies;
+                % consider optimization, potentially by using ListWithAllAbsoluteFrameNumbers to test track consistencies (e.g. are there mutliple matches for trackIDs for an identical time-frame;
+                DifferenceBetweenFirstAndLastFrame =                        MapOfTrackList(:,5);
+                TotalNumberOfFramesInTrack =                                MapOfTrackList(:,1);
+                
+                NumberOfFramesAndDifferenceBetweenFirstAndLastEqual=        DifferenceBetweenFirstAndLastFrame == TotalNumberOfFramesInTrack;  
+                
+                NumberOfTracks=                                             size(NumberOfFramesAndDifferenceBetweenFirstAndLastEqual,1);
+                NumberOfTracksWithMatchingFrames=                           sum(NumberOfFramesAndDifferenceBetweenFirstAndLastEqual);
+                assert(NumberOfTracks==NumberOfTracksWithMatchingFrames, 'Gaps between consecutive tracks. Check whether multiple movies are merged')
 
 
         end
@@ -517,92 +591,98 @@ classdef PMTrackingAnalysis
 
         
                
-        function [ Start, End,  ExpTrackID, StartFrameOfOriTrack] =     FindPositionsOfSubTracks(obj, Tracks_ListWithSourceTrackData, Set_NumberOfFramesInAnalyzedTracks, JumpSize )
+        function [ startPositions, endPositions,  parentTrackIDs, parentStartFrames] =     FindPositionsOfSubTracks(obj, MapOfTrackList, NumberOfFramesInSubTracksInternal, JumpSize )
 
+            
                 %FINDPOSITIONSOFSUBTRACKS find start and end rows of subtracks
                 %   Detailed explanation goes here
 
                 %% default return values:
-                    Start=                  [];
-                    End=                    [];
-                    ExpTrackID=             [];
-                    StartFrameOfOriTrack=   [];
+                    startPositions=                     [];
+                    endPositions=                       [];
+                    parentTrackIDs=                             [];
+                    parentStartFrames=                   [];
 
 
-                Tracks_TotalNumberOfOriginalTracks=                 size(Tracks_ListWithSourceTrackData,1);
-                if Tracks_TotalNumberOfOriginalTracks== 0
+                TotalNumberOfParentTracks=                              size(MapOfTrackList,1);
+                if TotalNumberOfParentTracks== 0
                     return
                 end
 
 
                  %% for each track: set number of desired subtrack duration and jumpsize;
-                if isnan(Set_NumberOfFramesInAnalyzedTracks) ||  Set_NumberOfFramesInAnalyzedTracks== 0% if set duration is "NaN": analyzed each experimental track in its entirety
-                    SubTrackDurationForEachOriginalTrack(1:Tracks_TotalNumberOfOriginalTracks,1)=  Tracks_ListWithSourceTrackData(:,1);
+                if isnan(NumberOfFramesInSubTracksInternal) ||  NumberOfFramesInSubTracksInternal== 0% if set duration is "NaN": analyzed each experimental track in its entirety
+                    SubTrackDurationForEachOriginalTrack(1:TotalNumberOfParentTracks,1)=  MapOfTrackList(:,1);
+                    
+                    
+                    
                 else 
-                    SubTrackDurationForEachOriginalTrack(1:Tracks_TotalNumberOfOriginalTracks,1)=  Set_NumberOfFramesInAnalyzedTracks;
+                    SubTrackDurationForEachOriginalTrack(1:TotalNumberOfParentTracks,1)=  NumberOfFramesInSubTracksInternal;
                 end
 
                 if isnan(JumpSize) || JumpSize== 0
-                     JumpStepsBetweenSubTracks(1:Tracks_TotalNumberOfOriginalTracks,1)=  Tracks_ListWithSourceTrackData(:,1);
+                    if isnan(NumberOfFramesInSubTracksInternal) ||  NumberOfFramesInSubTracksInternal== 0
+                        JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1) =  MapOfTrackList(:,1);
+                    else
+                        JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1) = NumberOfFramesInSubTracksInternal;
+                    end
                 else
-                    JumpStepsBetweenSubTracks(1:Tracks_TotalNumberOfOriginalTracks,1)=  JumpSize;
+                    JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1)=  JumpSize;
                 end
 
 
-                clear Tracks_NumberOfExperimentalTracks
+                %% find start- and end rows for all subtracks
+                ListWithEndRowsForAllParenTracks=                   cumsum(MapOfTrackList(:,1));
+                ListWithStartRowsForAllParentTracks=                ListWithEndRowsForAllParenTracks-MapOfTrackList(:,1)+1;
 
+                StartAndEndPositionOfParentTracks=                  cell(size(ListWithStartRowsForAllParentTracks,1),1);
+                for ParentTrackIndex=1:TotalNumberOfParentTracks
 
-                %% find start- and endrow
-                ListWithEndRowOfEachOriginalTrack=            cumsum(Tracks_ListWithSourceTrackData(:,1));
-                ListWithStartRowOfEachOriginalTrack=          ListWithEndRowOfEachOriginalTrack-Tracks_ListWithSourceTrackData(:,1)+1;
+                    StartRowOfOriginalTrack=                        ListWithStartRowsForAllParentTracks(ParentTrackIndex);
+                    EndRowOfOriginalTrack=                          ListWithEndRowsForAllParenTracks(ParentTrackIndex);
 
-                StartAndEndPositionOfAnalyticTracks=          cell(size(ListWithStartRowOfEachOriginalTrack,1),1);
-                for CurrentOriginalTrack=1:Tracks_TotalNumberOfOriginalTracks
+                    CurrentFramesPerSubTrack=                       SubTrackDurationForEachOriginalTrack(ParentTrackIndex);
 
-                    StartRowOfOriginalTrack=                    ListWithStartRowOfEachOriginalTrack(CurrentOriginalTrack);
-                    EndRowOfOriginalTrack=                      ListWithEndRowOfEachOriginalTrack(CurrentOriginalTrack);
+                    CurrentJumpSteps=                               JumpStepsBetweenSubTracks(ParentTrackIndex);
 
-                    CurrentFramesPerSubTrack=                   SubTrackDurationForEachOriginalTrack(CurrentOriginalTrack);
+                    StartRowsOfAllSubtracks=                        (StartRowOfOriginalTrack:CurrentJumpSteps:EndRowOfOriginalTrack-CurrentFramesPerSubTrack+1)';
+                    EndRowsOfAllSubTracks=                          (StartRowOfOriginalTrack+CurrentFramesPerSubTrack-1:CurrentJumpSteps:EndRowOfOriginalTrack)';
 
-                    CurrentJumpSteps=                           JumpStepsBetweenSubTracks(CurrentOriginalTrack);
+                    clear ListWithParentTrackIDs ListWithStartFramesOfParentTrack
+                    ListWithParentTrackIDs(1:length(EndRowsOfAllSubTracks),1)=                          MapOfTrackList(ParentTrackIndex,2);
+                    parentStartFrames(1:length(EndRowsOfAllSubTracks),1)=                MapOfTrackList(ParentTrackIndex,3);
 
-                    StartRowsOfSubTrack=                        (StartRowOfOriginalTrack:CurrentJumpSteps:EndRowOfOriginalTrack-CurrentFramesPerSubTrack+1)';
-                    EndRowsOfSubTrack=                          (StartRowOfOriginalTrack+CurrentFramesPerSubTrack-1:CurrentJumpSteps:EndRowOfOriginalTrack)';
-
-                    clear DesignationOfExpTrack StartFrameOfOriTrack
-                    DesignationOfExpTrack(1:length(EndRowsOfSubTrack),1)=       Tracks_ListWithSourceTrackData(CurrentOriginalTrack,2);
-                    StartFrameOfOriTrack(1:length(EndRowsOfSubTrack),1)=        Tracks_ListWithSourceTrackData(CurrentOriginalTrack,3);
-
-                    %% ensure that start and endrows have equal length
-                    if length(StartRowsOfSubTrack)> length(EndRowsOfSubTrack)
-                        StartRowsOfSubTrack(end)= [];
+                    % if an "extra" start position was found, remove;
+                    if length(StartRowsOfAllSubtracks)> length(EndRowsOfAllSubTracks)
+                        StartRowsOfAllSubtracks(end)= [];
                     end
 
-                    StartAndEndPositionOfAnalyticTracks{CurrentOriginalTrack,1}=  StartRowsOfSubTrack;
-                    StartAndEndPositionOfAnalyticTracks{CurrentOriginalTrack,2}=  EndRowsOfSubTrack;
-                    StartAndEndPositionOfAnalyticTracks{CurrentOriginalTrack,3}=  DesignationOfExpTrack;
-                    StartAndEndPositionOfAnalyticTracks{CurrentOriginalTrack,4}=  StartFrameOfOriTrack;
+                    %% ensure that start and endrows have equal length
+                    StartAndEndPositionOfParentTracks{ParentTrackIndex,1}=      StartRowsOfAllSubtracks;
+                    StartAndEndPositionOfParentTracks{ParentTrackIndex,2}=      EndRowsOfAllSubTracks;
+                    StartAndEndPositionOfParentTracks{ParentTrackIndex,3}=      ListWithParentTrackIDs;
+                    StartAndEndPositionOfParentTracks{ParentTrackIndex,4}=      parentStartFrames;
 
                 end
 
 
-                StartAndEndPositionOfAnalyticTracks(cellfun('isempty',StartAndEndPositionOfAnalyticTracks(:,1)),:)=[];
+                StartAndEndPositionOfParentTracks(cellfun('isempty',StartAndEndPositionOfParentTracks(:,1)),:)=[];
 
                 %% convert results from cell to matrix format:
                 % each row contains "position info" or "parent track" ID;
-                if ~isempty(StartAndEndPositionOfAnalyticTracks)
+                if ~isempty(StartAndEndPositionOfParentTracks)
 
-                    Start=                              StartAndEndPositionOfAnalyticTracks(:,1);
-                    Start=                              vertcat(Start{:});
+                    startPositions=                              StartAndEndPositionOfParentTracks(:,1);
+                    startPositions=                              vertcat(startPositions{:});
 
-                    End=                                StartAndEndPositionOfAnalyticTracks(:,2);
-                    End=                                vertcat(End{:});
+                    endPositions=                                StartAndEndPositionOfParentTracks(:,2);
+                    endPositions=                                vertcat(endPositions{:});
 
-                    ExpTrackID=                         StartAndEndPositionOfAnalyticTracks(:,3);
-                    ExpTrackID=                         vertcat(ExpTrackID{:});
+                    parentTrackIDs=                                     StartAndEndPositionOfParentTracks(:,3);
+                    parentTrackIDs=                                     vertcat(parentTrackIDs{:});
 
-                    StartFrameOfOriTrack=               StartAndEndPositionOfAnalyticTracks(:,4);
-                    StartFrameOfOriTrack=               vertcat(StartFrameOfOriTrack{:});
+                    parentStartFrames=                           StartAndEndPositionOfParentTracks(:,4);
+                    parentStartFrames=                           vertcat(parentStartFrames{:});
 
 
                 end
@@ -611,26 +691,26 @@ classdef PMTrackingAnalysis
 
         
 
-        function [ ListWithTrackColors ] =                              DefineColorInTrackList(obj, Start )
+        function [ ListWithTrackColors ] =                                      DefineColorInTrackList(obj, Start )
             %DEFINECOLORINTRACKLIST Summary of this function goes here
             %   Detailed explanation goes here
 
-            UniqueStarts=                       unique(Start);
-            ColorOptions=                       { 'w',  'g', 'b','r',  'm', 'c', 'w',  'b','r', 'g', 'm', 'c'};
+            UniqueStarts=                                       unique(Start);
+            ColorOptions=                                       { 'w',  'g', 'b','r',  'm', 'c', 'w',  'b','r', 'g', 'm', 'c'};
 
-            NumberOfTracks=                     size(Start,1);
-            ListWithTrackColors=                cell(NumberOfTracks,1);
+            NumberOfTracks=                                     size(Start,1);
+            ListWithTrackColors=                                cell(NumberOfTracks,1);
 
-            NumberOfDifferentStartPositions=    length(UniqueStarts);
-            NumberOfDifferentColors=            length(ColorOptions);
+            NumberOfDifferentStartPositions=                    length(UniqueStarts);
+            NumberOfDifferentColors=                            length(ColorOptions);
             for StartIndex=1:NumberOfDifferentStartPositions
 
-                ColorIndex=                     mod(StartIndex-1, NumberOfDifferentColors)+1;
-                Color=                          ColorOptions{ColorIndex};
-                CurrentStartPosition=           UniqueStarts(StartIndex);
-                RelevantRows=                   Start==    CurrentStartPosition; 
+                ColorIndex=                                     mod(StartIndex-1, NumberOfDifferentColors)+1;
+                Color=                                          ColorOptions{ColorIndex};
+                CurrentStartPosition=                           UniqueStarts(StartIndex);
+                RelevantRows=                                   Start==    CurrentStartPosition; 
 
-                ListWithTrackColors(RelevantRows,:)=  {Color};
+                ListWithTrackColors(RelevantRows,:)=            {Color};
 
             end
 
@@ -638,11 +718,64 @@ classdef PMTrackingAnalysis
         end
 
 
+           
+     
+       
+        
             
-        function [ CoordinateList ] =                                   AddDriftCorrectionToCoordinateList(CoordinateList, FieldNames, StructureWithDriftAnalysisData )
-            %ADDDRIFTCORRECTIONTOCOORDINATELIST Summary of this function goes here
-            %   Detailed explanation goes here
+   
+       
+        
+        %% extract speed information from TrackCell:
+        function [speeds] =                                                 getAverageTrackSpeeds(obj)
+            
+            
+            inputTrackCell = obj.TrackCell;
+            
+        
+            
+            deleteRows =        cellfun(@(x) size(x,1)<=1,inputTrackCell );
+            
+            inputTrackCell(deleteRows,:) =  [];
+            
+            
+             speeds = cellfun(@(x) obj.getAverageTrackSpeed(x),  inputTrackCell);
+           
+            
+        end
+        
 
+        
+        function speed =                getAverageTrackSpeed(obj, Track)
+            
+          if size(cell2mat(Track(:,3)),1) <= 1
+              speed = zeros(0,1);
+              
+          else
+            XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
+            YDistances =                    sum(abs(diff(cell2mat(Track(:,4)))));
+            ZDistances =                    sum(abs(diff(cell2mat(Track(:,5)))));
+
+            Distance3DUm =                  sqrt(XDistances^2 + YDistances^2 + ZDistances^2);
+            TotalTimeSeconds =              max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
+
+            speed =                         Distance3DUm/TotalTimeSeconds*60;
+
+              
+              
+          end
+            
+            
+        end
+        
+        
+      
+        
+        %% currently unused: consider deletion:
+        
+             function [ CoordinateList ] =                                           AddDriftCorrectionToCoordinateList(CoordinateList, FieldNames, StructureWithDriftAnalysisData )
+            %ADDDRIFTCORRECTIONTOCOORDINATELIST Summary of this function goes here
+            %   currently not in use: consider deletion:
             
                 %% get parameters for each column:
 
@@ -693,255 +826,6 @@ classdef PMTrackingAnalysis
         end
 
 
-        
-        function [obj] =                                            convertDistanceUnitsIntoUm(obj)
-            
-            OldDistanceUnits =                                  obj.CurrentDistanceUnits;              
-            obj.CurrentDistanceUnits =                  'um';
-            
-            MetaDataInternal =                          obj.MetaData;
-            
-            CoordinateList =                            obj.ListWithCompleteMaskInformationWithDrift;
-            
-            CoordinateListColumnTitles =                                    obj.FieldNamesOfMaskInformation;
-            
-            switch OldDistanceUnits
-                
-                case 'pixels'
-                    
-
-                    ColumnWithCentroidZ =                                           strcmp(CoordinateListColumnTitles, 'CentroidZ');
-                    ColumnWitCentroidY =                                            strcmp(CoordinateListColumnTitles, 'CentroidY');
-                    ColumnWithCentroidX =                                           strcmp(CoordinateListColumnTitles, 'CentroidX');
-
-
-                    Meta_DistanceBetweenPixels_Z=                                   MetaDataInternal.EntireMovie.VoxelSizeZ*10^6;
-                    Meta_DistanceBetweenPixels_Y=                                   MetaDataInternal.EntireMovie.VoxelSizeY*10^6;
-                    Meta_DistanceBetweenPixels_X=                                   MetaDataInternal.EntireMovie.VoxelSizeX*10^6;
-
-                    CoordinateList_um=                                              CoordinateList;
-
-                    CoordinateList_um(:,ColumnWithCentroidX)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidX))*Meta_DistanceBetweenPixels_X);   % µm 
-                    CoordinateList_um(:,ColumnWitCentroidY)=                        num2cell(cell2mat(CoordinateList(:,ColumnWitCentroidY))*Meta_DistanceBetweenPixels_Y);  % µm
-                    CoordinateList_um(:,ColumnWithCentroidZ)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidZ))*Meta_DistanceBetweenPixels_Z);
-
-                    
-
-                    obj.ListWithCompleteMaskInformationWithDrift =                  CoordinateList_um;
-                    
-                    obj.ListWithFilteredMaskInformationWithDrift =                  obj.ListWithCompleteMaskInformationWithDrift;
-      
-                    
-                case 'um'
-                
-                
-                
-                
-            end
-            
-            
-            
-            
-            
-            
-        end
-        
-      
-
-        function [obj] =                   convertTimeUnitsIntoSeconds(obj)
-            
-
-            CoordinateListColumnTitles =                obj.FieldNamesOfMaskInformation;
-            MetaDataInternal =                          obj.MetaData;
-            CoordinateList =                            obj.ListWithCompleteMaskInformationWithDrift;
-            ColumnWithTime =                            strcmp(CoordinateListColumnTitles, 'AbsoluteFrame');
-
-            OldTimeUnits =                              obj.CurrentTimeUnits;
-            
-            obj.CurrentTimeUnits =                      'seconds';
-            
-            switch OldTimeUnits
-                
-                
-                case 'imageFrames'
-                    
-                    TimeInSeconds_FirstFrameZero=                                   MetaDataInternal.RelativeTimeStamps;
-
-                    
-                    CoordinateList_seconds =                                    CoordinateList;
-                    % time of each frame in seconds:
-                    CoordinateList_seconds(:,ColumnWithTime)=                            num2cell(TimeInSeconds_FirstFrameZero(cell2mat(CoordinateList(:,ColumnWithTime)),:));
-
-                    obj.ListWithCompleteMaskInformationWithDrift =                   CoordinateList_seconds;
-
-                       obj.ListWithFilteredMaskInformationWithDrift =                obj.ListWithCompleteMaskInformationWithDrift;
-                       
-                case 'seconds'
-                
-                
-            end
-
-
-            
-  
-        end
-        
-        function [speeds] =     getAverageTrackSpeeds(obj)
-            
-            
-            if ~isempty(obj.TrackCell)
-                speeds = cellfun(@(x) obj.getAverageTrackSpeed(x),  obj.TrackCell);
-            else
-                speeds = zeros(0,1);
-            end
-            
-            
-        end
-        
-        
-        
-         function [speeds] =     getInstantSpeedsForTracks(obj)
-            
-            
-            if ~isempty(obj.TrackCell)
-                speeds = cellfun(@(x) obj.getInstantSpeedsForTrack(x),  obj.TrackCell, 'UniformOutput', false);
-            else
-                speeds = zeros(0,1);
-            end
-            
-            
-         end
-        
-         function [speeds] =     getInstant2DSpeedsForTracks(obj)
-            
-            
-            if ~isempty(obj.TrackCell)
-                speeds = cellfun(@(x) obj.getInstant2DSpeedsForTrack(x),  obj.TrackCell, 'UniformOutput', false);
-            else
-                speeds = zeros(0,1);
-            end
-            
-            
-        end
-        
-        
-        
-        function [speeds] =     getSpeedsForSubtracks(obj, Duration)
-            
-             if ~isempty(obj.TrackCell)
-                speeds = cellfun(@(x) obj.getAverageSpeedOfTrackChildren(x, Duration),  obj.TrackCell, 'UniformOutput', false);
-            else
-                speeds = zeros(0,1);
-            end
- 
-        end
-        
-        function [speeds] =     getInstantSpeedsForTrack(obj,Track)
-            
-            XDistances =   abs(diff(cell2mat(Track(:,3))));
-            YDistances =   abs(diff(cell2mat(Track(:,4))));
-            ZDistances =   abs(diff(cell2mat(Track(:,5))));
-            
-            TimeIntervals =  abs(diff(cell2mat(Track(:,2))));
-            
-            Distances3DUm =    arrayfun(@(x,y,z) sqrt(x^2 + y^2 + z^2), XDistances,YDistances,ZDistances);
-            
-            %TotalTimeSeconds =     arrayfun(@(x) max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
-            
-            speeds = Distances3DUm./TimeIntervals*60;
-            
-        end
-        
-        function [speeds] =     getInstant2DSpeedsForTrack(obj,Track)
-            
-            XDistances =   abs(diff(cell2mat(Track(:,3))));
-            YDistances =   abs(diff(cell2mat(Track(:,4))));
-            ZDistances =   abs(diff(cell2mat(Track(:,5))));
-            
-            TimeIntervals =  abs(diff(cell2mat(Track(:,2))));
-            
-            Distances3DUm =    arrayfun(@(x,y,z) sqrt(x^2 + y^2 ), XDistances,YDistances,ZDistances);
-            
-            %TotalTimeSeconds =     arrayfun(@(x) max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
-            
-            speeds = Distances3DUm./TimeIntervals*60;
-            
-        end
-        
-        function speed = getAverageTrackSpeed(obj, Track)
-            
-            
-            XDistances =   sum(abs(diff(cell2mat(Track(:,3)))));
-            YDistances =   sum(abs(diff(cell2mat(Track(:,4)))));
-            ZDistances =   sum(abs(diff(cell2mat(Track(:,5)))));
-            
-            Distance3DUm =    sqrt(XDistances^2 + YDistances^2 + ZDistances^2);
-            
-            TotalTimeSeconds =     max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
-            
-            speed = Distance3DUm/TotalTimeSeconds*60;
-            
-        end
-        
-        
-         function speedList = getAverageSpeedOfTrackChildren(obj, Track,Duration)
-            
-             TotalDuration =    size(Track,1);
-             
-             
-             NumberOfSubtracks =    length( TotalDuration/Duration);
-             
-             speedList =        nan(NumberOfSubtracks,1);
-             
-             shift =                1;
-             
-             for Index = 1:TotalDuration/Duration
-                 
-                 TrackOfInterest =   Track(shift:shift+Duration-1,:);
-                 
-                 
-                 zList =        cell2mat(TrackOfInterest(:,5));
-                 
-                 zList =        obj.eliminateZOutLiers(zList);
-             
-                 
-                XDistances =   sum(abs(diff(cell2mat(TrackOfInterest(:,3)))));
-                YDistances =   sum(abs(diff(cell2mat(TrackOfInterest(:,4)))));
-                ZDistances =   sum(abs(diff(zList)));
-
-                Distance3DUm =    sqrt(XDistances^2 + YDistances^2  + ZDistances^2);
-
-                TotalTimeSeconds =     max(cell2mat(TrackOfInterest(:,2))) - min(cell2mat(TrackOfInterest(:,2))) ;
-
-                speed = Distance3DUm/TotalTimeSeconds*60;
-                
-                speedList(Index,1) =    speed;
-                shift = shift + Duration;
-                 
-                 
-             end
-            
-           
-            
-         end
-        
-         function list = eliminateZOutLiers(obj,list)
-             
-             numberOfPoints = length(list);
-             
-             for current = 2:numberOfPoints-1
-                 
-                 
-                 
-                 
-                 
-             end
-             
-             
-             
-         end
-        
-        
 
           
         

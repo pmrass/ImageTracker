@@ -865,7 +865,7 @@ classdef PMMovieController < handle
          function [obj] =       filterTrackModelByTrackID(obj, trackIDs)
              
              
-             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.filterTracksByTrackIDs(trackIDs);
+             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.addFilterForTrackIds(trackIDs);
              
          end
          
@@ -873,18 +873,18 @@ classdef PMMovieController < handle
          function [obj] =       filterTrackModelByFrame(obj, frames)
              
              
-             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.filterTracksByTimeFrames(frames);
+             obj.LoadedMovie.TrackingAnalysis = obj.LoadedMovie.TrackingAnalysis.addFilterForTrackFrames(frames);
              
          end
          
          function [obj] =       createSegmentationWithPlaneFilter(obj)
              
-            obj.SegmentationOfCurrentFramePlaneFilter =                    obj.SegmentationOfCurrentFrame;
+            obj.SegmentationOfCurrentFramePlaneFilter =                             obj.SegmentationOfCurrentFrame;
              
-            pixelColumn =                                                   obj.ColumnWithPixelList;  
-            SelectedPlane =                                                 obj.LoadedMovie.SelectedPlanes(1);
-            [~, ~, SelectedPlaneWithoutDriftCorrection] =                   obj.removeDriftCorrection(0,0,SelectedPlane);
-            FilteredPixelLists =                                            cellfun(@(x) obj.filterPixelListForPlane(x,SelectedPlaneWithoutDriftCorrection), obj.SegmentationOfCurrentFrame(:,pixelColumn), 'UniformOutput', false);
+            pixelColumn =                                                           obj.ColumnWithPixelList;  
+            SelectedPlane =                                                         obj.LoadedMovie.SelectedPlanes(1);
+            [~, ~, SelectedPlaneWithoutDriftCorrection] =                           obj.removeDriftCorrection(0,0,SelectedPlane);
+            FilteredPixelLists =                                                    cellfun(@(x) obj.filterPixelListForPlane(x,SelectedPlaneWithoutDriftCorrection), obj.SegmentationOfCurrentFrame(:,pixelColumn), 'UniformOutput', false);
             
             obj.SegmentationOfCurrentFramePlaneFilter(:,pixelColumn) =               FilteredPixelLists;
             
