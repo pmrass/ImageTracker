@@ -13,7 +13,7 @@ classdef PMTrackingAnalysis
         %                                         'I', 'PrincipalI_1', 'PrincipalI_2',  'PrincipalI_3','UX_MinI', 'UY_MinI', 'UZ_MinI', 'PolarityIndex'};
         % 
 
-        
+
         % this contains the entire tracking information and should be used primarily for reading data, units may be changed;
         
         CurrentDistanceUnits =                          'pixels';
@@ -28,18 +28,23 @@ classdef PMTrackingAnalysis
         DriftCorrection
         MetaData
         
-        % track cell is created by original movie data and its main use is create track-specific quantitative data:
+        %% track cell is created by original movie data and its main use is create track-specific quantitative data:
+        
+        % this is for subtrack generation: you can use it to get
+        % shorter "track-children" from longer source tracks;
+        NumberOfFramesInSubTracks =                     NaN % this means that the "entire" tracks whill be generated (not subtracks);
+        JumpSizeBetweenSubTracks =                      NaN % how much "overlap" between subtracks is wanted
+       
+        
+        % TrackCell is used to allow quantification of parameters per track (or subtrack);
         TrackCell =                                     cell(0,1)
         TrackCellFieldNames
         NumberOfColumnsInTrackingMatrix =               12
         
-        % this is for subtrack generation: not used effectively at the moment, need to incoroporate this better;
-        NumberOfFramesInSubTracks =                     NaN % this means that the "entire" tracks whill be generated (not subtracks);
-        JumpSizeBetweenSubTracks =                      NaN % how much "overlap" between subtracks is wanted
         
         
         
-        %%  TrackingCell and TrackingListForMovieDisplay are quite similar and are here mostly for historic reasons;
+        %  TrackingCell and TrackingListForMovieDisplay are quite similar and are here mostly for historic reasons;
         % nevertheless, leave for consistency, just prevent extensive proliferation of permanent properties in the future;
         % their main use is primariy for visual display of track data:
         ColumnsForTrackingCell =                        {'ParentTrackID', 'SubtrackCoordinates', ... 
@@ -195,8 +200,7 @@ classdef PMTrackingAnalysis
          
          %% manage drift correction:
          
-         
-          function [obj] =                                  createDriftCorrectedMaskInformation(obj)
+          function [obj] =                                                  createDriftCorrectedMaskInformation(obj)
 
               
                 %% read data:
@@ -752,6 +756,7 @@ classdef PMTrackingAnalysis
               speed = zeros(0,1);
               
           else
+              
             XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
             YDistances =                    sum(abs(diff(cell2mat(Track(:,4)))));
             ZDistances =                    sum(abs(diff(cell2mat(Track(:,5)))));
