@@ -40,11 +40,12 @@ classdef PMTrackingAnalysis
         TrackCell =                                     cell(0,1)
         TrackCellFieldNames
         NumberOfColumnsInTrackingMatrix =               12
+        NumberOfRandomizations =                        30
         
         
         
         
-        %  TrackingCell and TrackingListForMovieDisplay are quite similar and are here mostly for historic reasons;
+        %%  TrackingCell and TrackingListForMovieDisplay are quite similar and are here mostly for historic reasons;
         % nevertheless, leave for consistency, just prevent extensive proliferation of permanent properties in the future;
         % their main use is primariy for visual display of track data:
         ColumnsForTrackingCell =                        {'ParentTrackID', 'SubtrackCoordinates', ... 
@@ -199,7 +200,6 @@ classdef PMTrackingAnalysis
          end
          
          %% manage drift correction:
-         
           function [obj] =                                                  createDriftCorrectedMaskInformation(obj)
 
               
@@ -261,8 +261,7 @@ classdef PMTrackingAnalysis
 
      
        
-        
-       
+  
          %% manage units of tracking-data:
 
         function [obj] =                                                    convertDistanceUnitsIntoUm(obj)
@@ -389,6 +388,29 @@ classdef PMTrackingAnalysis
             obj.TrackCellFieldNames =                                   ListWithFieldNames;
             obj.TrackCell =                                             TrackCellInternal;
 
+        end
+        
+        
+        function trackCellChildren = getTrackChildrenFromTrackCell(obj, NumberOfFramesInSubtracks_Straightness, JumpSize)
+            
+            TrackMap  =                                                         cellfun(@(x) obj.CreateMapOfTrackList(cell2mat(x(:,1)),0), obj.TrackCell, 'UniformOutput', false);
+            [ TrackStartRows, TrackEndRows,  ~, ~] =                            cellfun(@(x) obj.FindPositionsOfSubTracks(x, NumberOfFramesInSubtracks_Straightness, JumpSize ), TrackMap,  'UniformOutput', false);
+            trackCellChildren =                                                 cell(length(TrackStartRows),1);
+
+            for ParentTrackIndex = 1:length(TrackStartRows)
+
+                CurrentCoordinates =                                        obj.TrackCell{ParentTrackIndex,1};      
+                CurrentStartRows =                                          TrackStartRows{  ParentTrackIndex,1};
+                CurrentEndRows =                                            TrackEndRows{ParentTrackIndex,1};
+                
+                CoordinateListPerSubTrack=                                  arrayfun(@(startRow,endRow) CurrentCoordinates(startRow:endRow,:), CurrentStartRows,CurrentEndRows,  'UniformOutput', false);
+
+                trackCellChildren{ParentTrackIndex,1} =                     CoordinateListPerSubTrack;
+
+            end
+            
+            
+            
         end
 
 
@@ -617,9 +639,7 @@ classdef PMTrackingAnalysis
                  %% for each track: set number of desired subtrack duration and jumpsize;
                 if isnan(NumberOfFramesInSubTracksInternal) ||  NumberOfFramesInSubTracksInternal== 0% if set duration is "NaN": analyzed each experimental track in its entirety
                     SubTrackDurationForEachOriginalTrack(1:TotalNumberOfParentTracks,1)=  MapOfTrackList(:,1);
-                    
-                    
-                    
+                       
                 else 
                     SubTrackDurationForEachOriginalTrack(1:TotalNumberOfParentTracks,1)=  NumberOfFramesInSubTracksInternal;
                 end
@@ -628,7 +648,7 @@ classdef PMTrackingAnalysis
                     if isnan(NumberOfFramesInSubTracksInternal) ||  NumberOfFramesInSubTracksInternal== 0
                         JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1) =  MapOfTrackList(:,1);
                     else
-                        JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1) = NumberOfFramesInSubTracksInternal;
+                        JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1) = NumberOfFramesInSubTracksInternal - 1;
                     end
                 else
                     JumpStepsBetweenSubTracks(1:TotalNumberOfParentTracks,1)=  JumpSize;
@@ -734,18 +754,12 @@ classdef PMTrackingAnalysis
         function [speeds] =                                                 getAverageTrackSpeeds(obj)
             
             
-            inputTrackCell = obj.TrackCell;
+            inputTrackCell =                            obj.TrackCell;
+            deleteRows =                                cellfun(@(x) size(x,1)<=1,inputTrackCell ); % need at least two frames to calculate meaningful displacement
+            inputTrackCell(deleteRows,:) =              [];
             
-        
-            
-            deleteRows =        cellfun(@(x) size(x,1)<=1,inputTrackCell );
-            
-            inputTrackCell(deleteRows,:) =  [];
-            
-            
-             speeds = cellfun(@(x) obj.getAverageTrackSpeed(x),  inputTrackCell);
+             speeds =                                   cellfun(@(x) obj.getAverageTrackSpeed(x),  inputTrackCell);
            
-            
         end
         
 
@@ -773,6 +787,96 @@ classdef PMTrackingAnalysis
             
         end
         
+        %% create displacement coordinate list:
+        
+        
+        function [tracksWithPolarCoordinates] =                                    getTracksWithPolarCoordinates(obj)
+            
+            inputTrackCell =                                                    obj.TrackCell;
+            deleteRows =                                                        cellfun(@(x) size(x,1)<=1,inputTrackCell ); % need at least two frames to calculate polar coordinates
+            inputTrackCell(deleteRows,:) =                                      [];
+
+            tracksWithPolarCoordinates =                                        cellfun(@(x) obj.getTrackWithPolarCoordinates(x),  inputTrackCell, 'UniformOutput', false);
+
+               
+        end
+        
+        
+        
+        function [listWithPolarCoordinates] =                              getTrackWithPolarCoordinates(obj, Track)
+
+
+                XPositions =                                    cell2mat(Track(:,4));
+                XVectors=                                       diff(XPositions);
+
+                YPositions =                                    cell2mat(Track(:,3));
+                YVectors=                                       diff(YPositions);
+
+                AbsoluteDistances =                             sqrt(power(XVectors,2)+power(YVectors,2));
+                Angles =                                        atan2(YVectors,XVectors);
+               listWithPolarCoordinates =                      [AbsoluteDistances, Angles];
+
+        end
+        
+        %% create randomized coordinateLists
+        
+         function [listWithDisplacementZScores, random] =                  caculateDisplacementZScoreForTracks(obj, polarCoordinateList)
+            
+                [listWithDisplacementZScores, random] =               cellfun(@(x) obj.caculateDisplacementZScoreForTrack(x),  polarCoordinateList);
+           
+         end
+
+
+         
+         
+         function [DisplacementZScore, RandomizedZScore] =             caculateDisplacementZScoreForTrack(obj, polarCoordinates)
+             
+             actualDisplacement =                   obj.calculateDisplacementFromPolarCoordinateList(polarCoordinates);
+             
+             numberOfRandomizations =               obj.NumberOfRandomizations;
+             numberOfSteps=                         size(polarCoordinates,1);
+             
+             randomizedCoordinateMatrix =           polarCoordinates;   
+             randomizedDisplacements =              nan(numberOfSteps,1);
+             
+             for currentRandomization = 1:numberOfRandomizations
+                  rng(currentRandomization) % reset seed
+                  randomizedCoordinateMatrix(:,2)=                                    rand([numberOfSteps 1])*2*pi;
+                  randomizedDisplacements(currentRandomization,1) =         calculateDisplacementFromPolarCoordinateList(obj, randomizedCoordinateMatrix);
+                  
+             end
+             
+             
+             DisplacementZScore =       obj.calculateZScore(actualDisplacement, randomizedDisplacements);
+             RandomizedZScore =         obj.calculateZScore(randomizedDisplacements(1), randomizedDisplacements);
+    
+             
+         end
+         
+         function [TotalXYDisplacement]=                  calculateDisplacementFromPolarCoordinateList(obj, polarCoordinates)
+             
+                % based on angle convert magnitude back to X- and Y-components;
+                XDisplacements=             polarCoordinates(:,1).*cos(polarCoordinates(:,2));
+                YDisplacements=             polarCoordinates(:,1).*sin(polarCoordinates(:,2));
+                
+                TotalXDisplacement =        sum(XDisplacements);
+                TotalYDisplacement =        sum(YDisplacements);
+                
+                TotalXYDisplacement =       sqrt(TotalXDisplacement^2 + TotalYDisplacement^2);
+             
+         end
+         
+         
+         function [ ZScore ] = calculateZScore(obj, AnalyzedValue,  ComparisonPopulation)
+            %COMPUTEDEVIATIONFROMPOPULATION Summary of this function goes here
+            %   Detailed explanation goes here
+
+            MeanOfPopulation=           mean(ComparisonPopulation);
+            StdOfPopulation=            std(ComparisonPopulation);
+            ZScore=             (AnalyzedValue-MeanOfPopulation)/StdOfPopulation;
+
+
+        end
         
       
         

@@ -98,7 +98,21 @@ classdef PMTrackingNavigation
                                 CurrentTargetCell =     cell(NumberOfEntries,numberOfColumns);
                                 for CurrentColumn = 1:numberOfColumns
                                     SourceColumn =                          strcmp(fieldNames, targetFieldNames{CurrentColumn});
-                                    CurrentTargetCell(:,CurrentColumn) =    CurrentSourceCell(:,SourceColumn);
+                                    
+                                    OldContents =                               CurrentSourceCell(:,SourceColumn);
+                                    
+                                    if strcmp(targetFieldNames{CurrentColumn}, 'CentroidZ') && (max(isnan(cell2mat(OldContents))) == 1)
+                                        TopPlaneColumn =                    strcmp(fieldNames, 'TopZPlane');
+                                        BottomPlaneColumn =                 strcmp(fieldNames, 'BottomZPlane');
+                                        TopContents =                       cell2mat(CurrentSourceCell(:,TopPlaneColumn));
+                                        BottomContents =                    cell2mat(CurrentSourceCell(:,BottomPlaneColumn));
+                                        OldContents =                    num2cell(median([TopContents BottomContents], 2));
+                                        
+                                    end
+                                    
+                                    CurrentTargetCell(:,CurrentColumn) =        OldContents;
+                                    
+                                    
 
                                 end
 

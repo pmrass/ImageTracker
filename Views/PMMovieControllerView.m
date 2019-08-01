@@ -89,6 +89,12 @@ classdef PMMovieControllerView
             obj.Menu.ShowAttachedFiles.Tag=                                     'Movies_ShowFiles';
             obj.Menu.ShowAttachedFiles.Enable=                                  'on';
          
+            obj.Menu.ExportMovie =                                                  uimenu(MainMovieMenu);
+            obj.Menu.ExportMovie.Label=                                             'Export active movie';
+            obj.Menu.ExportMovie.Tag=                                               'Movies_ExportMovie';
+            obj.Menu.ExportMovie.Enable=                                             'on';
+            
+            
         end
         
         

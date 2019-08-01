@@ -183,11 +183,33 @@ classdef PMMovieLibraryManager < handle
             
             obj.Viewer.MovieControllerViews.Menu.ShowMetaData.MenuSelectedFcn =                 @obj.showMetaDataInfoClicked;
             obj.Viewer.MovieControllerViews.Menu.ShowAttachedFiles.MenuSelectedFcn =            @obj.showAttachedFilesClicked;
+            obj.Viewer.MovieControllerViews.Menu.ExportMovie.MenuSelectedFcn =                  @obj.exportMovie;
+            
+            
             
             
             
         end
 
+        
+        function [obj] =        exportMovie(obj,src,~)
+            
+            myMovieManager =                        PMImagerViewerMovieManager(obj.ActiveMovieController);
+
+            myMovieManager.MovieAxes =              obj.ActiveMovieController.Views.MovieView.ViewMovieAxes;
+            myMovieManager.ExportFolder =           obj.MovieLibrary.PathForExport;
+            myMovieManager.ExportFileName =         [obj.MovieLibrary.SelectedNickname '.mp4'];
+            
+            
+            myMovieManager =                        myMovieManager.createMovieSequence;
+            myMovieManager.writeMovieSequenceIntoFile;
+            
+            
+        end
+        
+        
+        
+        
         
         function [obj] =        addCallbacksToNavigationAndTracking(obj)
             

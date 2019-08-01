@@ -131,7 +131,7 @@ classdef PMImagingProjectViewer
             
             FigureHandle=               obj.Figure;
           
-              %% Project: Management of loaded project:
+                %% Project: Management of loaded project:
                     ProjectMenuInside=                                            uimenu(FigureHandle);
                     ProjectMenuInside.Label=                                      'Project';
                     ProjectMenuInside.Tag=                                        'ProjectMenuInside';

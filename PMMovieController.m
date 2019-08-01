@@ -1593,6 +1593,7 @@ classdef PMMovieController < handle
         %% change model:
 
         function obj  = updateAppliedDriftCorrectionFromCheckBox(obj, state)
+
             obj.LoadedMovie.DriftCorrectionOn =             state;
             obj =                                           obj.updateAppliedPositionShift;
               
