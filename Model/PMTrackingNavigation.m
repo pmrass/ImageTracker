@@ -6,14 +6,15 @@ classdef PMTrackingNavigation
         
         NumberOfTracks =                0
         
-        FieldNamesForTrackingCell =     {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'};
+        FieldNamesForTrackingCell =     {'TrackID'; 'AbsoluteFrame'; 'CentroidY'; 'CentroidX'; 'CentroidZ'; 'ListWithPixels_3D'; 'SegmentationInfo'};
         TrackingCellForTime =           cell(0,1);
         
-        FieldNamesForTrackingInfo =     {'SegmentationInfo'};
+        MaximumDistanceForTracking =    50;
+        
+        FieldNamesForTrackingInfo =     {''};
         TrackingInfoCellForTime=        cell(0,1);
         
         OldCellMaskStructure
-        
         
         ColumnsInTrackingCell
         Tracking
@@ -23,6 +24,7 @@ classdef PMTrackingNavigation
     end
     
     methods
+        
         function obj = PMTrackingNavigation(Data,Version)
             %PMTRACKINGNAVIGATION Construct an instance of this class
             %   Detailed explanation goes here
@@ -68,7 +70,7 @@ classdef PMTrackingNavigation
                targetFieldNames =               obj.FieldNamesForTrackingCell;
                numberOfColumns =                length(obj.FieldNamesForTrackingCell);
                
-               NumberOfColumnsPerMaskCell =     6;
+               NumberOfColumnsPerMaskCell =     length(targetFieldNames);
                
                
                 if isfield(myCellMaskStructure, 'TimePoint')
@@ -149,26 +151,46 @@ classdef PMTrackingNavigation
         
         function obj =  calculateNumberOfTracks(obj)
             
-               targetFieldNames =           obj.FieldNamesForTrackingCell;
+         
+            ListWithAllUniqueTrackIDs =         obj.getListWithAllUniqueTrackIDs;
             
-             TrackColumn =            strcmp(targetFieldNames, 'TrackID');
-            Result =                        vertcat(obj.TrackingCellForTime{:});
-                      
-            
-            if isempty(Result)
+            if isempty(ListWithAllUniqueTrackIDs)
                 
                 obj.NumberOfTracks =    0;
                 
 
             else
                 
-                ListWithUniqueTracks =          unique(cell2mat(Result(:,TrackColumn)));
-                obj.NumberOfTracks =        length(ListWithUniqueTracks);
+               
+                obj.NumberOfTracks =                    length(ListWithAllUniqueTrackIDs);
                 
             end
              
             
                     
+            
+        end
+        
+        
+        function ListWithAllUniqueTrackIDs = getListWithAllUniqueTrackIDs(obj)
+            
+            
+            targetFieldNames =                          obj.FieldNamesForTrackingCell;
+
+            TrackColumn =                           strcmp(targetFieldNames, 'TrackID');
+            ListWithAllMasks =                      vertcat(obj.TrackingCellForTime{:});
+            ListWithAllUniqueTrackIDs =             unique(cell2mat(ListWithAllMasks(:,TrackColumn)));          
+
+            
+            
+        end
+        
+        
+        function newTrackID =   generateNewTrackID(obj)
+            
+            ListWithAllUniqueTrackIDs =     obj.getListWithAllUniqueTrackIDs;
+            newTrackID =   max(ListWithAllUniqueTrackIDs) + 1;
+            
             
         end
         
@@ -190,61 +212,66 @@ classdef PMTrackingNavigation
         end
         
         
-        
-        
         function obj = removeTrack(obj, trackID)
             
+            
+
+            % concatenate time-specific data:
+            pooledTrackingData =                    obj.poolAllTimeFramesOfTrackingCellForTime;
+ 
+            % remove track
+            
+            RowsWithTrackID =                       obj.getRowsOfTrackID(pooledTrackingData, trackID);
+            
+            
+            pooledTrackingData(RowsWithTrackID,:) = [];
+          
+            
+            % convert pooled list back into time-specific list
+            separateList =                          obj.separatePooledDataIntoTimeSpecific(pooledTrackingData);
+            obj.TrackingCellForTime =               separateList;
+            
+  
+        end
+        
+        function rows = getRowsOfTrackID(obj,pooledTrackingData,trackID)
+            
             TrackColumn =                           1;
-
-            pooledData =                            vertcat(obj.TrackingCellForTime{:});
-            
-           
-
-
-            ListWithTrackIDs =                      cell2mat(pooledData(:,TrackColumn));
-            
-            
-            pooledData(ListWithTrackIDs == trackID,:) = [];
-            
-            
-            separateList =      obj.separatePooledDataIntoTimeSpecific(pooledData);
-            
-            obj.TrackingCellForTime = separateList;
-            
-            
-            
+            ListWithTrackIDs =                      cell2mat(pooledTrackingData(:,TrackColumn));
+            rows =                                  ListWithTrackIDs == trackID;
             
             
         end
         
-        function separateList = separatePooledDataIntoTimeSpecific(obj, list)
+        
+      
+        
+        function pooledData =          poolAllTimeFramesOfTrackingCellForTime(obj)
+            
+            pooledData =                            vertcat(obj.TrackingCellForTime{:});
+                   
+            
+        end
+        
+        
+        function NewTrackingCellForTime = separatePooledDataIntoTimeSpecific(obj, list)
             
             
-            numberOfFrames =    size(obj.TrackingCellForTime,1);
+            numberOfFrames =        size(obj.TrackingCellForTime,1);
             columnWithTime =        2;
             
-            
-            separateList =      cell(numberOfFrames,1);
-            
+            NewTrackingCellForTime =          cell(numberOfFrames,1);
             
              for CurrentTimePointIndex =  1:numberOfFrames
   
-                  
-                  rightRows =     cell2mat(list(:,columnWithTime)) == CurrentTimePointIndex;
-                  
-                  currentData =     list(rightRows,:);
-                  
-                  
-                  separateList{CurrentTimePointIndex,1 } = currentData;
+                  rowsForCurrentFrame =                                     cell2mat(list(:,columnWithTime)) == CurrentTimePointIndex;
+                  dataOfCurrentFrame =                                             list(rowsForCurrentFrame,:);
+                  NewTrackingCellForTime{CurrentTimePointIndex,1 } =        dataOfCurrentFrame;
                   
                   
                              
             end
-                    
-                    
-            
-            
-            
+    
             
             
         end

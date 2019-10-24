@@ -20,8 +20,8 @@ classdef PMTrackingAnalysis
         CurrentTimeUnits =                              'imageFrames';
         
         FieldNamesOfMaskInformation
-        ListWithCompleteMaskInformation =               cell(0,6)
-        ListWithCompleteMaskInformationWithDrift =      cell(0,6) % drift information is in duplicate, this makes it easier to switch between drift-corrected and non-drift corrected data with acceptable overhead
+        ListWithCompleteMaskInformation =               cell(0,7)
+        ListWithCompleteMaskInformationWithDrift =      cell(0,7) % drift information is in duplicate, this makes it easier to switch between drift-corrected and non-drift corrected data with acceptable overhead
          MaskFilter =                                   true(0,1) % the mask filter filters for masks and determines on what mask;
 
         % filtered properties: allows  
@@ -198,6 +198,7 @@ classdef PMTrackingAnalysis
 
              
          end
+         
          
          %% manage drift correction:
           function [obj] =                                                  createDriftCorrectedMaskInformation(obj)
@@ -744,13 +745,7 @@ classdef PMTrackingAnalysis
 
            
      
-       
-        
-            
-   
-       
-        
-        %% extract speed information from TrackCell:
+        %% extract track information from TrackCell:
         function [speeds] =                                                 getAverageTrackSpeeds(obj)
             
             
@@ -764,22 +759,16 @@ classdef PMTrackingAnalysis
         
 
         
-        function speed =                getAverageTrackSpeed(obj, Track)
+        function speeds =                getAverageTrackSpeed(obj, Track)
             
           if size(cell2mat(Track(:,3)),1) <= 1
-              speed = zeros(0,1);
+              speeds = zeros(0,1);
               
           else
               
-            XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
-            YDistances =                    sum(abs(diff(cell2mat(Track(:,4)))));
-            ZDistances =                    sum(abs(diff(cell2mat(Track(:,5)))));
-
-            Distance3DUm =                  sqrt(XDistances^2 + YDistances^2 + ZDistances^2);
-            TotalTimeSeconds =              max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
-
-            speed =                         Distance3DUm/TotalTimeSeconds*60;
-
+           
+            
+            speeds =                        obj.getAverageSpeedFromCoordinateList(Track);
               
               
           end
@@ -787,8 +776,234 @@ classdef PMTrackingAnalysis
             
         end
         
-        %% create displacement coordinate list:
+        function speeds = getAverageSpeedFromCoordinateList(obj,Track)
+            
+             XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
+            YDistances =                    sum(abs(diff(cell2mat(Track(:,4)))));
+            ZDistances =                    sum(abs(diff(cell2mat(Track(:,5)))));
+
+            Distance3DUm =                  sqrt(XDistances^2 + YDistances^2 + ZDistances^2);
+            TotalTimeSeconds =              max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
+            speeds =                         Distance3DUm/TotalTimeSeconds*60;
+
+            
+            
+            
+        end
         
+        function speeds = getInstantSpeedsFromCoordinateList(obj,Track)
+            
+         
+            
+            displacementList =              obj.getDisplacementsFromTrack(Track);
+            timeIntervals =                 diff(cell2mat(Track(:,2))); % make sure it is set to seconds
+            speeds =                         displacementList./timeIntervals;
+
+            
+            
+        end
+        
+        function displacementList = getDisplacementsFromTrack(obj, Track)
+            
+            XDistances =                    diff(cell2mat(Track(:,3)));
+            YDistances =                    diff(cell2mat(Track(:,4)));
+            ZDistances =                    diff(cell2mat(Track(:,5)));
+
+            displacementList =                  sqrt(XDistances.^2 + YDistances.^2 + ZDistances.^2);
+     
+        end
+        
+        function distanceOfTrack = getDistanceOfTrack(obj, Track)
+            
+            displacementList =              obj.getDisplacementsFromTrack(Track);
+            
+            distanceOfTrack =               sum(displacementList);
+            
+            
+        end
+        
+        
+        
+        
+        
+        function displacement =             getDisplacementOfTrack(obj,Track)
+            
+            startEndTrack =         Track([1 end],:);
+            
+            displacement =              obj.getDisplacementsFromTrack(startEndTrack);
+            
+            
+        end
+        
+        
+        
+        
+        function jumpStatistics =         getJumpStatisticsOfTracks(obj,SpeedLimit)
+            
+             NumberOfTracks =               size(obj.TrackCell,1);
+            jumpStatistics =                cell(NumberOfTracks,1);
+            
+            for CurrentTrack = 1:NumberOfTracks
+                
+                DataOfCurrentTrack =                        obj.TrackCell{CurrentTrack,1};
+                jumpStatistics{CurrentTrack,1} =          obj.getJumpStatisticsOfTrack(DataOfCurrentTrack,SpeedLimit);
+                
+            end
+            
+            
+            
+        end
+        
+          function jumpStatistics = getJumpStatisticsOfTrack(obj, CurrentSourceTrack, SpeedLimit)
+            
+              
+              speeds =                        obj.getInstantSpeedsFromCoordinateList(CurrentSourceTrack);
+              
+              noStop =                      speeds>SpeedLimit;
+              
+              
+              NumberOfSpeeds = length(speeds);
+              
+              jumpStatistics =      zeros(NumberOfSpeeds,1);
+              PositionIndex = 1;
+              JumpIndex = 0;
+              
+              while PositionIndex <= NumberOfSpeeds
+                  
+                  currentMovementList =                 noStop(PositionIndex:end);
+                  JumpStartFrameWithinSegment =                      find(currentMovementList==1, 1, 'first');
+                  endOfRun =                            find(currentMovementList(JumpStartFrameWithinSegment:end)==0, 1, 'first') - 1;
+              
+                  if isempty(endOfRun)
+                      JumpEndFrameWithinSegment =  length(currentMovementList);
+                      
+                  else
+                      JumpEndFrameWithinSegment = JumpStartFrameWithinSegment + endOfRun - 1;
+                      
+                  end
+                  
+                  
+                  
+                  
+                  %% 
+                  JumpStartFrameWithinSourceTrack =         PositionIndex - 1 + JumpStartFrameWithinSegment;
+                  JumpEndFrameWithinSourceTrack =           PositionIndex - 1 + JumpEndFrameWithinSegment + 1;
+                  
+                  if JumpEndFrameWithinSourceTrack>= size(CurrentSourceTrack,1)
+                      
+                  end
+                  
+                  MovementTrack =                           CurrentSourceTrack(JumpStartFrameWithinSourceTrack:JumpEndFrameWithinSourceTrack,:);
+                  
+                  if isempty(JumpStartFrameWithinSourceTrack)
+                      break
+                      
+                  end
+                  
+                      JumpIndex =                               JumpIndex + 1;
+                      jumpStatistics(JumpIndex,1) =             JumpIndex;
+                      jumpStatistics(JumpIndex,2) =             JumpStartFrameWithinSourceTrack;
+                      jumpStatistics(JumpIndex,3) =             JumpEndFrameWithinSourceTrack;
+                      jumpStatistics(JumpIndex,4) =             JumpEndFrameWithinSourceTrack-JumpStartFrameWithinSourceTrack;
+                      jumpStatistics(JumpIndex,5) =             obj.getDisplacementOfTrack(MovementTrack);
+                      jumpStatistics(JumpIndex,6) =             obj.getDistanceOfTrack(MovementTrack);
+                  
+                  
+                  PositionIndex =                           JumpEndFrameWithinSourceTrack + 1;
+                  
+              end
+            
+            
+            
+         
+
+
+            jumpStatistics(jumpStatistics(:,1) == 0,: ) = [];
+
+           
+ 
+          end
+        
+        
+        function stopAnalysis =         createStopAnalysisForTracks(obj, StopDistanceLimit)
+
+            NumberOfTracks =            size(obj.TrackCell,1);
+            stopAnalysis =              cell(NumberOfTracks,1);
+            
+            for CurrentTrack = 1:NumberOfTracks
+                
+                DataOfCurrentTrack =                    obj.TrackCell{CurrentTrack,1};
+                stopAnalysis{CurrentTrack,1} =          obj.createStopAnalysisForTrack(DataOfCurrentTrack, StopDistanceLimit);
+                
+            end
+
+            
+        end
+        
+        
+        function ListWithStopDurations = createStopAnalysisForTrack(obj, CurrentTrack, DistanceLimit)
+            
+            ColumnWithYCoordinates =                3;
+            ColumnWithXCoordinates =                4;
+            ColumnWithZCoordinates =                5;
+            
+            XCoordinates =                          cell2mat(CurrentTrack(:,ColumnWithXCoordinates));
+            YCoordinates =                          cell2mat(CurrentTrack(:,ColumnWithYCoordinates));
+            ZCoordinates =                          cell2mat(CurrentTrack(:,ColumnWithZCoordinates));
+            
+            
+            NumberOfPositions =                                 size(YCoordinates, 1);
+    
+            ListWithStopDurations =                             zeros(NumberOfPositions,1);
+            PositionIndex = 1;
+            RowIndex =          0;
+            while PositionIndex <= NumberOfPositions
+
+                CurrentPositionX =                              XCoordinates(PositionIndex,1);
+                CurrentPositionY =                              YCoordinates(PositionIndex,1);
+                CurrentPositionZ =                              ZCoordinates(PositionIndex,1);
+
+                XDistancesFromCurrentStartPosition =            CurrentPositionX- XCoordinates;
+                YDistancesFromCurrentStartPosition =            CurrentPositionY- YCoordinates;
+                ZDistancesFromCurrentStartPosition =            CurrentPositionZ- ZCoordinates;
+
+                DistancesFromCurrentStartPosition =             sqrt(XDistancesFromCurrentStartPosition.^2 + YDistancesFromCurrentStartPosition.^2 + ZDistancesFromCurrentStartPosition.^2);
+                
+                RowsThatAreWithinStopDistance =                 DistancesFromCurrentStartPosition <= DistanceLimit;
+                RowsWithinStopPositionForFutureRows=            RowsThatAreWithinStopDistance(PositionIndex:end);
+
+                FirstRowThatIsBeyondStopLimit =                 find(RowsWithinStopPositionForFutureRows==0, 1,'first') + PositionIndex -1 ;
+
+                if isempty(FirstRowThatIsBeyondStopLimit)
+                    StopDuration =                                  NumberOfPositions-PositionIndex+1;
+                    PositionIndexNew =                              NumberOfPositions + 1;
+
+                else
+                    StopDuration =                                  FirstRowThatIsBeyondStopLimit-PositionIndex;
+                    PositionIndexNew =                              FirstRowThatIsBeyondStopLimit;
+
+                end
+
+
+                RowIndex =                                  RowIndex + 1;
+                ListWithStopDurations(RowIndex, 1) =        RowIndex;
+                ListWithStopDurations(RowIndex, 2) =        PositionIndex;
+                ListWithStopDurations(RowIndex, 3) =        StopDuration;
+
+                PositionIndex =                             PositionIndexNew;
+
+
+
+            end
+
+
+            ListWithStopDurations(ListWithStopDurations(:,1) == 0,: ) = [];
+
+ 
+        end
+        
+        
+        %% create displacement coordinate list:
         
         function [tracksWithPolarCoordinates] =                                    getTracksWithPolarCoordinates(obj)
             
@@ -817,6 +1032,8 @@ classdef PMTrackingAnalysis
                listWithPolarCoordinates =                      [AbsoluteDistances, Angles];
 
         end
+        
+        
         
         %% create randomized coordinateLists
         

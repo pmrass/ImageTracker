@@ -94,6 +94,12 @@ classdef PMMovieControllerView
             obj.Menu.ExportMovie.Tag=                                               'Movies_ExportMovie';
             obj.Menu.ExportMovie.Enable=                                             'on';
             
+              
+            obj.Menu.ExportTrackCoordinates=                                   uimenu(MainMovieMenu);
+            obj.Menu.ExportTrackCoordinates.Label=                             'Export track coodinates';
+            obj.Menu.ExportTrackCoordinates.Separator=                         'on';
+            obj.Menu.ExportTrackCoordinates.Enable=                            'on';
+
             
         end
         

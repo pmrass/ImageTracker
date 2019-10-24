@@ -4,7 +4,7 @@ classdef PMMovieController < handle
     
     properties
          
-        
+
         Views
         TrackingViews
         
@@ -21,6 +21,7 @@ classdef PMMovieController < handle
         
         RowOfActiveTrackAll
         SegmentationOfCurrentFrame
+        
         
         RowOfActiveTrackFilter
         SegmentationOfCurrentFramePlaneFilter
@@ -47,27 +48,32 @@ classdef PMMovieController < handle
         AplliedColumnShifts
         AplliedPlaneShifts
         
-        MaximumRowShift = 0
-        MaximumColumnShift = 0
-        MaximumPlaneShift = 0
+        MaximumRowShift =               0
+        MaximumColumnShift =            0
+        MaximumPlaneShift =             0
         
  
-        MaskColor =                 [NaN NaN 150];
-        MaskColorForActiveTrack =   [100 100 100];
+        MaskColor =                     [NaN NaN 150];
+        MaskColorForActiveTrack =       [100 100 100];
         
-        MouseDownRow =              NaN
-        MouseDownColumn =           NaN
-        MouseUpRow =                NaN
-        MouseUpColumn =             NaN
+        MouseDownRow =                  NaN
+        MouseDownColumn =               NaN
+        MouseUpRow =                    NaN
+        MouseUpColumn =                 NaN
         
+        ActiveXCoordinate =             NaN
+        ActiveYCoordinate =             NaN
+        ActiveZCoordinate =             NaN
+
         % appearance
-        BackgroundColor =           [0 0.1 0.2];
+        BackgroundColor =               [0 0.1 0.2];
         ForegroundColor =               'c';
-        
+
         TrackingCapture
         
-        
-   
+        CurrentSegmentationObject
+
+
     end
     
     methods
@@ -149,7 +155,7 @@ classdef PMMovieController < handle
             obj=                                                obj.updateImageView; % changes the image in the current axes;
             obj=                                                obj.applyCropLimitsToView; % apply cropping to axis
             [obj] =                                             obj.updateCroppingLimitView;
-            
+
         end
           
         
@@ -163,13 +169,13 @@ classdef PMMovieController < handle
             CurrentFrame =                                      obj.LoadedMovie.SelectedFrames(1);
             myIDOfActiveTrack =                                 obj.LoadedMovie.IdOfActiveTrack;
 
+
             %% update segmentation and location of active track:
-            
             obj =                                               obj.updateSegmentationInformationForFrame(CurrentFrame);
             
             
             %% during tracking: set focus on active track,
-            if obj.LoadedMovie.TrackingOn && ~isempty(double(myPressedKey)) &&  (double(myPressedKey)==28 || double(myPressedKey)==29)
+            if (obj.LoadedMovie.TrackingOn && ~isempty(double(myPressedKey)) &&   double(myPressedKey)==29) || strcmp(myPressedKey, 'a')
                 obj =                                           obj.resetPlaneToActiveTrack;
                 obj =                                           obj.centerFieldOfViewOnCurrentTrack;
             else %% otherwise just  update the gate (i.e. switch between crop/non crop and with/without drift correction);
@@ -187,7 +193,6 @@ classdef PMMovieController < handle
                 obj.CurrentZOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithCentroidZ));
 
                 obj.ListOfAllPixels =                           cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithPixelList));
-
                 obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackAll,obj.ColumnWithPixelList));
                 
                 
@@ -238,6 +243,11 @@ classdef PMMovieController < handle
                 rgbImage =                                                          obj.addMasksToImage(rgbImage);
             end
             
+            
+            
+             obj =                                                                   obj.shiftImageByDriftCorrection;
+            obj.Views.MovieView.MainImage.CData=                                    rgbImage;
+            
              if obj.LoadedMovie.ActiveTrackIsHighlighted
                     
                     
@@ -270,6 +280,24 @@ classdef PMMovieController < handle
                                 rgbImage(CoordinateList(CurrentPixel,1),CoordinateList(CurrentPixel,2),3)= IntensityForBlueChannel;
                             end
                         end
+                        
+                        
+                        
+                        if sum(obj.RowOfActiveTrackAll)> 0
+                            
+                            SegmentationOfActiveTrack = obj.SegmentationOfCurrentFrame{obj.RowOfActiveTrackAll,7};
+                            
+                            if isempty(SegmentationOfActiveTrack)
+                                return
+                            end
+                            
+                            if strcmp(SegmentationOfActiveTrack.SegmentationType, 'ThresholdingByEdgeDetection')
+                                SegmentationOfActiveTrack.highLightAutoEdgeDetection(obj.Views.MovieView.MainImage);
+                            end
+                            
+                            
+                            
+                        end
 
 
 
@@ -278,8 +306,7 @@ classdef PMMovieController < handle
              end
                 
 
-            obj =                                                                   obj.shiftImageByDriftCorrection;
-            obj.Views.MovieView.MainImage.CData=                                    rgbImage;
+           
 
 
         end
@@ -314,20 +341,24 @@ classdef PMMovieController < handle
         
         function [obj] =        updateSegmentationInformationForFrame(obj, CurrentFrame)
             
-              myIDOfActiveTrack =                             obj.LoadedMovie.IdOfActiveTrack;
             
+            myIDOfActiveTrack =                                 obj.LoadedMovie.IdOfActiveTrack;
+
             obj.SegmentationOfCurrentFrame =                    obj.LoadedMovie.Tracking.TrackingCellForTime{CurrentFrame,1};
+           
+            
+            
             obj =                                               obj.createSegmentationWithPlaneFilter;
-    
-             obj.CurrentTrackIDsAll =                           cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithTrack));; 
+
+          
+
+            obj.CurrentTrackIDsAll =                            cell2mat(obj.SegmentationOfCurrentFrame(:,obj.ColumnWithTrack));; 
             obj.RowOfActiveTrackAll =                           obj.CurrentTrackIDsAll == myIDOfActiveTrack ;         
-            
-            
-             obj.CurrentTrackIDsPlaneFilter =                   cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));;
+
+            obj.CurrentTrackIDsPlaneFilter =                    cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));;
             obj.RowOfActiveTrackFilter  =                       obj.CurrentTrackIDsPlaneFilter == myIDOfActiveTrack ;  
-             
-            
-            
+
+
         end
         
         
@@ -513,7 +544,7 @@ classdef PMMovieController < handle
 
        
         
-        %% update views of tracks (and model that defines the appearance of the views):
+         %% update views of tracks (and model that defines the appearance of the views):
         
         
          function obj = updateTrackView(obj)
@@ -717,19 +748,20 @@ classdef PMMovieController < handle
         
         
         
-        %% change tracking model:
+         %% change tracking model:
          function [obj] =        updateActiveMaskByButtonClick(obj)
             
-             
-             if isnan(obj.LoadedMovie.IdOfActiveTrack)
-                 return
-                 
-             end
-             
+
+                if isnan(obj.LoadedMovie.IdOfActiveTrack)
+                    return
+                end
+
                 %% if invalid values were returned: do nothing:
                 CurrentFrame =                                                                              obj.LoadedMovie.SelectedFrames(1);
                 ImageVolumeOfActiveChannel =                                                                obj.LoadedImageVolumes{CurrentFrame,1}(:,:,:,:,obj.LoadedMovie.ActiveChannel);
                 [ yCoordinateWithOutDrift, xCoordinateWithoutDrift,  planeWithoutDrift, frame ] =           obj.getCoordinatesOfCurrentMousePosition;
+                
+                
                 
                 
                 if min(isnan([xCoordinateWithoutDrift, yCoordinateWithOutDrift, planeWithoutDrift, frame]))
@@ -737,28 +769,276 @@ classdef PMMovieController < handle
                 end
                 
                 
+                check = obj.checkWhetherButtonPressIsDistantFromPreviousMask(yCoordinateWithOutDrift, xCoordinateWithoutDrift, planeWithoutDrift);
+                
+                
+                if check
+                    return
+                    
+                end
                 %% if the values are ok, autodetect pixels corresponding to identified mask:
-                myTrackingObject =                                              PMTrackingCapture(obj.LoadedMovie.IdOfActiveTrack, obj.SegmentationOfCurrentFrame, round(xCoordinateWithoutDrift), round(yCoordinateWithOutDrift), round(planeWithoutDrift), ImageVolumeOfActiveChannel);
+                myTrackingObject =                                              PMSegmentationCapture(obj.LoadedMovie.IdOfActiveTrack, obj.SegmentationOfCurrentFrame, round(xCoordinateWithoutDrift), round(yCoordinateWithOutDrift), round(planeWithoutDrift), ImageVolumeOfActiveChannel);
                 
                 
-                obj.Views.MovieView.MainImage.CData(round(yCoordinateWithOutDrift),(xCoordinateWithoutDrift),:) = 255;
+                
+                obj.Views.MovieView.MainImage.CData(round(yCoordinateWithOutDrift),round(xCoordinateWithoutDrift),:) = 255;
                 
                 myTrackingObject =                                              myTrackingObject.generateMaskByClickingThreshold;
                
+                
+                NewPixels =                                                      myTrackingObject.MaskCoordinateList;
+                
+                pixelTestSucceeded =                                        obj.checkPixelList(NewPixels,myTrackingObject);
+                
+                if ~pixelTestSucceeded % if the pixels are wrong, e.g. too large, do not use this pixels (do nothing); 
+                    return
+                end
+                
+                obj.CurrentSegmentationObject =                                 myTrackingObject;
+                obj =                                               obj.resetMovieControllerWithNewPixels(NewPixels);
+               
+                
 
-                myPixels =                                                      myTrackingObject.MaskCoordinateList;
-                if isempty(myPixels) || max(max(isnan(myPixels))) % if empty or not numeric: do not add pixel list:
+         end
+         
+        
+         
+         function check = checkWhetherButtonPressIsDistantFromPreviousMask(obj,yCoordinateWithOutDrift, xCoordinateWithoutDrift,  planeWithoutDrift)
+             
+             MaximumDistance =                                  obj.LoadedMovie.Tracking.MaximumDistanceForTracking;
+     
+             TwoPositionTrack =                                 obj.getPreviousMaskData;
+
+             if isempty(TwoPositionTrack)
+                 check = false;
+
+             else
+                 
+                 
+                TwoPositionTrack{2,obj.ColumnWithCentroidY} =      yCoordinateWithOutDrift;
+                TwoPositionTrack{2,obj.ColumnWithCentroidX} =      xCoordinateWithoutDrift;
+                TwoPositionTrack{2,obj.ColumnWithCentroidZ} =      planeWithoutDrift;
+
+                displacement =             obj.LoadedMovie.TrackingAnalysis.getDisplacementOfTrack(TwoPositionTrack);
+                if isempty(displacement)
+                    check =                 false;
+
+                elseif displacement>MaximumDistance
+                    check =                 true;
+                    
+                else
+                    check =                 false;
+
+                end
+                  
+             end
+             
+       
+         end
+         
+         function DataOfActiveTrackPreviousFrame = getPreviousMaskData(obj)
+             
+             
+             PreviousFrame = obj.LoadedMovie.SelectedFrames(1)-1;
+             
+             
+             
+             if PreviousFrame<= 0
+                 DataOfActiveTrackPreviousFrame = cell(0,length(PMTrackingNavigation('','').FieldNamesForTrackingCell));
+             else
+                 
+                 
+                segementationOfPreviousFrame =                    obj.LoadedMovie.Tracking.TrackingCellForTime{PreviousFrame,1};
+                myIDOfActiveTrack =                             obj.LoadedMovie.IdOfActiveTrack;
+                
+                
+                
+                rowWithTrackIds =                            cell2mat(segementationOfPreviousFrame(:,obj.ColumnWithTrack));; 
+               rowWithActiveTrack =                           rowWithTrackIds == myIDOfActiveTrack ;   
+
+               
+               
+               
+               
+               DataOfActiveTrackPreviousFrame =     segementationOfPreviousFrame(rowWithActiveTrack,:);
+                 
+             end
+             
+             
+         end
+         
+         
+         
+         
+         
+            function obj = autoTrackCurrentCell(obj)
+             
+             
+              %% if invalid values were returned: do nothing:
+              
+              NumberOfTimePoints = obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints;
+              CurrentFrame =                                                                              obj.LoadedMovie.SelectedFrames(1);
+
+              
+              SegmentationObjectReference =  PMSegmentationCapture(obj);
+              
+              
+              pixelIntensities =                SegmentationObjectReference.getPixelIntensitiesOfActiveMask;
+            
+              lowFraction =               min(pixelIntensities)/max(pixelIntensities);
+              
+              
+              MyFigure = figure;
+              MyFigure.MenuBar = 'none';
+              MyFigure.Position = [40 630 100 50 ];
+              
+              
+              ButtonHandle = uicontrol(MyFigure,'Style', 'PushButton', ...
+                         'String', 'Stop tracking', ...
+                         'Callback', 'delete(gcbf)');
+                     
+                     ButtonHandle.Units = 'normalized';
+                     ButtonHandle.Position = [ 0 0 1 1 ];
+
+                     obj.PressedKeyValue = 'a';
+              
+              
+              while CurrentFrame<NumberOfTimePoints
+                  
+
+                    %% get segmentation object of current frame:
+                    
+                 
+                    
+                    SegementationObjectFirst =                          PMSegmentationCapture(obj);
+
+                    NextFrame =                                         CurrentFrame + 1;
+                    obj =                                               obj.resetFrame(NextFrame);
+
+                    SegementationObjectSecond =                         PMSegmentationCapture(obj);    
+
+                    % temporarily use "previous mask" to get detection of "real mask" started;
+                    SegementationObjectSecond.MaskCoordinateList = SegementationObjectFirst.MaskCoordinateList;
+
+
+
+                    CurrentFrame =                                          CurrentFrame + 1;
+
+                    SegementationObjectSecond.CurrentTrackId =              obj.LoadedMovie.IdOfActiveTrack;
+
+                   
+                    SegementationObjectSecond =                             SegementationObjectSecond.setActiveCoordinateByBrightestPixels(obj.Views.MovieView.MainImage);
+                    SegementationObjectSecond =                             SegementationObjectSecond.generateMaskByAutoEdgeDetection;
+                    obj.CurrentSegmentationObject =                         SegementationObjectSecond;
+                    
+                    
+                    NewPixels =                                             SegementationObjectSecond.MaskCoordinateList;
+                    
+                    
+                 
+                    
+                    pixelTestSucceeded =        obj.checkPixelList(NewPixels,SegementationObjectSecond);
+                    
+                    if ~pixelTestSucceeded || ~ishandle(ButtonHandle)
+                        obj.LoadedMovie =           obj.LoadedMovie.refreshTrackingResults;
+                        obj =                       obj.updateTrackList;
+                        obj =                       obj.updateTrackView;
+                        obj.PressedKeyValue  = '';
+                         break
+                        
+                    end
+                    
+
+                    obj =                                       obj.resetMovieControllerWithNewPixels(NewPixels);
+
+                    obj =                                       obj.resetActivePixelWithSegmentation(SegementationObjectSecond);
+                    obj =                                       obj.highLightActivePixel;
+
+                    obj =                                       obj.updateImageView;
+                    drawnow
+
+    
+                    
+                    
+              end
+              
+              
+                obj.LoadedMovie =           obj.LoadedMovie.refreshTrackingResults;
+                obj =                       obj.updateTrackList;
+                obj =                       obj.updateTrackView;
+                obj.PressedKeyValue  = '';
+
+                delete(MyFigure)
+             
+            end
+            
+            function check = checkPixelList(obj,NewPixels,SegementationObjectSecond)
+                
+                
+                
+                if size(NewPixels,1) < SegementationObjectSecond.PixelNumberForMaxAverage
+                    check = false;
+                    return
+                end
+
+
+                Width =                                         max(NewPixels(:,2)) - min(NewPixels(:,2));
+                Height =                                        max(NewPixels(:,1)) - min(NewPixels(:,1));
+                if isempty(NewPixels) || Width >= 2* SegementationObjectSecond.MaximumCellRadius || Height >= 2* SegementationObjectSecond.MaximumCellRadius
+                    check = false;
+                    return
+                end
+                
+                check = true;
+
+
+            end
+
+                  
+                     
+                
+                
+            
+            
+            
+            
+            
+         
+            function obj = resetActivePixelWithSegmentation(obj, Segmentation)
+                
+                obj.ActiveZCoordinate=           Segmentation.ActiveZCoordinate;
+                obj.ActiveXCoordinate=          Segmentation.ActiveXCoordinate;
+                obj.ActiveYCoordinate=          Segmentation.ActiveYCoordinate;
+                  
+                
+            end
+            
+            function obj = highLightActivePixel(obj)
+                
+                
+                 obj.Views.MovieView.MainImage.CData(round(obj.ActiveYCoordinate),(obj.ActiveXCoordinate),:) = 255;
+                
+                
+            end
+         
+         
+         
+         function [obj] = resetMovieControllerWithNewPixels(obj, NewPixels)
+             
+                if isempty(NewPixels) || max(max(isnan(NewPixels))) % if empty or not numeric: do not add pixel list:
                     return
                 end
                 
                 %% if the created pixels are ok: add them to the tracking-structure;
-                obj.LoadedMovie =                                               obj.LoadedMovie.updateMaskOfActiveTrack(myPixels);
+                obj.LoadedMovie =                                               obj.LoadedMovie.updateMaskOfActiveTrack(NewPixels,obj.CurrentSegmentationObject);
                 obj =                                                           obj.updateImageView;
             
  
                 obj =                                               obj.updatePositionOfActiveTrackHighlight;
                 obj =                                               obj.updateHighlightingOfActiveTrack;
-
+             
+             
+             
          end
          
          
@@ -777,16 +1057,13 @@ classdef PMMovieController < handle
             obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =                  0;
             obj.Views.MovieView.MainImage.CData( round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) = 200;
 
-             
-             
+              
          end
          
          
          function [obj] = updateManualDriftCorrectionByMouse(obj)
-             
             [ yEnd, xEnd,  planeWithoutDrift, frame ] =                     obj.getCoordinatesOfCurrentMousePosition;
             obj.LoadedMovie.DriftCorrection =                               obj.LoadedMovie.DriftCorrection.updateManualDriftCorrectionByValues(xEnd, yEnd,  planeWithoutDrift, frame);
-
             obj =                                                           obj.updateManualDriftCorrectionView;
 
      
@@ -802,9 +1079,9 @@ classdef PMMovieController < handle
                  
              end
              
-                [ yStart, xStart,  planeStartWithoutDrift, frame ] =           obj.getCoordinatesOfButtonPress;
+                [ yStart, xStart,  planeStartWithoutDrift, frame ] =            obj.getCoordinatesOfButtonPress;
              
-                [ yEnd, xEnd,  planeWithoutDrift, frame ] =                 obj.getCoordinatesOfCurrentMousePosition;
+                [ yEnd, xEnd,  planeWithoutDrift, frame ] =                     obj.getCoordinatesOfCurrentMousePosition;
                 
                 obj.Views.MovieView.MainImage.CData(:,:,TrackingViewChannel) =                                      0;
                 obj.Views.MovieView.MainImage.CData(round(min([yStart,yEnd]):max([yStart,yEnd])),round(min([xStart,xEnd]):max([xStart,xEnd])),TrackingViewChannel) =    200;
@@ -862,6 +1139,10 @@ classdef PMMovieController < handle
          
          end
         
+         
+      
+         
+         
          function [obj] =       filterTrackModelByTrackID(obj, trackIDs)
              
              
@@ -989,22 +1270,29 @@ classdef PMMovieController < handle
         
         function [obj] = resetActiveTrackByTrackList(obj)
             
-                ListView =                                          obj.TrackingViews.ListWithFilteredTracks;
-                IndicesOfSelectedRows=                              ListView.Value;
-                if length(IndicesOfSelectedRows)== 1
+             
+                SelectedTrackIDs =                                  obj.getCurrentlySelectedTrackIDs;
+                
+                if length(SelectedTrackIDs)== 1
                     
                     
-                    %% read data:
-                    ModelOfTrackDataForDisplay =                        obj.LoadedMovie.Tracking.Tracking;
 
- 
                     %% process data:
-                    NewTrackID=                                         ModelOfTrackDataForDisplay{IndicesOfSelectedRows,2};
-                    obj =                                               obj.resetActiveTrackByNumber(NewTrackID);
+                    
+                    obj =                                               obj.resetActiveTrackByNumber(SelectedTrackIDs);
                     obj =                                               obj.updateImageView;
                     
                 end
                
+        end
+        
+        function [SelectedTrackIDs] =       getCurrentlySelectedTrackIDs(obj)
+            
+               ListView =                                          obj.TrackingViews.ListWithFilteredTracks;
+                ModelOfTrackDataForDisplay =                        obj.LoadedMovie.Tracking.Tracking;
+                IndicesOfSelectedRows=                              ListView.Value;
+                SelectedTrackIDs=                                   cell2mat(ModelOfTrackDataForDisplay(IndicesOfSelectedRows,2));
+
         end
         
         
@@ -1023,7 +1311,82 @@ classdef PMMovieController < handle
             obj =                                               obj.updateActiveTrackViewsByNumber(NaN);
             obj =                                               obj.updateImageView; % to update mask-view (remove it)
            
+            
+              
  
+         end
+         
+         
+         
+         function [obj] = refreshTracksAndUpdateViews(obj)
+
+
+                obj.LoadedMovie =           obj.LoadedMovie.refreshTrackingResults;
+                obj =                       obj.updateTrackList;
+                obj =                       obj.updateTrackView;
+
+
+
+         end
+         
+           function [obj] = mergeSelectedTracks(obj)
+            
+               ColumnWithTrackIDs =                     1;
+               ColumnWithAbsoluteTime =                 2;
+               
+               SelectedTrackIDs =                       obj.getCurrentlySelectedTrackIDs;
+               
+               listWithAllMasks =                       obj.LoadedMovie.Tracking.poolAllTimeFramesOfTrackingCellForTime;
+               TargetRowsPerTrack =                     arrayfun(@(x) find(obj.LoadedMovie.Tracking.getRowsOfTrackID(listWithAllMasks,x)), SelectedTrackIDs, 'UniformOutput', false);
+              
+               
+               %% only allow merging when there is no overlap between the tracks
+               PooledTargetRows =                       vertcat(TargetRowsPerTrack{:});
+               TargetFramesPerTrack =                   arrayfun(@(x) listWithAllMasks{x,ColumnWithAbsoluteTime}, PooledTargetRows);
+                
+               UniqueTargetFramesPerTrack =             unique(TargetFramesPerTrack);
+               if length(UniqueTargetFramesPerTrack) ~= length(TargetFramesPerTrack)
+                   return
+                   
+               end
+               
+               %% use lowest track ID to replace all other trackIDs that should be merged;
+               [NewTrackID, row] =                                              min(SelectedTrackIDs);
+             
+               listWithAllMasks(PooledTargetRows,ColumnWithTrackIDs) =          {NewTrackID};
+               separateList =                                               obj.LoadedMovie.Tracking.separatePooledDataIntoTimeSpecific(listWithAllMasks);
+               obj.LoadedMovie.Tracking.TrackingCellForTime =                   separateList;
+               
+               %% updat views
+               obj =                                                            obj.refreshTracksAndUpdateViews;
+               
+         end
+         
+          function [obj] = splitSelectedTracks(obj)
+             
+                ColumnWithTrackIDs =                     1;
+                ColumnWithAbsoluteTime =                 2;
+
+                SourceTrackID =                         obj.LoadedMovie.IdOfActiveTrack;
+                newTrackID =                            obj.LoadedMovie.Tracking.generateNewTrackID;
+                SplitFrame =                            obj.LoadedMovie.SelectedFrames(1);
+
+
+                listWithAllMasks =                                              obj.LoadedMovie.Tracking.poolAllTimeFramesOfTrackingCellForTime;
+
+                TargetRowsForActiveTrack =                                      obj.LoadedMovie.Tracking.getRowsOfTrackID(listWithAllMasks,SourceTrackID);
+                TargetRowsForUpperFrames =                                      cell2mat(listWithAllMasks(:,ColumnWithAbsoluteTime)) >=    SplitFrame;
+
+                TargetRows =                                                    min([TargetRowsForActiveTrack TargetRowsForUpperFrames], [], 2);
+
+                listWithAllMasks(TargetRows,ColumnWithTrackIDs) =               {newTrackID};
+
+                separateList =                                                  obj.LoadedMovie.Tracking.separatePooledDataIntoTimeSpecific(listWithAllMasks);
+                obj.LoadedMovie.Tracking.TrackingCellForTime =                   separateList;
+
+                %% updat views
+                obj =                                                            obj.refreshTracksAndUpdateViews;
+
          end
          
          
@@ -1167,10 +1530,10 @@ classdef PMMovieController < handle
 
             
             
-            InvaldRows =        isnan(cell2mat(obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,Column_TrackId)));
-            obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(InvaldRows,:) = [];
+            InvalidRows =            isnan(cell2mat(obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,Column_TrackId)));
+            obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(InvalidRows,:) = [];
             
-            newTrackID =   max(cell2mat(obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,Column_TrackId))) + 1;
+            newTrackID =            obj.LoadedMovie.Tracking.generateNewTrackID;
                  
             if isempty(newTrackID) || isnan(newTrackID)
                 newTrackID = 1;
@@ -1186,17 +1549,7 @@ classdef PMMovieController < handle
          
          
        
-         
-         
-         
-      
-        
-        
-        function obj = focusViewOnActiveTrack(obj)
             
-            
-            
-        end
         
         function obj = updateHighlightingOfActiveTrack(obj)
             
@@ -1282,6 +1635,9 @@ classdef PMMovieController < handle
                 TrackModelWithoutDriftCorrection =      obj.LoadedMovie.Tracking.Tracking;
                 TrackModelWithDriftCorrection =         obj.LoadedMovie.Tracking.TrackingWithDriftCorrection;
 
+                
+                
+                
                 if DriftCorrectionIsOn
 
                     AppliedTrackingModel =      TrackModelWithDriftCorrection;
@@ -1396,11 +1752,15 @@ classdef PMMovieController < handle
                 case 28 % left 
                     if CurrentFrame> 1
                         obj =                       obj.resetFrame(CurrentFrame - 1);
+                        
                     end
 
                 case 29 %right 
                     if CurrentFrame< MaximumFrame
                         obj =                       obj.resetFrame(CurrentFrame + 1);
+                    else
+                        obj.LoadedMovie.SelectedFrames = 1;
+                        obj =                       obj.resetFrame( 1);
                     end
 
 
@@ -1520,8 +1880,7 @@ classdef PMMovieController < handle
                        ListView =                                          obj.TrackingViews.ListWithFilteredTracks;
                         ModelOfTrackDataForDisplay =                        obj.LoadedMovie.Tracking.Tracking;
 
-
-                        OldIndex=                              min(ListView.Value);
+                        OldIndex=                                           min(ListView.Value);
                         if OldIndex>1
                             NewIndex =  OldIndex-1;
                             ListView.Value = NewIndex;
@@ -1732,6 +2091,7 @@ classdef PMMovieController < handle
              
              [obj.LoadedMovie] =                                obj.LoadedMovie.createFunctionalImageMap;
             if obj.LoadedMovie.FileCouldNotBeRead % check whether the files could be connected: if not do not try to read;
+                obj.enableAllViews;
                 return
             
             end
@@ -1806,14 +2166,30 @@ classdef PMMovieController < handle
 
                 end
                 
-                %% pre-load single image: this prevents loading multiple frames when the current frame is empty;
                 if isempty(obj.LoadedImageVolumes{obj.LoadedMovie.SelectedFrames(1),1})
-                    obj.NumberOfLoadedFrames =                    0;
+                    
+                    PressedKey = obj.PressedKeyValue;  
+                    PressedKeyAsciiCode=                    double(PressedKey);
+
+                    %% pre-load single image: this prevents loading multiple frames when the current frame is empty;
+                    if PressedKeyAsciiCode == 29 
+                        obj.NumberOfLoadedFrames =                    40;
+
+                    else
+                        
+                        obj.NumberOfLoadedFrames =                    0;
+
+                    end
                     obj =                                         obj.updateLoadedImageVolumes;
                     obj.NumberOfLoadedFrames =                    40;
                     
                     
+                    
                 end
+                
+                
+                    
+                
                 
                 
              

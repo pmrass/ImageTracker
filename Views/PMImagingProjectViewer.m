@@ -181,7 +181,7 @@ classdef PMImagingProjectViewer
                     obj.ProjectMenu.UnMapping.Separator=                         'off';
                     obj.ProjectMenu.UnMapping.Enable=                            'on';
                    
-                    
+                      
                     
                     obj.ProjectMenu.Info=                                   uimenu(ProjectMenuInside);
                     obj.ProjectMenu.Info.Label=                             'Info';

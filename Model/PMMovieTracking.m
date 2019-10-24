@@ -444,10 +444,9 @@ classdef PMMovieTracking
         function obj =                      refreshTrackingResults(obj)
 
             
-            if isempty(obj.TrackingAnalysis)
-                obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
-             
-            end
+            obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
+            
+          
              
              obj =                                                  obj.synchronizeTrackingResults;
              
@@ -494,6 +493,12 @@ classdef PMMovieTracking
                 obj =                                       obj.replaceImageMapPointers;
                 obj =                                       obj.mergeImageMaps;
             end
+            
+        end
+        
+        function [obj] =                            resetFolder(obj, Folder)
+            obj.Folder =                            Folder;
+            
             
         end
         
@@ -911,9 +916,10 @@ classdef PMMovieTracking
         
         function [obj] =                                    autoCorrectTrackingObject(obj)
             
-            
-             NumberOfFrames =    obj.MetaData.EntireMovie.NumberOfTimePoints;
-             EmptyContent =     cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+            CurrentNumberOfColumns =    size(PMTrackingAnalysis().ListWithCompleteMaskInformation,2);
+
+             NumberOfFrames =           obj.MetaData.EntireMovie.NumberOfTimePoints;
+             EmptyContent =             cell(0,CurrentNumberOfColumns);
              
             if isempty(obj.Tracking.TrackingCellForTime) || size(obj.Tracking.TrackingCellForTime,1) < NumberOfFrames
                 
@@ -925,8 +931,14 @@ classdef PMMovieTracking
                 
                 if isempty(obj.Tracking.TrackingCellForTime{CurrentTime,1})
                     
-                    obj.Tracking.TrackingCellForTime{CurrentTime,1} = cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+                    obj.Tracking.TrackingCellForTime{CurrentTime,1} =   EmptyContent;
+                elseif size(obj.Tracking.TrackingCellForTime{CurrentTime,1},2) == 6
+                    obj.Tracking.TrackingCellForTime{CurrentTime,1}(:,7) =  {PMSegmentationCapture};
+                    
                 end
+                
+                
+                
                 
                 
             end
@@ -973,9 +985,11 @@ classdef PMMovieTracking
         
        
 
-        function [obj] = updateMaskOfActiveTrack(obj, FinalListWith3DCoordinates)
+        function [obj] = updateMaskOfActiveTrack(obj, FinalListWith3DCoordinates, varargin)
                 %TRACKINGRESULTS_ADDPIXELLIST Summary of this function goes here
                 %   Detailed explanation goes here
+                
+                
                 
                 
                 
@@ -1008,6 +1022,20 @@ classdef PMMovieTracking
                 obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              FinalListWith3DCoordinates;
 
                    
+                NumberOfInputArguments =        length(varargin);
+                
+                if NumberOfInputArguments == 1
+                    
+                    
+                    SegmentationInfo = varargin{1};
+                    
+                    SegmentationInfo = SegmentationInfo.RemoveImageData;
+                    
+                   
+                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7} = SegmentationInfo;
+                    
+                    
+                end
 
         end
                 
@@ -1054,7 +1082,7 @@ classdef PMMovieTracking
                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidZ} =              mean(newPixels(:,3));
                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              newPixels;
 
-                    
+                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7}.SegmentationType = 'Manual';
                     
                 end
                 
@@ -1109,6 +1137,7 @@ classdef PMMovieTracking
                 newPixels =             unique([oldPixels;addPixels], 'rows');
                 
                 
+               
                 
                 
                 if isempty(newPixels)
@@ -1123,6 +1152,7 @@ classdef PMMovieTracking
                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidZ} =              mean(newPixels(:,3));
                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              newPixels;
 
+                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7}.SegmentationType = 'Manual';
                     
                     
                 end

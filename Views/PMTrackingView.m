@@ -39,12 +39,25 @@ classdef PMTrackingView
             Tracks_Remove.Tag=                                  'Tracks_Remove';
             Tracks_Remove.Enable=                               'on';
             
+            Tracks_Merge=                                       uimenu(Tracks_Main);
+            Tracks_Merge.Label=                                 'Merge selected tracks';
+            Tracks_Merge.Tag=                                   'Tracks_Merge';
+            Tracks_Merge.Separator=                              'off';
+            Tracks_Merge.Enable=                               'on';
+
+            Tracks_Split=                                       uimenu(Tracks_Main);
+            Tracks_Split.Label=                                 'Split selected tracks';
+            Tracks_Split.Tag=                                   'Tracks_Split';
+            Tracks_Split.Enable=                               'on';
+
+            
             Tracks_Update=                                      uimenu(Tracks_Main);
             Tracks_Update.Label=                                'Update tracks (u)';
             Tracks_Update.Tag=                                  'Tracks_Update';
             Tracks_Update.Separator=                            'off';
             Tracks_Update.Enable=                               'on';
             
+          
             
             Masks_Remove=                                       uimenu(Tracks_Main);
             Masks_Remove.Label=                                 'Delete active mask';
@@ -52,31 +65,23 @@ classdef PMTrackingView
             Masks_Remove.Separator=                              'on';
             Masks_Remove.Enable=                                'on';
 
+                 
             
-             
-            obj.Menu.DeleteTrack =                          Tracks_Remove;
+             obj.Menu.DeleteTrack =                          Tracks_Remove;
+             obj.Menu.MergeTracks =                          Tracks_Merge;
+             obj.Menu.SpitTracks =                          Tracks_Split;
             obj.Menu.UpdateTracks =                         Tracks_Update;
-            obj.Menu.DeleteMask =                           Masks_Remove;
-             
             
-
-            Tracks_Merge=                                       uimenu(Tracks_Main);
-            Tracks_Merge.Label=                                 'Merge';
-            Tracks_Merge.Tag=                                   'Tracks_Merge';
-            Tracks_Merge.Callback=                              'ModifyTracks(''Merge'')';
-            Tracks_Merge.Separator=                              'on';
-             Tracks_Merge.Enable=                               'off';
-
-            Tracks_Split=                                       uimenu(Tracks_Main);
-            Tracks_Split.Label=                                 'Split';
-            Tracks_Split.Tag=                                   'Tracks_Split';
-            Tracks_Split.Callback=                              'ModifyTracks(''Split'')';
-            Tracks_Split.Enable=                               'off';
-
+            obj.Menu.DeleteMask =                           Masks_Remove;
+            
+            
+            
+            
+            
             Tracks_Link=                                        uimenu(Tracks_Main);
             Tracks_Link.Label=                                  'Link';
             Tracks_Link.Tag=                                    'Tracks_Link';
-            Tracks_Link.Callback=                               'ModifyTracks(''Link'')';
+
              Tracks_Link.Enable=                                'off';
 
           
@@ -85,23 +90,34 @@ classdef PMTrackingView
             Tracks_LabelComplete=                               uimenu(Tracks_Main);
             Tracks_LabelComplete.Label=                         'Label complete';
             Tracks_LabelComplete.Tag=                           'Tracks_LabelComplete';
-            Tracks_LabelComplete.Callback=                      'ModifyTracks(''Label complete'')';
+
             Tracks_LabelComplete.Separator=                     'on';
             Tracks_LabelComplete.Enable=                       'off';
 
             Tracks_LabelIncomplete=                             uimenu(Tracks_Main);
             Tracks_LabelIncomplete.Label=                       'Label incomplete';
             Tracks_LabelIncomplete.Tag=                         'Tracks_LabelIncomplete';
-            Tracks_LabelIncomplete.Callback=                    'ModifyTracks(''Label incomplete'')';
+
             Tracks_LabelIncomplete.Enable=                       'off';
 
             Tracks_LabelUndefined=                              uimenu(Tracks_Main);
             Tracks_LabelUndefined.Label=                        'Label undefined';
             Tracks_LabelUndefined.Tag=                          'Tracks_LabelUndefined';
-            Tracks_LabelUndefined.Callback=                     'ModifyTracks(''Label undefined'')';
+
             Tracks_LabelUndefined.Enable=                       'off';
 
          
+
+                        Tracks_Link.Callback=                               'ModifyTracks(''Link'')';
+                        Tracks_LabelComplete.Callback=                      'ModifyTracks(''Label complete'')';
+              Tracks_LabelIncomplete.Callback=                    'ModifyTracks(''Label incomplete'')';
+                        Tracks_LabelUndefined.Callback=                     'ModifyTracks(''Label undefined'')';
+%             Masks_AutomatedCentroidConversion.Callback=         'CallbackForAutomatedMaskDetection';
+%             Export_T_Tiff.Callback=                             'ExportData(''Time-series TIFF'')'; 
+%             Export_Z_Tiff.Callback=                             'ExportData(''Z-stack TIFF'')';
+%             Export_ChannelSeries.Callback=                      'ExportData(''Channel series'')';
+%             Export_CurrentFrame.Callback=                       'ExportData(''Current frame'')';
+    
 
 
            
@@ -109,7 +125,6 @@ classdef PMTrackingView
 %             Masks_AutomatedCentroidConversion=                  uimenu(Masks_Main);
 %             Masks_AutomatedCentroidConversion.Label=            'Remove';
 %             Masks_AutomatedCentroidConversion.Tag=              'Masks_AutomatedCentroidConversion';
-%             Masks_AutomatedCentroidConversion.Callback=         'CallbackForAutomatedMaskDetection';
 %             Masks_AutomatedCentroidConversion.Enable=           'on';
 
             %% export menu:
@@ -118,32 +133,34 @@ classdef PMTrackingView
 %             Export_T_Tiff=                                      uimenu(Export_Main);    
 %             Export_T_Tiff.Label=                                'Time-series TIFF';
 %             Export_T_Tiff.Tag=                                  'Export_T_Tiff';
-%             Export_T_Tiff.Callback=                             'ExportData(''Time-series TIFF'')'; 
+
 % 
 % 
 % 
 %             Export_T_Movie=                                     uimenu(Export_Main);
 %             Export_T_Movie.Label=                               'Time-series Movie';
 %             Export_T_Movie.Tag=                                 'Export_T_Movie';
-%             Export_T_Movie.Callback=                            'ExportData(''Time-series Movie'')'; 
+
 % 
 % 
 %             Export_Z_Tiff=                                      uimenu(Export_Main);
 %             Export_Z_Tiff.Label=                                'Z-stack TIFF';
 %             Export_Z_Tiff.Tag=                                  'Export_Z_Tiff';
-%             Export_Z_Tiff.Callback=                             'ExportData(''Z-stack TIFF'')';
+
+
+
 %             Export_Z_Tiff.Enable=                               'on';
 % 
 %             Export_ChannelSeries=                               uimenu(Export_Main);
 %             Export_ChannelSeries.Label=                         'Channel series';
 %             Export_ChannelSeries.Tag=                           'Export_ChannelSeries';
-%             Export_ChannelSeries.Callback=                      'ExportData(''Channel series'')';
+
 %              Export_ChannelSeries.Enable=                       'off';
 % 
 %             Export_CurrentFrame=                                uimenu(Export_Main);
 %             Export_CurrentFrame.Label=                          'Currently shown frame';
 %             Export_CurrentFrame.Tag=                            'Export_CurrentFrame';
-%             Export_CurrentFrame.Callback=                       'ExportData(''Current frame'')';
+
 %              Export_CurrentFrame.Enable=                        'off';
 % 
 %             Export_Status=                                      uimenu(Export_Main);
@@ -153,7 +170,6 @@ classdef PMTrackingView
 %             Export_Status.Enable=                               'off';
 % 
 
-    
         end
         
         

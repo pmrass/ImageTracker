@@ -107,7 +107,13 @@ classdef PMMovieLibrary
             
         end
         
-        
+        function [obj] =                resetFolders(obj, Path)
+            
+            
+            obj.ListhWithMovieObjects = cellfun(@(x) x.resetFolder(Path), obj.ListhWithMovieObjects, 'UniformOutput', false);
+            
+            
+        end
        
         
         function [Selection, obj] =     selectMovieObject(obj, NickName)
@@ -239,6 +245,17 @@ classdef PMMovieLibrary
             
         end
         
+        function [obj] =                createFilterForAllUntrackedMovies(obj)
+            
+            TrackingWasNotPerformed =              cellfun(@(x) x.Tracking.NumberOfTracks ==0, obj.ListhWithMovieObjects);
+            obj.FilterList =                    TrackingWasNotPerformed;
+            ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
+            obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
+            
+        end
+        
+        
+        
         
         
         function [obj] =                createFilterByKeywords(obj)
@@ -326,6 +343,9 @@ classdef PMMovieLibrary
                        obj =                                 obj.createFilterForAllSnapshots;     
                  case 'Show all tracked movies'
                      obj =                                 obj.createFilterForAllTrackedMovies;
+                     
+                  case 'Show all untracked movies'
+                      obj =                                 obj.createFilterForAllUntrackedMovies;
 
                  case 'Show all movies with drift correction'    
                      obj =                                 obj.createFilterForAllMoviesWithDriftCorrection;
