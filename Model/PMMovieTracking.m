@@ -1,6 +1,6 @@
 classdef PMMovieTracking
     %PMMOVIETRACKING manage viewing and tracking of movie
-    %   Detailed explanation goes here
+    %   This class manages viewing and tracking.
     
     properties
         
