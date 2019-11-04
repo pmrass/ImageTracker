@@ -16,6 +16,7 @@ classdef PMTIFFDocument
 
     methods
         
+        
         %% initialize
         function obj =                                                          PMTIFFDocument(FileName)
             
@@ -530,7 +531,7 @@ classdef PMTIFFDocument
 
             
             
-            %% get first image-description content (contains information for entire file);
+                     %% get first image-description content (contains information for entire file);
                      ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
                      ImageDescriptionField_FirstEntry=               ContentOfAllImageDescriptionFields{1,1};
 
@@ -818,13 +819,6 @@ classdef PMTIFFDocument
                         FieldsForImageReading.ByteOrder =                           obj.Header.byteOrder;
                         
                
-                        
-                        
-                      
-            
-                        
-                        
-
 
                         % read bits per sample: (it could become tricky if multiple different bits per sample would be allowed: therefore insist they are all the same).
                         RowWithBitsPerSample=                                       find(cell2mat(CurrentDirectory(:,1))== 258); %'BitsPerSample'
@@ -929,6 +923,7 @@ classdef PMTIFFDocument
                                 FieldsForImageReading.TargetChannelIndex=                       ChannelNumber;
                                 
                             case 2
+                                
                                 assert(SamplesPerPixel == length(FieldsForImageReading.ListWithStripOffsets), 'Cannot read file. Reason: number of strips must be identical to number of samples per pixel')
                                 
                                 FieldsForImageReading.TargetChannelIndex=                       (num2cell(1:SamplesPerPixel))';

@@ -179,9 +179,13 @@ classdef PMTrackingNavigation
 
             TrackColumn =                           strcmp(targetFieldNames, 'TrackID');
             ListWithAllMasks =                      vertcat(obj.TrackingCellForTime{:});
-            ListWithAllUniqueTrackIDs =             unique(cell2mat(ListWithAllMasks(:,TrackColumn)));          
-
             
+            if ~isempty(ListWithAllMasks)
+                ListWithAllUniqueTrackIDs =             unique(cell2mat(ListWithAllMasks(:,TrackColumn)));  
+            else
+                ListWithAllUniqueTrackIDs =     [];
+
+            end
             
         end
         

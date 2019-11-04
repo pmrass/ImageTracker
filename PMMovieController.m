@@ -199,15 +199,18 @@ classdef PMMovieController < handle
                 
                  
             else
+                
+               
 
-                obj.CurrentTrackIDs =                           cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));
-                obj.CurrentXOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidX ));
-                obj.CurrentYOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidY ));
-                obj.CurrentZOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidZ));
+                    obj.CurrentTrackIDs =                           cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithTrack));
+                    obj.CurrentXOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidX ));
+                    obj.CurrentYOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidY ));
+                    obj.CurrentZOfCentroids =                       cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithCentroidZ));
 
-                obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
-                 
-                obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackFilter,obj.ColumnWithPixelList));
+                    obj.ListOfAllPixels =                          cell2mat(obj.SegmentationOfCurrentFramePlaneFilter(:,obj.ColumnWithPixelList));
+
+                    obj.ListOfAllActiveTrackPixels =                cell2mat(obj.SegmentationOfCurrentFrame(obj.RowOfActiveTrackFilter,obj.ColumnWithPixelList));
+
                 
                 
             end
@@ -251,8 +254,7 @@ classdef PMMovieController < handle
              if obj.LoadedMovie.ActiveTrackIsHighlighted
                     
                     
-                    
-                    
+
                         IntensityForRedChannel =                obj.MaskColorForActiveTrack(1);
                         IntensityForGreenChannel =              obj.MaskColorForActiveTrack(2);
                         IntensityForBlueChannel =               obj.MaskColorForActiveTrack(3);
@@ -343,8 +345,15 @@ classdef PMMovieController < handle
             
             
             myIDOfActiveTrack =                                 obj.LoadedMovie.IdOfActiveTrack;
+            
+            if isempty(obj.LoadedMovie.Tracking.TrackingCellForTime) || size(obj.LoadedMovie.Tracking.TrackingCellForTime,1) < CurrentFrame
+                 obj.SegmentationOfCurrentFrame =                    cell(0,7);
+            
+            else
+                 obj.SegmentationOfCurrentFrame =                    obj.LoadedMovie.Tracking.TrackingCellForTime{CurrentFrame,1};
+            end
 
-            obj.SegmentationOfCurrentFrame =                    obj.LoadedMovie.Tracking.TrackingCellForTime{CurrentFrame,1};
+           
            
             
             
@@ -364,6 +373,10 @@ classdef PMMovieController < handle
         
         function [obj] =        resetPlaneToActiveTrack(obj)
             
+            
+            if isempty(obj.SegmentationOfCurrentFrame)
+                return
+            end
             
                         
             myIDOfActiveTrack =                             obj.LoadedMovie.IdOfActiveTrack;
@@ -1529,10 +1542,11 @@ classdef PMMovieController < handle
             Column_PixelList =                          strcmp('ListWithPixels_3D', FieldNames);
 
             
-            
-            InvalidRows =            isnan(cell2mat(obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,Column_TrackId)));
-            obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(InvalidRows,:) = [];
-            
+            if ~isempty(obj.LoadedMovie.Tracking.TrackingCellForTime)
+                InvalidRows =            isnan(cell2mat(obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,Column_TrackId)));
+                obj.LoadedMovie.Tracking.TrackingCellForTime{MySelectedFrame,1}(InvalidRows,:) = [];
+
+            end
             newTrackID =            obj.LoadedMovie.Tracking.generateNewTrackID;
                  
             if isempty(newTrackID) || isnan(newTrackID)
@@ -1906,6 +1920,9 @@ classdef PMMovieController < handle
              
              
              
+             if isempty(obj.LoadedMovie.TrackingAnalysis)
+                 return
+             end
              
              obj.LoadedMovie.Tracking.ColumnsInTrackingCell =                                obj.LoadedMovie.TrackingAnalysis.ColumnsInTracksForMovieDisplay;
              obj.LoadedMovie.Tracking.Tracking =                                obj.LoadedMovie.TrackingAnalysis.TrackingListForMovieDisplay;
@@ -2405,7 +2422,7 @@ classdef PMMovieController < handle
 
               obj.Views.Navigation.TimeSlider.Min =                 1;
               obj.Views.Navigation.TimeSlider.Max =                 obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints;  
-              obj.Views.Navigation.TimeSlider.Value =               obj.Views.Navigation.CurrentTimePoint.Value;
+              %obj.Views.Navigation.TimeSlider.Value =               obj.Views.Navigation.CurrentTimePoint.Value;
               
               Range = obj.Views.Navigation.TimeSlider.Max -   obj.Views.Navigation.TimeSlider.Min;
               if Range == 0
@@ -2671,7 +2688,6 @@ classdef PMMovieController < handle
 
     
             %% make target image:
-          
             ImageVolume_Target=                                                     cast(0, Precision);
             ImageVolume_Target(NumberOfRows, NumberOfColumns, 3)=                   0;
 
@@ -2680,7 +2696,7 @@ classdef PMMovieController < handle
                 
             end
 
-            
+
             % coloring: transfer source channels to correct target channel(s);
             for ChannelIndex= 1:length(RowsOfSelectedChannels) % go through all channels of image:
 

@@ -103,7 +103,7 @@ classdef PMMovieTracking
                     obj.Tracking =                                              PMTrackingNavigation(MovieStructure,Version);
 
                     
-                
+
                 case 2
                     
                     obj.NickName =                                              MovieStructure.NickName;
@@ -341,35 +341,66 @@ classdef PMMovieTracking
                     % then the map and meta-data are saved in file enabling faster reading, still using other functions for retrieving data from file (with the help of this map);
                     
                     f =                                     waitbar(0.5, 'Mapping image file(s). This can take a few minutes for large files.'); % cannot do a proper waitbar because it is not a loop;
-
                     obj=                                    obj.updateFilePaths;
                     
-                    myTiffDocuments =                       cellfun(@(x)  PMTIFFDocument(x), obj.ListWithPaths);
+                    
+                    [~,~,Extensions] =                             cellfun(@(x) fileparts(x), obj.AttachedFiles, 'UniformOutput', false);
+                    
+                    Extension = unique(Extensions);
+                    assert(length(Extension)==1, 'Can only work when all files have same format.')
+                    Extension =     Extension{1,1};
                     
                     
-                    AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myTiffDocuments)) == -1 ;
+                    
+                    switch Extension
+                        
+                        case '.tif'
+                            
+                              myImageDocuments =                       cellfun(@(x)  PMTIFFDocument(x), obj.ListWithPaths);
+                  
+                            
+                            
+                        case '.czi'
+                            
+                            myImageDocuments =                          cellfun(@(x)  PMCZIDocument(x), obj.ListWithPaths);
+                            
+                        otherwise
+                            
+                            error('Format of image file not supported.')
+                            
+                            
+                            
+                        
+                        
+                    end
+                    
+                    
+                    
+                    
+                    AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myImageDocuments)) == -1 ;
                     if AtLeastOneTiffReadFailed
                         
                         obj.ImageMapPerFile =               [];
                         obj.PointersPerFile =           -1;
                         obj.FileCouldNotBeRead =        1;
+                    
+                       
                         
                         
                     else
 
                         
                         % extract meta-data:
-                        obj.MetaDataOfSeparateMovies =          arrayfun(@(x) x.MetaData, myTiffDocuments, 'UniformOutput', false);
+                        obj.MetaDataOfSeparateMovies =          arrayfun(@(x) x.MetaData, myImageDocuments, 'UniformOutput', false);
                         obj =                                   obj.createMergeOfMetaData;
 
                         
                         % extract image map -data:
-                        obj.ImageMapPerFile =                   arrayfun(@(x) x.ImageMap, myTiffDocuments, 'UniformOutput', false);
+                        obj.ImageMapPerFile =                   arrayfun(@(x) x.ImageMap, myImageDocuments, 'UniformOutput', false);
                          
                        % Number = obj.getUniqueFrameNumberFromImageMap(obj.ImageMap);
                         
-                        
-                        obj =                                   obj.autoCorrectChannels;
+                         obj =                                   obj.autoCorrectChannels;
                         obj =                                   obj.updateTimeStampStrings;
                         obj =                                   obj.updatePlaneStampStrings;
                         obj =                                   obj.updateScaleBarString;
@@ -377,10 +408,15 @@ classdef PMMovieTracking
 
                         obj.PointersPerFile =                   -1;
                         obj.FileCouldNotBeRead =               0;
+                      
                         
  
                         
                     end
+                    
+                    
+                    
+                     
                     
                    
                     waitbar(1, f, 'Mapping image file(s)');
@@ -669,6 +705,7 @@ classdef PMMovieTracking
              SourcePlanes =                             Settings.SourcePlanes;
              TargetPlanes =                             Settings.TargetPlanes;
             
+             
              %% first filter the image map: only images that meet the defined source numbers will be kept;
              [FilteredImageMap] =                       obj.FilterImageMap(SourceFrames,SourcePlanes,SourceChannels);
              
@@ -921,6 +958,9 @@ classdef PMMovieTracking
              NumberOfFrames =           obj.MetaData.EntireMovie.NumberOfTimePoints;
              EmptyContent =             cell(0,CurrentNumberOfColumns);
              
+             if isempty(obj.TrackingAnalysis)
+                 return
+             end
              
              if isempty(obj.TrackingAnalysis.MetaData)
                  obj.TrackingAnalysis.MetaData = obj.MetaData;
@@ -961,7 +1001,11 @@ classdef PMMovieTracking
                 State_CurrentFrame =                        obj.SelectedFrames(1);
                 FieldNames =                                obj.Tracking.FieldNamesForTrackingCell;
                 
-                DataOfCurrentFrame =                        TrackingResults{State_CurrentFrame,1};    
+                if ~isempty(TrackingResults) && size(TrackingResults,1) >= State_CurrentFrame
+                    DataOfCurrentFrame =                        TrackingResults{State_CurrentFrame,1}; 
+                else
+                    DataOfCurrentFrame = [];
+                end
 
                 Column_TrackId=                             strcmp('TrackID', FieldNames);
                 Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', FieldNames));

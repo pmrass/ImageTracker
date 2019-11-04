@@ -398,7 +398,9 @@ classdef PMMovieLibraryManager < handle
                 obj.MovieLibrary.PathOfMovieFolder =            NewPath;
                 obj.MovieLibrary =                              obj.MovieLibrary.resetFolders(NewPath);
                 
-                obj.ActiveMovieController.LoadedMovie.Folder = NewPath;
+                if ~isempty(obj.ActiveMovieController.LoadedMovie)
+                    obj.ActiveMovieController.LoadedMovie.Folder = NewPath;
+                end
                 
                  obj =                                          obj.updateInfoView;
                 
@@ -868,7 +870,6 @@ classdef PMMovieLibraryManager < handle
                                             
                                             
                                         otherwise
-
                                             obj.MouseAction = 'No action';
 
                                     end
@@ -901,8 +902,6 @@ classdef PMMovieLibraryManager < handle
                             
    
                         case 2
-                            
-                            
                             
                             if max(strcmp(CurrentModifier, 'shift')) && max(strcmp(CurrentModifier, 'command'))
                                 NameOfModifier = 'ShiftAndCommand';
@@ -1720,7 +1719,7 @@ classdef PMMovieLibraryManager < handle
                 
                 obj.ActiveMovieController =                                     obj.ActiveMovieController.ensureCurrentImageFrameIsInMemory;
                 
-                
+                obj.ActiveMovieController.LoadedMovie.Folder
                 
                 %% finalize loaded movie so that it works together with the controller views:
                 obj.ActiveMovieController.LoadedMovie.DriftCorrection =                 obj.ActiveMovieController.LoadedMovie.DriftCorrection.update(obj.ActiveMovieController.LoadedMovie.MetaData);
@@ -1750,11 +1749,12 @@ classdef PMMovieLibraryManager < handle
          function [obj] =           synchronizeMovieLibraryWithActiveMovie(obj)
              
              
-              %% put changes in currently edite movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
+              %% put changes in currently edit movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
             if ~isempty(obj.ActiveMovieController.LoadedMovie) && ~isempty(obj.MovieLibrary.ListhWithMovieObjects)
                 
-
                 
+
+             
                 % get row in library that corresponds to active movie 
                 NickNameOfActiveMovie =                                                             obj.ActiveMovieController.LoadedMovie.NickName;
                 CurrentlyEditedRowInLibrary =                                                       obj.MovieLibrary.getSelectedRowInLibraryOf(NickNameOfActiveMovie);

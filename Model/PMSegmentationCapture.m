@@ -484,12 +484,17 @@ classdef PMSegmentationCapture
             Column_CentroidZ=                                   find(strcmp('CentroidZ', FieldNames));
             Column_PixelList =                                  strcmp('ListWithPixels_3D', FieldNames);
             
-            RowWithCurrentTrack =                               cell2mat(CellWithMaskData(:,Column_TrackID)) == obj.CurrentTrackId;  
-            CellWithMaskData(RowWithCurrentTrack,:) =           [];
+            
+            if ~isempty(CellWithMaskData)
+                RowWithCurrentTrack =                               cell2mat(CellWithMaskData(:,Column_TrackID)) == obj.CurrentTrackId;  
+                CellWithMaskData(RowWithCurrentTrack,:) =           [];
 
-            PixelListFromOtherTrackedCells =                    CellWithMaskData(:,Column_PixelList);
-            PixelListFromOtherTrackedCells =                    vertcat(PixelListFromOtherTrackedCells{:});
+                PixelListFromOtherTrackedCells =                    CellWithMaskData(:,Column_PixelList);
+                PixelListFromOtherTrackedCells =                    vertcat(PixelListFromOtherTrackedCells{:});
+            else
+                PixelListFromOtherTrackedCells = [];
 
+            end
 
              if ~isempty(PixelListFromOtherTrackedCells)
                 PixelListDerivedFromCurrentClick(ismember(PixelListDerivedFromCurrentClick,PixelListFromOtherTrackedCells,'rows'),:) = [];
