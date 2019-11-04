@@ -778,14 +778,17 @@ classdef PMTrackingAnalysis
         
         function speeds = getAverageSpeedFromCoordinateList(obj,Track)
             
-            XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
+             XDistances =                    sum(abs(diff(cell2mat(Track(:,3)))));
             YDistances =                    sum(abs(diff(cell2mat(Track(:,4)))));
             ZDistances =                    sum(abs(diff(cell2mat(Track(:,5)))));
 
             Distance3DUm =                  sqrt(XDistances^2 + YDistances^2 + ZDistances^2);
             TotalTimeSeconds =              max(cell2mat(Track(:,2))) - min(cell2mat(Track(:,2))) ;
             speeds =                         Distance3DUm/TotalTimeSeconds*60;
- 
+
+            
+            
+            
         end
         
         function speeds = getInstantSpeedsFromCoordinateList(obj,Track)

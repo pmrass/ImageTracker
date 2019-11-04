@@ -227,10 +227,6 @@ classdef PMMovieLibraryManager < handle
             
             [file,path] = uiputfile(FileName);
             
-            if file == 0
-                return
-            end
-            
             CurrentTargetFilename = [path, file];
             
             
@@ -462,9 +458,9 @@ classdef PMMovieLibraryManager < handle
         function obj = addSingleMovieToProject(obj, MovieStructure)
             
             
-             [NewMovieObject]=                                                  PMMovieTracking(MovieStructure, obj.MovieLibrary.PathOfMovieFolder, 0); 
+             [NewMovieObject]=                      PMMovieTracking(MovieStructure, obj.MovieLibrary.PathOfMovieFolder, 0); 
              
-             NumberOfMovies =                                                   size(obj.MovieLibrary.ListhWithMovieObjects,1);
+             NumberOfMovies =                       size(obj.MovieLibrary.ListhWithMovieObjects,1);
              
              obj.MovieLibrary.SelectedNickname =                                MovieStructure.NickName;
              obj.MovieLibrary.ListhWithMovieObjects{NumberOfMovies+1,1} =       NewMovieObject;
