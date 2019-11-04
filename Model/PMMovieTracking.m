@@ -958,6 +958,7 @@ classdef PMMovieTracking
              NumberOfFrames =           obj.MetaData.EntireMovie.NumberOfTimePoints;
              EmptyContent =             cell(0,CurrentNumberOfColumns);
              
+
              if isempty(obj.TrackingAnalysis)
                  return
              end
@@ -967,6 +968,7 @@ classdef PMMovieTracking
                  
              end
              
+
             if isempty(obj.Tracking.TrackingCellForTime) || size(obj.Tracking.TrackingCellForTime,1) < NumberOfFrames
                 
                 obj.Tracking.TrackingCellForTime{NumberOfFrames,1} =      EmptyContent;
