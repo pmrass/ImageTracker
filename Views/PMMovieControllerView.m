@@ -53,6 +53,16 @@ classdef PMMovieControllerView
             obj.Menu.Keyword.Tag=                                               'Movies_EditKeyword';
             obj.Menu.Keyword.Enable=                                            'on';
 
+            obj.Menu.Nickname=                                                   uimenu(MainMovieMenu);
+            obj.Menu.Nickname.Label=                                             'Change nickname';
+            obj.Menu.Nickname.Tag=                                               'Movies_EditNickname';
+            obj.Menu.Nickname.Enable=                                            'on';
+            
+            obj.Menu.LinkedMovies=                                                   uimenu(MainMovieMenu);
+            obj.Menu.LinkedMovies.Label=                                             'Relink movies';
+            obj.Menu.LinkedMovies.Tag=                                               'Movies_LinkMovies';
+            obj.Menu.LinkedMovies.Enable=                                            'on';
+            
             obj.Menu.ReapplySourceFiles=                                        uimenu(MainMovieMenu);
             obj.Menu.ReapplySourceFiles.Label=                                  'Reapply source files';
             obj.Menu.ReapplySourceFiles.Tag=                                    'ReapplySourceFiles';

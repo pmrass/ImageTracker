@@ -926,7 +926,7 @@ classdef PMTIFFDocument
                                 
                                 assert(SamplesPerPixel == length(FieldsForImageReading.ListWithStripOffsets), 'Cannot read file. Reason: number of strips must be identical to number of samples per pixel')
                                 
-                                FieldsForImageReading.TargetChannelIndex=                       (num2cell(1:SamplesPerPixel))';
+                                FieldsForImageReading.TargetChannelIndex=                       (1:SamplesPerPixel)';
                                % FieldsForImageReading.TargetStartRows=                          repmat(FieldsForImageReading.TargetStartRows,length(FieldsForImageReading.ListWithStripOffsets),1);
                                % FieldsForImageReading.TargetEndRows=                            repmat(FieldsForImageReading.TargetEndRows,length(FieldsForImageReading.ListWithStripOffsets),1);
         

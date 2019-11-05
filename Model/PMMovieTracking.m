@@ -11,7 +11,7 @@ classdef PMMovieTracking
         Folder
         AttachedFiles
         
-         ListWithPaths
+        ListWithPaths
         PointersPerFile =           -1
         FileCouldNotBeRead =        1
         
@@ -336,7 +336,6 @@ classdef PMMovieTracking
         function obj =                                  AddImageMap(obj)
             
             
-                    
                     % usually this will done only a single time for each file;
                     % then the map and meta-data are saved in file enabling faster reading, still using other functions for retrieving data from file (with the help of this map);
                     
@@ -354,7 +353,7 @@ classdef PMMovieTracking
                     
                     switch Extension
                         
-                        case '.tif'
+                        case {'.tif', '.lsm'}
                             
                               myImageDocuments =                       cellfun(@(x)  PMTIFFDocument(x), obj.ListWithPaths);
                   

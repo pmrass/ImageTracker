@@ -230,9 +230,10 @@ classdef PMImagingProjectViewer
                     WidthOfContents =                                               obj.WidthOfProjectViews;
                     LeftPositionOfContents =                                        obj.LeftPositionOfProjectViews;
                     
-                    FirstRowForProjectViews =                                       0.95;
-                    SecondRowForProjectViews =                                      0.91;
-                    ThirdRowForProjectViews =                                       0.87;
+                    TitleRowForProjectViews =                                       0.95;
+                    FirstRowForProjectViews =                                       0.91;
+                    SecondRowForProjectViews =                                      0.87;
+                    ThirdRowForProjectViews =                                       0.83;
                     FourthRowForProjectViews =                                      0.01;
                     
 
@@ -240,7 +241,7 @@ classdef PMImagingProjectViewer
                     SelectedNickname=                                              uicontrol;
                     SelectedNickname.Style=                                        'Text';
                     SelectedNickname.Units=                                        'normalized';
-                    SelectedNickname.Position=                                     [LeftPositionOfContents FirstRowForProjectViews WidthOfContents ViewHeightInternal];
+                    SelectedNickname.Position=                                     [LeftPositionOfContents TitleRowForProjectViews WidthOfContents ViewHeightInternal];
                     SelectedNickname.String=                                       '';
                     SelectedNickname.Tag=                                          'KeywordFilter';
                     SelectedNickname.ForegroundColor =                              'c';
@@ -251,12 +252,23 @@ classdef PMImagingProjectViewer
                     FilterForKeywords=                                              uicontrol;
                     FilterForKeywords.Style=                                        'PopupMenu';
                     FilterForKeywords.Units=                                        'normalized';
-                    FilterForKeywords.Position=                                     [LeftPositionOfContents SecondRowForProjectViews WidthOfContents ViewHeightInternal];
+                    FilterForKeywords.Position=                                     [LeftPositionOfContents FirstRowForProjectViews WidthOfContents ViewHeightInternal];
                     FilterForKeywords.String=                                       {'Show all movies'};
                     FilterForKeywords.Tag=                                          'KeywordFilter';
                     FilterForKeywords.ForegroundColor =                              'r';
                     FilterForKeywords.BackgroundColor =                              [0 0.1 0.2];
 
+                    
+                      RealFilterForKeywords=                                              uicontrol;
+                    RealFilterForKeywords.Style=                                        'PopupMenu';
+                    RealFilterForKeywords.Units=                                        'normalized';
+                    RealFilterForKeywords.Position=                                     [LeftPositionOfContents SecondRowForProjectViews WidthOfContents ViewHeightInternal];
+                    RealFilterForKeywords.String=                                       {'Do not filter for keywords'};
+                    RealFilterForKeywords.Tag=                                          'RealKeywordFilter';
+                    RealFilterForKeywords.ForegroundColor =                              'r';
+                    RealFilterForKeywords.BackgroundColor =                              [0 0.1 0.2];
+
+                    
 
                     SortMovies=                                                     uicontrol;
                     SortMovies.Style=                                               'PopupMenu';
@@ -273,7 +285,7 @@ classdef PMImagingProjectViewer
                     ListOfMoviesInProject=                                          uicontrol;
                     ListOfMoviesInProject.Style=                                    'Listbox';
                     ListOfMoviesInProject.Units=                                    'normalized';
-                    ListOfMoviesInProject.Position=                                 [LeftPositionOfContents FourthRowForProjectViews WidthOfContents 0.84];
+                    ListOfMoviesInProject.Position=                                 [LeftPositionOfContents FourthRowForProjectViews WidthOfContents 0.74];
                     ListOfMoviesInProject.String=                                   {'Empty'};
                     ListOfMoviesInProject.Min=                                      0;
                     ListOfMoviesInProject.Max=                                      2;
@@ -282,6 +294,7 @@ classdef PMImagingProjectViewer
                     ListOfMoviesInProject.BackgroundColor =                              [0 0.1 0.2];
 
                     %% add handle of project-window:
+                     obj.ProjectViews.RealFilterForKeywords=                               RealFilterForKeywords;
                     obj.ProjectViews.FilterForKeywords=                               FilterForKeywords;
                     obj.ProjectViews.SelectedNickname=                                SelectedNickname;
                     obj.ProjectViews.SortMovies=                                      SortMovies;

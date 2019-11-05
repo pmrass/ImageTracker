@@ -156,15 +156,13 @@ classdef PMMovieLibraryManager < handle
             
             %% other views
             obj.Viewer.ProjectViews.FilterForKeywords.Callback =                        @obj.callbackForFilterChange;
+            obj.Viewer.ProjectViews.RealFilterForKeywords.Callback =                        @obj.callbackForFilterChange;
+            
+            
             obj.Viewer.ProjectViews.SortMovies.Callback =                               @obj.updateView;
             obj.Viewer.ProjectViews.ListOfMoviesInProject.Callback =                    @obj.movieListClicked;
             
-            
-            
-          
-            
-            
-            
+   
         end
         
         
@@ -173,6 +171,14 @@ classdef PMMovieLibraryManager < handle
             
              % movie menu:
             obj.Viewer.MovieControllerViews.Menu.Keyword.MenuSelectedFcn =                                              @obj.changeKeywordClicked;
+            
+              obj.Viewer.MovieControllerViews.Menu.Nickname.MenuSelectedFcn =                                              @obj.changeNicknameClicked;
+            obj.Viewer.MovieControllerViews.Menu.LinkedMovies.MenuSelectedFcn =                                              @obj.changeLinkedMoviesClicked;
+          
+            
+            
+            
+            
             obj.Viewer.MovieControllerViews.Menu.ReapplySourceFiles.MenuSelectedFcn =                                   @obj.reapplySourceFilesClicked;
             obj.Viewer.MovieControllerViews.Menu.DeleteImageCache.MenuSelectedFcn =                                     @obj.deleteImageCacheClicked;
             
@@ -398,7 +404,7 @@ classdef PMMovieLibraryManager < handle
                     obj.ActiveMovieController.LoadedMovie.Folder = NewPath;
                 end
                 
-                 obj =                                          obj.updateInfoView;
+                obj =                                          obj.updateInfoView;
                 
         
             
@@ -408,17 +414,14 @@ classdef PMMovieLibraryManager < handle
         function [obj] =        changeExportFolderClicked(obj,src,~)
             
             
-            [NewPath]=                             uipickfiles('FilterSpec', obj.MainProjectFolder, 'Prompt', 'Select export folder',...
+                [NewPath]=                             uipickfiles('FilterSpec', obj.MainProjectFolder, 'Prompt', 'Select export folder',...
                 'NumFiles', 1, 'Output', 'char');
                 if isempty(NewPath) || ~ischar(NewPath)
                     return
                 end
 
-            
-            
-            obj.MovieLibrary.PathForExport = NewPath;
-            
-             obj =   obj.updateInfoView;
+                obj.MovieLibrary.PathForExport =        NewPath;
+                obj =                                   obj.updateInfoView;
             
             
         end
@@ -426,7 +429,44 @@ classdef PMMovieLibraryManager < handle
         function [obj] =        addMovieClicked(obj,src,~)
             
             
-            %% let the user choose movie-file/s from the movie-folder;
+         
+            [ListWithFileNamesToAdd] =              getMovieFileNames(obj);
+            
+            MovieStructure.AttachedFiles =          ListWithFileNamesToAdd;
+             
+             
+             %% let user selected nickname for current movie:
+             NewUniqueNickname =                   obj.getNewUniqueNickName;
+             MovieStructure.NickName =             NewUniqueNickname;
+             
+             
+             %% add movie/nickname/filenames
+             obj =                                  obj.addSingleMovieToProject(MovieStructure);
+             
+
+        end
+        
+        function obj = addSingleMovieToProject(obj, MovieStructure)
+            
+            
+             [NewMovieObject]=                                                  PMMovieTracking(MovieStructure, obj.MovieLibrary.PathOfMovieFolder, 0); 
+             
+             NumberOfMovies =                                                   size(obj.MovieLibrary.ListhWithMovieObjects,1);
+             
+             obj.MovieLibrary.SelectedNickname =                                MovieStructure.NickName;
+             obj.MovieLibrary.ListhWithMovieObjects{NumberOfMovies+1,1} =       NewMovieObject;
+             
+             obj.ListWithLoadedImageData{NumberOfMovies+1,1} =                  cell(0,1);
+             
+             obj =                                                              obj.updateView;
+             obj =                                                              obj.callbackForFilterChange;
+ 
+        end
+        
+        function [ListWithFileNamesToAdd] = getMovieFileNames(obj)
+            
+            
+               %% let the user choose movie-file/s from the movie-folder;
             if exist(obj.MovieLibrary.PathOfMovieFolder) ~= 7
                 msgbox('You must first choose a valid movie-folder', 'Adding movie/image to project')
                 return
@@ -439,41 +479,14 @@ classdef PMMovieLibraryManager < handle
                 return
             end
             
-            [~, file, ext]  =            cellfun(@(x) fileparts(x), ListWithFileNamesToAdd, 'UniformOutput', false);
+            [~, file, ext]  =                       cellfun(@(x) fileparts(x), ListWithFileNamesToAdd, 'UniformOutput', false);
 
             
-            ListWithFileNamesToAdd =        cellfun(@(x,y) [x, y], file, ext, 'UniformOutput', false);
+            ListWithFileNamesToAdd =                cellfun(@(x,y) [x, y], file, ext, 'UniformOutput', false);
 
-             %% let user selected nickname for current movie:
-             NewUniqueNickname =                   obj.getNewUniqueNickName;
-
-             MovieStructure.NickName =             NewUniqueNickname;
-              MovieStructure.AttachedFiles =        ListWithFileNamesToAdd;
-              
-             obj =                              obj.addSingleMovieToProject(MovieStructure);
-             
-              
- 
-           
+            
+            
         end
-        
-        function obj = addSingleMovieToProject(obj, MovieStructure)
-            
-            
-             [NewMovieObject]=                      PMMovieTracking(MovieStructure, obj.MovieLibrary.PathOfMovieFolder, 0); 
-             
-             NumberOfMovies =                       size(obj.MovieLibrary.ListhWithMovieObjects,1);
-             
-             obj.MovieLibrary.SelectedNickname =                                MovieStructure.NickName;
-             obj.MovieLibrary.ListhWithMovieObjects{NumberOfMovies+1,1} =       NewMovieObject;
-             
-             obj.ListWithLoadedImageData{NumberOfMovies+1,1} =                  cell(0,1);
-             
-             obj =                                                              obj.updateView;
-             obj =                                                              obj.callbackForFilterChange;
- 
-        end
-        
         
         function [ Nickname ] = getNewUniqueNickName(obj)
             %NICKNAME_GET Summary of this function goes here
@@ -484,6 +497,11 @@ classdef PMMovieLibraryManager < handle
             while 1
 
                 Nickname=                                                                   inputdlg('For single or pooled movie sequence','Enter nickname');
+                
+                 if isempty(Nickname)
+                    continue
+                end
+                
                 Nickname=                                                                   Nickname{1,1};
                 if isempty(Nickname)
                     continue
@@ -529,7 +547,6 @@ classdef PMMovieLibraryManager < handle
                         
                          SelectedRow =                                               obj.MovieLibrary.getSelectedRowInLibrary;
                         
-                         MovieNickname =    obj.MovieLibrary.ListhWithMovieObjects{SelectedRow,1}.NickName;
                          
                         obj.MovieLibrary.ListhWithMovieObjects(SelectedRow, :)=      [];
 
@@ -1230,9 +1247,10 @@ classdef PMMovieLibraryManager < handle
              
                 %% apply current selection in menu to filter
                 
-                PopupMenu =                         obj.Viewer.ProjectViews.FilterForKeywords;
+                PopupMenuOne =                         obj.Viewer.ProjectViews.FilterForKeywords;
+                PopUpMenuTwo =                         obj.Viewer.ProjectViews.RealFilterForKeywords;
                 
-                obj.MovieLibrary =                  obj.MovieLibrary.updateFilterSettingsFromPopupMenu(PopupMenu);
+                obj.MovieLibrary =                  obj.MovieLibrary.updateFilterSettingsFromPopupMenu(PopupMenuOne,PopUpMenuTwo);
                 obj =                              obj.updateView;
                  
               
@@ -1241,26 +1259,84 @@ classdef PMMovieLibraryManager < handle
             
         end
         
+     
+        
         
         
 
       
                 
         %% response to movie menu click:
+        
+        
+        
 
         function [obj] = changeKeywordClicked(obj,src,~)
                
                obj.ActiveMovieController =      obj.ActiveMovieController.changeMovieKeyword;
                
                 [obj] =                         obj.synchronizeMovieLibraryWithActiveMovie;
-                
-                
                 obj =                           obj.updateView;
-                
                 obj =                           obj.callbackForFilterChange;
             
             
-          end
+        end
+        
+         function [obj] = changeNicknameClicked(obj,src,~)
+               
+             
+               % get row in library that corresponds to active movie 
+                NickNameBeforeChange =                                                             obj.ActiveMovieController.LoadedMovie.NickName;
+                CurrentlyEditedRowInLibrary =                                                       obj.MovieLibrary.getSelectedRowInLibraryOf(NickNameBeforeChange);
+                
+                if sum(CurrentlyEditedRowInLibrary) == 0
+                    return
+                end
+            
+             
+               NewUniqueNickname =                   obj.getNewUniqueNickName;
+
+               obj.ActiveMovieController =      obj.ActiveMovieController.changeMovieNickname(NewUniqueNickname);
+               
+               
+               
+               
+              
+                
+                % update library
+                obj.MovieLibrary.ListhWithMovieObjects{CurrentlyEditedRowInLibrary,1}.NickName =             obj.ActiveMovieController.LoadedMovie.NickName;
+                
+                % also place the current image data into the manager;
+                % they should not be saved on file because it could blow up storage;
+                % but they should be kept in memory so that previous movie information of a previously selected file can be accessed quickly;
+              
+               
+                [obj] =                         obj.synchronizeMovieLibraryWithActiveMovie;
+                obj =                           obj.updateView;
+                obj =                           obj.callbackForFilterChange;
+            
+            
+         end
+        
+         
+          function [obj] = changeLinkedMoviesClicked(obj,src,~)
+               
+              
+              [ListWithFileNamesToAdd] =              getMovieFileNames(obj);
+              
+               obj.ActiveMovieController =      obj.ActiveMovieController.changeMovieLinkedMovieFiles(ListWithFileNamesToAdd);
+               
+                [obj] =                         obj.synchronizeMovieLibraryWithActiveMovie;
+                obj =                           obj.updateView;
+                obj =                           obj.callbackForFilterChange;
+            
+            
+        end
+        
+        
+          
+          
+        
         
            
         function [obj] = reapplySourceFilesClicked(obj,src,~)
@@ -1800,26 +1876,42 @@ classdef PMMovieLibraryManager < handle
                
                 
                 %% set the current filter by view:
-                ListWithKeywordStrings =                                            obj.MovieLibrary.getKeyWordList;
+               
                 ProjectWindowHandles =                                              obj.Viewer.ProjectViews;
                 
-                if isempty(ListWithKeywordStrings)
-                    ListWithKeywordStrings=                                         [obj.ProjectFilterList];
-                    ProjectWindowHandles.FilterForKeywords.Enable=                  'on';
-                   
-                else
-                    ListWithKeywordStrings=                                          [obj.ProjectFilterList; ListWithKeywordStrings];
-                    ProjectWindowHandles.FilterForKeywords.Enable=                  'on';
-                end
-                ProjectWindowHandles.FilterForKeywords.String=                      ListWithKeywordStrings;
                 
+               
+                
+                
+                %% general filter
+                
+                ProjectWindowHandles.FilterForKeywords.Enable=                      'on';
+                ProjectWindowHandles.FilterForKeywords.String=                      [obj.ProjectFilterList];
+                
+
                ProjectWindowHandles.FilterForKeywords.Value =  obj.MovieLibrary.FilterSelectionIndex;
-               if min(ProjectWindowHandles.FilterForKeywords.Value) == 0
+               if ProjectWindowHandles.FilterForKeywords.Value == 0
                    ProjectWindowHandles.FilterForKeywords.Value = 1;
                end
                
                if min(ProjectWindowHandles.FilterForKeywords.Value)> length(ProjectWindowHandles.FilterForKeywords.String)
                    ProjectWindowHandles.FilterForKeywords.Value = length(ProjectWindowHandles.FilterForKeywords.String);
+               end
+                
+               
+               
+               %% keyword filter:
+               
+                 ListWithKeywordStrings =                                            obj.MovieLibrary.getKeyWordList;
+                   ProjectWindowHandles.RealFilterForKeywords.String =                ['Ignore keywords'; ListWithKeywordStrings];
+            
+                   
+               if ProjectWindowHandles.RealFilterForKeywords.Value == 0
+                   ProjectWindowHandles.RealFilterForKeywords.Value = 1;
+               end
+               
+               if min(ProjectWindowHandles.RealFilterForKeywords.Value)> length(ProjectWindowHandles.RealFilterForKeywords.String)
+                   ProjectWindowHandles.RealFilterForKeywords.Value = length(ProjectWindowHandles.RealFilterForKeywords.String);
                end
                 
                 

@@ -21,6 +21,10 @@ classdef PMMovieLibrary
         
         FilterSelectionIndex =                      1;
         FilterSelectionString =                     ''
+        
+        KeywordFilterSelectionIndex =               1;
+        KeywordFilterSelectionString =              'Ignore keywords';
+        
         FilterList =                                true
         SortIndex =                                 1;
         
@@ -66,8 +70,7 @@ classdef PMMovieLibrary
                     OldFilename =                       obj.FileName;
                     NewFilename =                       [OldFilename(1:end-4) '_Version3.mat'];
                     obj.FileName =                      NewFilename; % now the file will be saved as version 3, but with a new filename do prevent overwriteing
-                    obj =                               obj.createFilterByKeywords;
-             
+                   
                     if size(obj.ListWithFilteredNicknames,1) >= 1
                         obj.SelectedNickname=               obj.ListWithFilteredNicknames{1, 1};
                     end
@@ -258,15 +261,24 @@ classdef PMMovieLibrary
         
         
         
-        function [obj] =                createFilterByKeywords(obj)
+        function [obj] =                addKeywordFilter(obj)
             
-            SelectedKeyword =                                           obj.SelectedKeywords;
+            SelectedKeyword =                                           obj.KeywordFilterSelectionString;
             
-            if ~isempty(SelectedKeyword)
-                obj.FilterList =                                            logical(cellfun(@(x) max(strcmp(x.Keywords, SelectedKeyword)), obj.ListhWithMovieObjects));
-            else
-                obj.FilterList(1:size(obj.ListhWithMovieObjects,1),1)=      true;
-            end
+             a = cellfun(@(x) isempty(x.Keywords), obj.ListhWithMovieObjects);
+           
+         
+            
+            
+            KeywordFilterList =  cellfun(@(x) max(strcmp(x.Keywords, SelectedKeyword)), obj.ListhWithMovieObjects, 'UniformOutput', false);
+        
+            KeywordFilterList(a,:) = {false};
+            
+            KeywordFilterList = cell2mat(KeywordFilterList);
+            
+            
+            
+            obj.FilterList =    min([obj.FilterList,logical(KeywordFilterList)], [], 2);
             
                 ListWithAllNickNames =              cellfun(@(x) x.NickName, obj.ListhWithMovieObjects, 'UniformOutput', false);
                 obj.ListWithFilteredNicknames=      ListWithAllNickNames(obj.FilterList,:);
@@ -308,8 +320,9 @@ classdef PMMovieLibrary
         
         
         
-        function [obj] =            updateFilterSettingsFromPopupMenu(obj,PopupMenu)
+        function [obj] =            updateFilterSettingsFromPopupMenu(obj,PopupMenu,PopUpMenuTwo)
             
+            %% first do general filter
                 if ischar(PopupMenu.String)
                     SelectedString =  PopupMenu.String;
                 else
@@ -319,9 +332,23 @@ classdef PMMovieLibrary
                 obj.FilterSelectionIndex =             PopupMenu.Value;
                 obj.FilterSelectionString =            SelectedString;
                 
-                obj =                                  obj.updateFilterList;
+               
             
             
+                %% then do keyword-filter
+                
+                  if ischar(PopUpMenuTwo.String)
+                    SelectedString =  PopUpMenuTwo.String;
+                else
+                    SelectedString = PopUpMenuTwo.String{PopUpMenuTwo.Value};                                           
+                end
+                
+                 obj.KeywordFilterSelectionIndex =               PopUpMenuTwo.Value;
+                obj.KeywordFilterSelectionString =              SelectedString;
+                
+                %% finalize filter:
+                 obj =                                  obj.updateFilterList;
+        
             
         end
         
@@ -359,12 +386,27 @@ classdef PMMovieLibrary
                         
                   case 'Show content with non-matching channel information'
                       obj =                               obj.createFilterForInAccurateChannelInformation;
-                      
-                 otherwise
-                        obj.SelectedKeywords =             SelectedString;
-                        obj =                              obj.createFilterByKeywords;
+             
 
-             end
+              end
+             
+              
+              
+                       
+                 
+                        SelectedKeywordString =             obj.KeywordFilterSelectionString;
+                        
+                        switch SelectedKeywordString
+                            
+                            case 'Ignore keywords'
+                                
+                            otherwise
+                                    
+                                obj =                              obj.addKeywordFilter;
+                            
+                        end
+                        
+                        
             
             
         end

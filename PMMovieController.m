@@ -118,11 +118,39 @@ classdef PMMovieController < handle
         
         function [obj] =        changeMovieKeyword(obj)
             
+            
+            if strcmp(class(obj.LoadedMovie), 'PMMovieTracking')
               KeywordString=                        char(inputdlg('Enter new keyword'));
               obj.LoadedMovie.Keywords{1,1} =       KeywordString;
+            end
                  
         end
-       
+        
+        
+         function [obj] =        changeMovieNickname(obj, String)
+            
+             
+             if strcmp(class(obj.LoadedMovie), 'PMMovieTracking')
+              
+              obj.LoadedMovie.NickName =       String;
+             end
+            
+             
+             
+                 
+         end
+        
+         
+          function [obj] =        changeMovieLinkedMovieFiles(obj,ListWithFileNamesToAdd)
+            
+              
+              
+              obj.LoadedMovie.AttachedFiles =       ListWithFileNamesToAdd;
+                 
+        end
+        
+        
+            
 
         
         %% change views:
