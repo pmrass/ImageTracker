@@ -287,7 +287,12 @@ classdef PMCZIDocument
             
             MetaData.EntireMovie.VoxelSizeX=                                Values(1); 
             MetaData.EntireMovie.VoxelSizeY=                                Values(2);  
-            MetaData.EntireMovie.VoxelSizeZ=                                1; 
+            
+            if length(Values) == 3
+                MetaData.EntireMovie.VoxelSizez =                           Values(3);  
+            else
+                MetaData.EntireMovie.VoxelSizeZ=                                1e-6; 
+            end
 
             
              Attachmenets =        obj.SegmentList(cellfun(@(x) contains(x, 'ZISRAWATTACH'), obj.SegmentList(:,1)),:);
@@ -296,7 +301,7 @@ classdef PMCZIDocument
              
              
              
-             Row = cellfun(@(x) ~isempty(strfind(x.ContentFileType', 'CZTIMS')), Entries);
+             Row = cellfun(@(x) contains(x.ContentFileType', 'CZTIMS'), Entries);
              
              
              
@@ -337,16 +342,16 @@ classdef PMCZIDocument
             for ImageIndex = 1:NumberOfImages
                 
                 
-                 PixelType = ImageSegments{1, 6}.Directory.PixelType;
-                Compression =  ImageSegments{1, 6}.Directory.Compression;
+                PixelType =                    ImageSegments{1, 6}.Directory.PixelType;
+                Compression =                   ImageSegments{1, 6}.Directory.Compression;
                
                 assert(strcmp(PixelType, 'Gray8') && strcmp(Compression, 'Uncompressed'), 'Data format not supported')
                
-                 CurrentImage = ImageSegments{ImageIndex,6};
+                 CurrentImage =                 ImageSegments{ImageIndex,6};
                 
-                DimensionEntries =          CurrentImage.Directory.DimensionEntries;
+                DimensionEntries =              CurrentImage.Directory.DimensionEntries;
                 
-                DimensionNames =             cellfun(@(x) x.Dimension(1), DimensionEntries, 'UniformOutput', false);
+                DimensionNames =                cellfun(@(x) x.Dimension(1), DimensionEntries, 'UniformOutput', false);
                
                 
                

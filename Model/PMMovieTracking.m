@@ -8,7 +8,8 @@ classdef PMMovieTracking
         NickName
         
         Keywords =                  cell(0,1)
-        Folder
+        Folder % movie folder:
+        FolderAnnotation =          ''
         AttachedFiles
         
         ListWithPaths
@@ -52,10 +53,11 @@ classdef PMMovieTracking
         
         ActiveChannel =             1 % this is used for tracking for example, need to add option that user can change this;
         
-        CroppingGate =              [1 1 1 1]
-        AppliedCroppingGate
-        CroppingOn =                0
         
+        
+        
+         EditingActivity =       'No editing'
+        AllPossibleEditingActivities =  {'No editing','Manual drift correction','Tracking'};
         
         
         %%  information that is read from linked files; 
@@ -72,12 +74,26 @@ classdef PMMovieTracking
         % content is set by the user;
         DriftCorrection
         
+         AplliedRowShifts                                % drift correction: depending on frame and whether drifct correction is on, settings for how much centroids, gates, etc. have to be moved is stored here;                
+        AplliedColumnShifts
+        AplliedPlaneShifts
+        MaximumRowShift =                               0
+        MaximumColumnShift =                            0
+        MaximumPlaneShift =                             0
+        
+        
+        CroppingGate =              [1 1 1 1]
+        AppliedCroppingGate
+        CroppingOn =                0
+        
+        
         % tracking model content used for displaying data
         % there are now several different formats of the tracking data: maybe add a method to remove duplicate analysis to not boost storage space unnecessarily;
         Tracking % for storing basic migration data on file (new tracking data are moved directly here);
         TrackingAnalysis % is built from basic migration data and enables sophisticated analysis on tracks;
         
-       
+       %% saving status
+       UnsavedTrackingDataExist =                                   true
         
         
 
@@ -102,8 +118,14 @@ classdef PMMovieTracking
                     obj.DriftCorrection =                                       PMDriftCorrection(MovieStructure, Version);
                     obj.Tracking =                                              PMTrackingNavigation(MovieStructure,Version);
 
+                case 1 % for loading from file
                     
-
+                    obj.NickName =                                              MovieStructure.NickName;
+                    obj.Folder =                                                AdditionalInput{1};
+                    obj.FolderAnnotation =                                      AdditionalInput{2};
+                    obj =                                                       obj.loadObjectFromFile;
+                    obj.FolderAnnotation =                                      AdditionalInput{2}; % duplicate because in some files this information may not be tehre
+               
                 case 2
                     
                     obj.NickName =                                              MovieStructure.NickName;
@@ -169,13 +191,982 @@ classdef PMMovieTracking
         end
         
         
-        %% basic methods that are used for creating the model:
+        %% getters:
         
+        function [segmentationOfCurrentFrame ] =            getUnfilteredSegmentationOfCurrentFrame(obj)
+            
+              CurrentFrame =                                      obj.SelectedFrames(1);
+
+                DataDoNotExist =     isempty(obj.Tracking.TrackingCellForTime) || size(obj.Tracking.TrackingCellForTime,1) < CurrentFrame || isempty(obj.Tracking.TrackingCellForTime{CurrentFrame});
+                
+                if DataDoNotExist
+                     segmentationOfCurrentFrame =                    cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+                else
+                     segmentationOfCurrentFrame =                    obj.Tracking.TrackingCellForTime{CurrentFrame,1};
+                     
+                end
+            
+        end
+        
+           function [segmentationOfCurrentFrame ] =                            getSegmentationOfCurrentFrame(obj)
+                    
+               
+               
+               function [list] =                                   filterPixelListForPlane(list,SelectedPlane)
+                        if isempty(list)
+                           list =   zeros(0,3);
+                        else
+                            list(list(:,3)~=SelectedPlane,:) = [];  
+                        end
+                        end
+               
+                CurrentFrame =                                      obj.SelectedFrames(1);
+
+                DataDoNotExist =     isempty(obj.Tracking.TrackingCellForTime) || size(obj.Tracking.TrackingCellForTime,1) < CurrentFrame || isempty(obj.Tracking.TrackingCellForTime{CurrentFrame});
+                
+                if DataDoNotExist
+                     segmentationOfCurrentFrame =                    cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+                else
+                     segmentationOfCurrentFrame =                    obj.Tracking.TrackingCellForTime{CurrentFrame,1};
+                     
+                       
+
+                if ~obj.CollapseAllTracking % filter further (unless maximum projection is wanted);
+                    
+                    SelectedPlane =                                                         obj.SelectedPlanes(1);
+                    [~, ~, SelectedPlaneWithoutDriftCorrection] =                           obj.removeDriftCorrection(0,0,SelectedPlane);
+                    
+                    
+                    if ~isempty(segmentationOfCurrentFrame)
+                        % remove mask pixels that are not within the selected frame;
+                        FilteredPixelLists =                                                    cellfun(@(x) filterPixelListForPlane(x,SelectedPlaneWithoutDriftCorrection), segmentationOfCurrentFrame(:,obj.Tracking.getPixelListColumn), 'UniformOutput', false);
+                        segmentationOfCurrentFrame(:,obj.Tracking.getPixelListColumn) =                 FilteredPixelLists;
+                        
+                        % completely remove cells where all the pixels are out the specified frames;
+                        EmptyRows =                                                             cellfun(@(x) isempty(x), segmentationOfCurrentFrame(:,obj.Tracking.getPixelListColumn));
+                        %segmentationOfCurrentFrame(EmptyRows,:) =                               [];
+
+
+                    end
+                    
+                    
+                end
+                
+                
+              end
+                
+                
+                
+              
+
+  
+           end
+            
+           
+           
+           
+        function TrackDataOfCurrentFrame =                  getTrackDataOfCurrentFrame(obj)
+                
+                State_CurrentFrame =                        obj.SelectedFrames(1);
+                TrackDataOfCurrentFrame =                   obj.getTrackDataOfFrame(State_CurrentFrame);
+                
+  
+        end
+        
+        function TrackDataOfSpecifiedFrame =              getTrackDataOfFrame(obj, FrameNumber)
+            
+                TrackingResults =                           obj.Tracking.TrackingCellForTime;
+                if ~isempty(TrackingResults) && size(TrackingResults,1) >= FrameNumber
+                    TrackDataOfSpecifiedFrame =                        TrackingResults{FrameNumber,1}; 
+                else
+                    TrackDataOfSpecifiedFrame = cell(0,obj.Tracking.getNumberOfTrackColumns);
+                end
+                
+                
+            
+        end
+        
+       
+           
+              function DataOfActiveTrackPreviousFrame =                           getPreviousMaskData(obj)
+
+
+                    PreviousFrame =                                                 obj.SelectedFrames(1)-1;
+
+                    if PreviousFrame<= 0 || size( obj.Tracking.TrackingCellForTime,1)<PreviousFrame 
+                        DataOfActiveTrackPreviousFrame = cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+                    else
+
+                         if isempty(obj.Tracking.TrackingCellForTime)
+                             obj.Tracking.TrackingCellForTime(1:obj.MetaData.EntireMovie.NumberOfTimePoints,:) = {cell(0,length(obj.Tracking.FieldNamesForTrackingCell))};
+
+
+                         elseif isempty(obj.Tracking.TrackingCellForTime{PreviousFrame})
+                             obj.Tracking.TrackingCellForTime{PreviousFrame,1}= cell(0,length(obj.Tracking.FieldNamesForTrackingCell));
+
+                         end
+
+                        segementationOfPreviousFrame =                    obj.Tracking.TrackingCellForTime{PreviousFrame,1};
+                        
+                        myIDOfActiveTrack =                             obj.IdOfActiveTrack;
+                        allTrackIDsInPreviousFrame =                    cell2mat(segementationOfPreviousFrame(:,obj.Tracking.getTrackIDColumn));
+                        rowWithActiveTrackInPreviousFrame =             allTrackIDsInPreviousFrame == myIDOfActiveTrack ;   
+
+                        DataOfActiveTrackPreviousFrame =                segementationOfPreviousFrame(rowWithActiveTrackInPreviousFrame,:);
+
+                    end
+
+
+              end
+
+           
+              function segmentationOfActiveTrack =          getUnfilteredSegmentationOfActiveTrack(obj)
+                  segmentationOfCurrentFrame =                         obj.getUnfilteredSegmentationOfCurrentFrame;
+                
+                rowOfActiveTrack =                              obj.getRowOfActiveTrackIn(segmentationOfCurrentFrame);
+                 if sum(rowOfActiveTrack) ==                    0
+                      segmentationOfActiveTrack =   cell(0,length(obj.Tracking));
+                 else
+                     segmentationOfActiveTrack =     segmentationOfCurrentFrame(rowOfActiveTrack,:);
+                 end
+                  
+                  
+              end
+              
+            
+              function segmentationOfActiveTrack =                                getSegmentationOfActiveTrack(obj)
+
+                segmentationOfCurrentFrame =                         obj.getSegmentationOfCurrentFrame;
+                
+                rowOfActiveTrack =                              obj.getRowOfActiveTrackIn(segmentationOfCurrentFrame);
+                 if sum(rowOfActiveTrack) ==                    0
+                      segmentationOfActiveTrack =   cell(0,length(obj.Tracking));
+                 else
+                     segmentationOfActiveTrack =     segmentationOfCurrentFrame(rowOfActiveTrack,:);
+                 end
+
+              end 
+            
+              
+               function rowOfActiveTrack =                                         getRowOfActiveTrackIn(obj,segmentationOfCurrentFrame)
+
+                 myIDOfActiveTrack =                             obj.IdOfActiveTrack;
+                % simply reset the plane to the current plane of active
+                % track; down below this plane will be used to create the image;
+                rowOfActiveTrack =                              cell2mat(segmentationOfCurrentFrame(:,obj.Tracking.getTrackIDColumn)) == myIDOfActiveTrack ;
+
+
+               end
+
+           
+               function planeOfActiveTrack =                                       getPlaneOfActiveTrack(obj)
+
+                    segmentationOfActiveTrack =                 obj.getSegmentationOfActiveTrack;
+
+                    if isempty(segmentationOfActiveTrack)
+                        planeOfActiveTrack = NaN;
+                    else
+                        planeOfActiveTrack =            round(segmentationOfActiveTrack{1,obj.Tracking.getCentroidZColumn});
+                        [~, ~, planeOfActiveTrack ] =              obj.addDriftCorrection( 0, 0, planeOfActiveTrack);
+                    end
+
+               end
+            
+               
+            function [regularPlanes] =                                          convertInputPlanesIntoRegularPlanes(obj, inputPlanes)
+
+                % get planes without drift correction
+                
+                  if obj.DriftCorrectionOn
+
+                        CurrentFrame =                                      obj.SelectedFrames(1);
+                        PlaneShiftsAbsolute =                               obj.AplliedPlaneShifts;
+                        regularPlanes =                                     inputPlanes - PlaneShiftsAbsolute(CurrentFrame);
+
+                        regularPlanes(regularPlanes<1) =                  [];
+                        regularPlanes(regularPlanes>obj.MetaData.EntireMovie.NumberOfPlanes) = [];
+
+
+                  else
+                      regularPlanes =                                       inputPlanes;
+
+                  end
+
+
+            end
+
+                    
+            function newTrackID =                                               findNewTrackID(obj)
+
+                 MySelectedFrame =                      obj.SelectedFrames(1);
+
+                if ~isempty(obj.Tracking.TrackingCellForTime) % not sure what this is good for, some cleanupt? ;
+                    InvalidRows =            isnan(cell2mat(obj.Tracking.TrackingCellForTime{MySelectedFrame,1}(:,obj.Tracking.getTrackIDColumn)));
+                    obj.Tracking.TrackingCellForTime{MySelectedFrame,1}(InvalidRows,:) = [];
+
+                end
+                
+                newTrackID =            obj.Tracking.generateNewTrackID;
+
+                if isempty(newTrackID) || isnan(newTrackID)
+                    newTrackID = 1;
+                end
+
+            end
+            
+            
+            function [currentFrame] =                                           getCurrentFrame(obj)
+
+                currentFrame = obj.SelectedFrames(1);
+
+
+            end
+
+               
+       function [CurrentRowShift, CurrentColumnShift, CurrentPlaneShift] =        getCurrentDriftCorrectionValues(obj)
+
+                CurrentFrame =                                      obj.SelectedFrames(1);    
+                CurrentColumnShift=                                 obj.AplliedColumnShifts(CurrentFrame);
+                CurrentRowShift=                                    obj.AplliedRowShifts(CurrentFrame);
+                CurrentPlaneShift =                                 obj.AplliedPlaneShifts(CurrentFrame);
+
+       end
+        
+            
+          function [xCoordinates, yCoordinates, zCoordinates ] =              addDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates)
+
+                CurrentFrame =                                      obj.SelectedFrames(1);
+
+
+                RowShiftsAbsolute =                                 obj.AplliedRowShifts;
+                ColumnShiftsAbsolute =                              obj.AplliedColumnShifts;
+                PlaneShiftsAbsolute =                               obj.AplliedPlaneShifts;
+
+                xCoordinates=                                       xCoordinates+ColumnShiftsAbsolute(CurrentFrame);
+                yCoordinates=                                       yCoordinates+RowShiftsAbsolute(CurrentFrame);
+                zCoordinates=                                       zCoordinates+PlaneShiftsAbsolute(CurrentFrame);
+
+          end
+            
+           function [xCoordinates, yCoordinates, zCoordinates ] =              removeDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates)
+
+                CurrentFrame =                                      obj.SelectedFrames(1);
+
+
+                RowShiftsAbsolute =                                 obj.AplliedRowShifts;
+                ColumnShiftsAbsolute =                              obj.AplliedColumnShifts;
+                PlaneShiftsAbsolute =                               obj.AplliedPlaneShifts;
+
+                xCoordinates=                                       xCoordinates-ColumnShiftsAbsolute(CurrentFrame);
+                yCoordinates=                                       yCoordinates-RowShiftsAbsolute(CurrentFrame);
+                zCoordinates=                                       zCoordinates-PlaneShiftsAbsolute(CurrentFrame);
+
+        end
+        
+          
+       
+          function [StartFrames,EndFrames] =                  getFramesForTracking(obj, Parameter)
+
+                TrackingStartFrame =                                obj.SelectedFrames(1);
+                [firstUntrackedFrame, lastUntrackedFrame] =         obj.getFirstLastContiguousUntrackedFrame;
+
+                switch Parameter
+
+                    case 'forward'
+
+                            StartFrames =                        TrackingStartFrame:lastUntrackedFrame-1;
+                            EndFrames =                          StartFrames + 1;
+
+                    case 'backward'
+
+                            StartFrames =            TrackingStartFrame:-1:firstUntrackedFrame+1;
+                            EndFrames =              StartFrames - 1;
+
+                end
+
+
+
+
+            end
+        
+        function pixelList =                                getPixelsFromActiveMask(obj)
+            
+            RowInCell=                                          obj.FindLocationOfNewCellMask;
+            activeFrame =                                       obj.getSelectedFrame;
+            pixelList =                                         obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getPixelListColumn};
+
+        end
+        
+        
+        function pixelList_Modified =                            getPixelsFromActiveMaskAfterRemovalOf(obj, pixelListToRemove)
+            
+            
+             
+                
+              
+             pixelList_Original =                                getPixelsFromActiveMask(obj);
+              pixelList_Modified =        pixelList_Original;
+              
+              
+             yList =                                                pixelListToRemove(:,1);
+             xList =                                                pixelListToRemove(:,2);
+                
+              if ~(isempty(yList) || isempty(xList))
+                   
+                deleteRows =                                    ismember(pixelList_Original(:,1:2), [yList xList], 'rows');
+                pixelList_Modified =                             pixelList_Original;
+                pixelList_Modified(deleteRows,:) =               [];
+
+              end
+             
+                
+                
+            
+        end
+        
+        
+        function pixelList_AfterAdding =                        getPixelsOfActiveTrackAfterAddingOf(obj, pixelListToAdd)
+            
+              %% obtain data:
+                oldPixels =                                 getPixelsFromActiveMask(obj);
+              
+                pixelList_AfterAdding =                     unique([oldPixels;pixelListToAdd], 'rows');
+                
+            
+        end
+        
+        
+        
+        
+        function activeFrame =                              getSelectedFrame(obj)
+             activeFrame =                          obj.SelectedFrames(1);
+
+        end
+        
+        function numberOfFrames =                           getUniqueFrameNumberFromImageMap(obj, ImageMap)
+            
+            ColumnWithTime = 10;
+            numberOfFrames =             length(unique(cell2mat(ImageMap(2:end,ColumnWithTime))));
+            
+            
+            
+        end
+        
+      
+        
+        function trackIDsWithNoFollowUp =                                 getTrackIDsWhereNextFrameHasNoMask(obj)
+            
+            
+            
+            CurrentFrame =                                              obj.SelectedFrames(1);
+            
+            MaxFrame = obj.MetaData.EntireMovie.NumberOfTimePoints;
+            if CurrentFrame >= MaxFrame 
+                trackIDsWithNoFollowUp =                                  zeros(0,1);
+                
+            else
+                
+                TrackIDsOfCurrentFrame =                                obj.getTrackIDsOfCurrentFrame;
+                TrackIDsOfNextFrame =                                   obj.getTrackIDsOfFrame(CurrentFrame+1);
+                trackIDsWithNoFollowUp =                                setdiff(TrackIDsOfCurrentFrame,TrackIDsOfNextFrame);
+                
+                
+                
+               
+               
+            end
+             
+            
+             
+            
+        end
+       
+        
+        function fileName =                                 getFileNameOfAnnotation(obj)
+            
+            fileName = [obj.FolderAnnotation '/' obj.NickName '.mat'];
+            
+            
+        end
+        
+        
+        
+       
+        
+        function listWithPointers =                         getCurrentPointersInImageMap(obj)
+            
+            listWithPointers = cellfun(@(x) x{2,3}, obj.ImageMapPerFile);
+
+        end
+        
+        
+        
+        
+        function trackIDs =                                 getTrackIDsOfCurrentFrame(obj)
+            
+            TrackDataOfCurrentFrame =                       obj.getTrackDataOfCurrentFrame;
+            
+            trackIDs =                                 obj.parseTrackIDsFromMaskList(TrackDataOfCurrentFrame);
+            
+            
+            
+     
+        end
+        
+        function trackIDs =                                 getTrackIDsOfFrame(obj, FrameNumber)
+            
+            TrackDataOfSpecifiedFrame =                     obj.getTrackDataOfFrame(FrameNumber);
+             trackIDs =                                 obj.parseTrackIDsFromMaskList(TrackDataOfSpecifiedFrame);
+            
+        end
+        
+        function trackIDs =                                 parseTrackIDsFromMaskList(obj,MaskList)
+            if isempty(MaskList)
+                trackIDs =                                  zeros(0,1);
+            else
+                trackIDs =                                  cell2mat(MaskList(:,obj.Tracking.getTrackIDColumn));
+            end
+            
+            
+        end
+        
+        
+        function [firstUntrackedFrame, lastUntrackedFrame] =                getFirstLastContiguousUntrackedFrame(obj)
+        
+                TrackingStartFrame =                    obj.SelectedFrames(1);
+                TrackID =                               obj.IdOfActiveTrack;
+                allFramesOfCurrentTrack  =              obj.Tracking.getAllFrameNumbersOfTrackID(TrackID);
+
+                % get last untracked frame:
+                AfterLastUntrackedTrackedFrame =        find(allFramesOfCurrentTrack>TrackingStartFrame,  1, 'first');
+                if isempty(AfterLastUntrackedTrackedFrame)
+                    lastUntrackedFrame =                  obj.MetaData.EntireMovie.NumberOfTimePoints;
+                else
+                    lastUntrackedFrame =                  allFramesOfCurrentTrack(AfterLastUntrackedTrackedFrame) - 1;
+                end
+
+                 % get first untracked frame:
+                BeforeFirstUntrackedFrame =             find(allFramesOfCurrentTrack<TrackingStartFrame,  1, 'last');
+                if isempty(BeforeFirstUntrackedFrame)
+                    firstUntrackedFrame =          1;
+                else
+                    firstUntrackedFrame =          allFramesOfCurrentTrack(BeforeFirstUntrackedFrame) + 1;
+                end
+
+        
+        end
+        
+                        
+        function lastOrFirstTrackedFrame =                         getLastTrackedFrame(obj, parameter)
+                % from a contiguous stretch of tracked frames: get first or last frame in this contiguous sequence;
+            
+                ActiveTrackID =                                 obj.IdOfActiveTrack;
+                listWithTrackedFrames =                         obj.Tracking.getAllFrameNumbersOfTrackID(ActiveTrackID);
+                State_CurrentFrame =                            obj.SelectedFrames(1);
+
+                if ~ismember(State_CurrentFrame,listWithTrackedFrames) % perform this analysis only when the current position is tracked;
+                      lastOrFirstTrackedFrame = NaN;
+                      return
+                end
+
+                   
+                switch parameter
+                   
+                    case 'up' 
+
+                            listWithTrackedFrames(listWithTrackedFrames<State_CurrentFrame,:) = [];
+                            nonConescutiveIndex = find(diff(listWithTrackedFrames)>1, 1, 'first')+1;
+
+                           if ~isempty(nonConescutiveIndex)
+                               listWithTrackedFrames(nonConescutiveIndex:end,:) = []; % remove all frames after tracking "gaps";
+                           end
+
+                           lastOrFirstTrackedFrame = max(listWithTrackedFrames);
+
+                    case 'down'
+                        
+                            listWithTrackedFrames(listWithTrackedFrames>State_CurrentFrame,:) = [];
+                            nonConescutiveIndex = find(diff(listWithTrackedFrames)>1, 1, 'last')+1;
+
+                           if ~isempty(nonConescutiveIndex)
+                               listWithTrackedFrames(nonConescutiveIndex:end,:) = [];
+
+                           end
+                           lastOrFirstTrackedFrame = min(listWithTrackedFrames);
+
+                    end
+               
+        end
+        
+        function [RowForCurrentTrack]=                      FindLocationOfNewCellMask(obj)
+
+                %% find the row in the structure (and the mask ID) of a mask from a specific track (at a given frame);
+
+                
+                TrackIdsOfCurrentTimePoint =                                 obj.getTrackIDsOfCurrentFrame;
+                ID_OfTrack =                                                obj.IdOfActiveTrack;
+                
+                if isempty(TrackIdsOfCurrentTimePoint)
+                    RowForCurrentTrack=     1;
+                    
+                else
+                    
+                    RowForCurrentTrack=                     find(TrackIdsOfCurrentTimePoint==ID_OfTrack);
+                    if isempty(RowForCurrentTrack) %if the current track does not have a cell mask in the current frame;
+                        RowForCurrentTrack=                 size(TrackIdsOfCurrentTimePoint,1) + 1;
+                    end
+                
+                end
+
+
+
+        end
+
+
+       function Check =                                     verifyChannels(obj, NumberOfChannels)
+            
+               %% if the dimension of the channels are incorrect replace them with the default;
+               % if these numbers don't match this would lead to serious problems during execution of the program;
+               
+                SelectionNumber =       length(obj.SelectedChannels);
+                LowInNumber  =          length(obj.ChannelTransformsLowIn);
+                HighInNumber =          length(obj.ChannelTransformsHighIn);
+                ColorNumber =           length(obj.ChannelColors);
+                CommentNumber =         length(obj.ChannelComments);
+
+                Count = length(unique([NumberOfChannels; SelectionNumber; LowInNumber; HighInNumber; ColorNumber; CommentNumber]));
+
+                if Count == 1
+                    Check = true;
+                else
+                    Check = false;
+                end
+
+       end
+      
+       function DataType =                                  getDataType(obj)
+           
+           
+           if isempty(obj.MetaData)
+                 NumberOfTimePoints =                                 NaN;
+               NumberOfPlanes =                                     NaN;
+           else
+               NumberOfTimePoints =                                obj.MetaData.EntireMovie.NumberOfTimePoints;
+                NumberOfPlanes =                                    obj.MetaData.EntireMovie.NumberOfPlanes;
+               
+           end
+           
+           
+             
+           
+           if NumberOfTimePoints>1
+               DataType =               'Movie';
+               
+           elseif NumberOfPlanes>1
+               DataType =               'ZStack';
+           elseif NumberOfPlanes == 1
+                DataType =               'Snapshot';
+           else
+               DataType =               'Unspecified datatype';
+           end
+           
+         
+           
+       end
+           
+
+
+        function [rows, columns, planes] =                  getImageDimensions(obj)
+            
+            planes =        obj.MetaData.EntireMovie.NumberOfPlanes;
+            rows =          obj.MetaData.EntireMovie.NumberOfRows;
+            columns =       obj.MetaData.EntireMovie.NumberOfColumns;
+            
+        end
+        
+        function [rows, columns, planes ] =                 getImageDimensionsWithAppliedDriftCorrection(obj)
+            
+            if obj.DriftCorrectionOn
+                
+
+                planes =        obj.MetaData.EntireMovie.NumberOfPlanes + max(obj.DriftCorrection.PlaneShiftsAbsolute);
+                rows =          obj.MetaData.EntireMovie.NumberOfRows + max(obj.DriftCorrection.RowShiftsAbsolute);
+                columns =       obj.MetaData.EntireMovie.NumberOfColumns + max(obj.DriftCorrection.ColumnShiftsAbsolute);
+                
+            else
+                planes =        obj.MetaData.EntireMovie.NumberOfPlanes;
+                rows =          obj.MetaData.EntireMovie.NumberOfRows;
+                columns =       obj.MetaData.EntireMovie.NumberOfColumns;
+                
+                
+            end
+            
+            
+        end
+
+     
+           function check =                                                    checkWhetherButtonPressIsDistantFromPreviousMask(obj,yCoordinateWithOutDrift, xCoordinateWithoutDrift,  planeWithoutDrift);
+
+
+             TrackinAnalysis =                                  obj.TrackingAnalysis;
+              MaximumDistance =                                  obj.Tracking.MaximumDistanceForTracking;
+             TwoPositionTrack =                                 obj.getPreviousMaskData;
+
+
+             if isempty(TrackinAnalysis)
+                 check = false;
+             elseif isempty(TwoPositionTrack)
+                 check = false;
+
+             else
+
+                TwoPositionTrack{2,obj.Tracking.getCentroidYColumn} =      yCoordinateWithOutDrift;
+                TwoPositionTrack{2,obj.Tracking.getCentroidXColumn} =      xCoordinateWithoutDrift;
+                TwoPositionTrack{2,obj.Tracking.getCentroidZColumn} =      planeWithoutDrift;
+
+                displacement =             TrackinAnalysis.getDisplacementOfTrack(TwoPositionTrack);
+                if isempty(displacement)
+                    check =                 false;
+
+                elseif displacement>MaximumDistance
+                    check =                 true;
+
+                else
+                    check =                 false;
+
+                end
+
+
+             end
+
+
+
+            end
+
+        
+        
+        %% setters:
+        
+        
+        function obj =      setDriftCorrectionTo(obj,OnOff)
+            
+            obj.DriftCorrectionOn =     OnOff;
+            
+        end
+        
+        
+        function obj =  setDriftDependentParameters(obj)
+            
+            obj =                       obj.resetViewPlanes;
+            obj =                       obj.resetAppliedDriftShifts; % reset drift correction 
+            obj =                       obj.updateAppliedCroppingLimits;
+            obj =                       obj.updatePlaneStampStrings;
+            % change cropping limit by drift correction (dependent on drift correction)
+         
+            %obj  =                      obj.refreshTrackingResults;
+
+        end
+        
+        
+        function obj = setCroppingStateTo(obj,OnOff)
+            
+            obj.CroppingOn =                                    OnOff;
+            obj =                                               obj.updateAppliedCroppingLimits;
+
+            
+        end
+        
+        function obj =      setCollapseAllTrackingTo(obj, Value)
+            
+            obj. CollapseAllTracking = Value;
+        end
+         
+        function obj =      setFrameTo(obj, FrameNumber)
+            
+            obj.SelectedFrames =                    FrameNumber;
+            
+        end
+        
+        function obj =      setFrameAndAdjustPlaneAndCropByTrack(obj, FrameNumber)
+            
+                obj =                                   obj.setFrameTo(FrameNumber);
+            
+               planeOfActiveTrack =                 obj.getPlaneOfActiveTrack;
+               
+               if ~isnan(planeOfActiveTrack)
+               
+                obj =                               obj.setSelectedPlaneTo(planeOfActiveTrack); % direct change of model:
+                
+                obj =                               obj.moveCroppingGateToActiveMask;
+                obj =                               obj.updateAppliedCroppingLimits;
+                
+               end
+                
+            
+        end
+        
+        
+         function obj =  resetEditingActivityTo(obj, EditingMenuString)
+            
+                switch EditingMenuString
+                
+                    case 'Viewing only' % 'Visualize'
+                        obj.EditingActivity =                                   'No editing';
+                        obj.TrackingOn =                            0;
+                        
+
+                    case 'Edit manual drift correction'
+                        obj.EditingActivity =                                   'Manual drift correction';
+                        obj.TrackingOn =                            0;
+
+                    case 'Edit tracks' %  'Tracking: draw mask'
+                        obj.EditingActivity =                                'Tracking';
+                        obj.TrackingOn =   1;
+
+                end
+    
+                        
+
+        end
+         
+        
+          function [obj] =            changeMovieKeyword(obj)
+            
+            
+            if strcmp(class(obj), 'PMMovieTracking')
+              KeywordString=                        char(inputdlg('Enter new keyword'));
+              obj.Keywords{1,1} =       KeywordString;
+            end
+                 
+        end
+        
+        
+        function [obj] =            changeMovieNickname(obj, String)
+            
+             
+             if strcmp(class(obj), 'PMMovieTracking')
+              
+              obj.NickName =       String;
+             end
+            
+             
+             
+                 
+         end
+        
+         
+        function [obj] =            changeMovieLinkedMovieFiles(obj,ListWithFileNamesToAdd)
+            
+              
+              obj.AttachedFiles =       ListWithFileNamesToAdd;
+              
+              % check whether a folder: if a folder: need to add all the valid files within this folder (not just the folder);;
+                 
+          end
+        
+        
+        
+         function obj =          resetAppliedDriftShifts(obj)
+                
+               % this essentially resets the applied drift correction (essentially choosen whether or not to use drift correction;
+            
+                DriftCorrectionIsOn =               obj.DriftCorrectionOn;
+                metaData =                          obj.MetaData;
+
+                switch DriftCorrectionIsOn
+
+                     case true
+
+
+
+                        obj.AplliedRowShifts =          obj.DriftCorrection.RowShiftsAbsolute;
+                        obj.AplliedColumnShifts =       obj.DriftCorrection.ColumnShiftsAbsolute;
+                        obj.AplliedPlaneShifts =        obj.DriftCorrection.PlaneShiftsAbsolute;
+
+
+                    case false
+
+                        structure =                     obj.DriftCorrection.calculateEmptyShifts(metaData);
+
+                        obj.AplliedRowShifts =          structure.RowShiftsAbsolute;
+                        obj.AplliedColumnShifts =       structure.ColumnShiftsAbsolute;
+                        obj.AplliedPlaneShifts =        structure.PlaneShiftsAbsolute;
+
+                end
+
+
+                %% update model:
+                obj.MaximumRowShift =                       max(obj.AplliedRowShifts);
+                obj.MaximumColumnShift =                    max(obj.AplliedColumnShifts);
+                obj.MaximumPlaneShift =                     max(obj.AplliedPlaneShifts);
+
+               
+
+
+           
+            
+            
+        end
+        
+        
+        
+        function [obj] =            setSelectedPlaneTo(obj, planeOfActiveTrack)
+
+          
+            
+            if ~isnan(planeOfActiveTrack)
+
+                obj.SelectedPlanes =                        planeOfActiveTrack;
+                obj =                                       obj.resetViewPlanes;
+                
+
+            end
+            
+            
+        end
+        
+        
+        function obj =              setActiveTrackWith(obj, NewTrackID)
+            
+
+            obj.IdOfActiveTrack =                           NewTrackID;
+        
+        end
+        
+        
+          function obj =      moveCroppingGateToActiveMask(obj)
+                
+                segmentationOfActiveTrack =                obj.getSegmentationOfActiveTrack;
+                
+                if isempty(segmentationOfActiveTrack)
+                    [centerY, centerX] =            deal(nan);
+                else
+                    centerY =       segmentationOfActiveTrack{1,obj.Tracking.getCentroidYColumn};
+                    centerX =       segmentationOfActiveTrack{1,obj.Tracking.getCentroidXColumn};
+                end
+                
+                
+                obj =           obj.moveCroppingGateToNewCenter(centerX, centerY);
+
+                
+            end
+        
+          
+         
+        
+         function obj =           moveCroppingGateToNewCenter(obj, centerX, centerY)
+             
+               if ~isnan(centerX)
+                    Width =                                 obj.CroppingGate(3);
+                    Height =                                obj.CroppingGate(4);
+
+                    NewCenterX =                            centerX;
+                    NewCenterY =                            centerY;
+
+                    NewStartColumn =                        NewCenterX - Width / 2;
+                    NewStartRow =                            NewCenterY - Height / 2;
+
+
+                    obj.CroppingGate(1) =       NewStartColumn;
+                    obj.CroppingGate(2) =       NewStartRow; 
+               end
+
+               
+            
+         end
+         
+         
+           function obj =             resetCroppingGate(obj)
+         
+                obj.CroppingGate(1)=                  1;
+                obj.CroppingGate(2)=                  1;
+                obj.CroppingGate(3)=                  obj.MetaData.EntireMovie.NumberOfColumns;
+                obj.CroppingGate(4)=                  obj.MetaData.EntireMovie.NumberOfRows;
+             
+           end
+         
+           function obj =       setCroppingGateWithRectange(obj, Rectangle)
+               
+                obj.CroppingGate =       Rectangle;
+               
+           
+
+           end
+           
+         
+            function obj =          updateAppliedCroppingLimits(obj)
+                    % from cropping setting and cropping gate: calculate actually applied cropping gate;
+                switch obj.CroppingOn
+
+                     case 1
+                         
+                            CurrentFrame =                                        obj.SelectedFrames(1);    
+                            CurrentColumnShift=                                 obj.AplliedColumnShifts(CurrentFrame);
+                            CurrentRowShift =                                   obj.AplliedRowShifts(CurrentFrame);
+                            CurrentPlaneShift =                                 obj.AplliedPlaneShifts(CurrentFrame);
+
+                            obj.AppliedCroppingGate =                       obj.CroppingGate;
+                            obj.AppliedCroppingGate(1) =                    obj.AppliedCroppingGate(1) + CurrentColumnShift;
+                            obj.AppliedCroppingGate(2) =                    obj.AppliedCroppingGate(2) + CurrentRowShift;
+                             
+
+                     otherwise
+                          [rows,columns, ~] =                               obj.getImageDimensionsWithAppliedDriftCorrection;
+                           obj.AppliedCroppingGate =          [1 1 columns  rows];
+
+                 end
+            
+            
+            end
+        
+         
+         
+        
+        function obj =                                      loadObjectFromFile(obj)
+            fileName =                                      obj.getFileNameOfAnnotation;
+            
+            if exist(fileName) == 2
+            Data =                                          load(fileName, 'MovieAnnotationData');
+            
+            obj =                                           Data.MovieAnnotationData;
+            end
+            
+        end
+        
+        
+        function [obj] = setSavingStatus(obj, Value)
+            
+            obj.UnsavedTrackingDataExist = Value;
+            
+        end
+        
+       function  [obj] = saveMovieData(obj)
+        
+           if obj.UnsavedTrackingDataExist 
+            
+                CompletPath =               obj.getFileNameOfAnnotation;
+                MovieAnnotationData =       obj;
+                save(CompletPath, 'MovieAnnotationData')
+
+                obj =                       obj.setSavingStatus(false);
+
+           end
+        
+       end
+        
+      
+        
+        
+           
+        function [obj] =   setFolderAnnotation(obj,FolderName)
+            obj.FolderAnnotation =  FolderName;
+            
+        end
         
           function [obj] = autoCorrectChannels(obj)
             
-            NumberOfChannels = obj.MetaData.EntireMovie.NumberOfChannels;
-            channelCheck = obj.verifyChannels(NumberOfChannels);
+            NumberOfChannels =  obj.MetaData.EntireMovie.NumberOfChannels;
+            channelCheck =      obj.verifyChannels(NumberOfChannels);
             if ~channelCheck
                 obj = obj.resetChannels(NumberOfChannels);
             end
@@ -184,7 +1175,7 @@ classdef PMMovieTracking
           end
         
         
-           function [obj] = resetChannels(obj, NumberOfChannels)
+          function [obj] = resetChannels(obj, NumberOfChannels)
             
             iSelectedChannels(1,1) =                             true;
             iSelectedChannels(2:NumberOfChannels,1) =            false;
@@ -238,7 +1229,9 @@ classdef PMMovieTracking
              
             VoxelSizeZ=                             obj.MetaData.EntireMovie.VoxelSizeZ;
             Planes=                                 obj.MetaData.EntireMovie.NumberOfPlanes;
-            obj.ListWithPlaneStamps=                (arrayfun(@(x) sprintf('Z-depth= %i µm', int16((x-1)*VoxelSizeZ*10^6)), 1:Planes, 'UniformOutput', false))';
+            PlanesAfterDrift =                      Planes + max( obj.AplliedPlaneShifts);
+            
+            obj.ListWithPlaneStamps=                (arrayfun(@(x) sprintf('Z-depth= %i µm', int16((x-1)*VoxelSizeZ*10^6)), 1:PlanesAfterDrift, 'UniformOutput', false))';
   
          end
          
@@ -329,113 +1322,8 @@ classdef PMMovieTracking
          end
         
           
-          
-        
-        %% mapping image-data:
-        % this time-consuming and potentially memory-intensive: therefore this is not called by default;
-        function obj =                                  AddImageMap(obj)
-            
-            
-                    % usually this will done only a single time for each file;
-                    % then the map and meta-data are saved in file enabling faster reading, still using other functions for retrieving data from file (with the help of this map);
-                    
-                    f =                                     waitbar(0.5, 'Mapping image file(s). This can take a few minutes for large files.'); % cannot do a proper waitbar because it is not a loop;
-                    obj=                                    obj.updateFilePaths;
-                    
-                    
-                    [~,~,Extensions] =                             cellfun(@(x) fileparts(x), obj.AttachedFiles, 'UniformOutput', false);
-                    
-                    Extension = unique(Extensions);
-                    assert(length(Extension)==1, 'Can only work when all files have same format.')
-                    Extension =     Extension{1,1};
-                    
-                    
-                    
-                    switch Extension
-                        
-                        case {'.tif', '.lsm'}
-                            
-                              myImageDocuments =                       cellfun(@(x)  PMTIFFDocument(x), obj.ListWithPaths);
-                  
-                            
-                            
-                        case '.czi'
-                            
-                            myImageDocuments =                          cellfun(@(x)  PMCZIDocument(x), obj.ListWithPaths);
-                            
-                        otherwise
-                            
-                            error('Format of image file not supported.')
-                            
-                            
-                            
-                        
-                        
-                    end
-                    
-                    
-                    
-                    
-                    AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myImageDocuments)) == -1 ;
-                    if AtLeastOneTiffReadFailed
-                        
-                        obj.ImageMapPerFile =               [];
-                        obj.PointersPerFile =           -1;
-                        obj.FileCouldNotBeRead =        1;
-                    
-                       
-                        
-                        
-                    else
-
-                        
-                        % extract meta-data:
-                        obj.MetaDataOfSeparateMovies =          arrayfun(@(x) x.MetaData, myImageDocuments, 'UniformOutput', false);
-                        obj =                                   obj.createMergeOfMetaData;
-
-                        
-                        % extract image map -data:
-                        obj.ImageMapPerFile =                   arrayfun(@(x) x.ImageMap, myImageDocuments, 'UniformOutput', false);
-                         
-                       % Number = obj.getUniqueFrameNumberFromImageMap(obj.ImageMap);
-                        
-                         obj =                                   obj.autoCorrectChannels;
-                        obj =                                   obj.updateTimeStampStrings;
-                        obj =                                   obj.updatePlaneStampStrings;
-                        obj =                                   obj.updateScaleBarString;
-                        obj =                                   obj.resetViewPlanes;
-
-                        obj.PointersPerFile =                   -1;
-                        obj.FileCouldNotBeRead =               0;
-                      
-                        
- 
-                        
-                    end
-                    
-                    
-                    
-                     
-                    
-                   
-                    waitbar(1, f, 'Mapping image file(s)');
-                    close(f);
-
-        end
-        
-        
-        %% model:
-        
-        function numberOfFrames =            getUniqueFrameNumberFromImageMap(obj, ImageMap)
-            
-            ColumnWithTime = 10;
-            numberOfFrames =             length(unique(cell2mat(ImageMap(2:end,ColumnWithTime))));
-            
-            
-            
-        end
-        
-        function obj =                       createMergeOfMetaData(obj)
+         
+           function obj =                       createMergeOfMetaData(obj)
               
               
              MetaDataCell =         obj.MetaDataOfSeparateMovies;
@@ -451,13 +1339,16 @@ classdef PMMovieTracking
             assert(length(NumberOfRows) == 1 && length(NumberOfColumns) == 1 && length(NumberOfPlanes) == 1 && length(NumberOfChannels) == 1 && length(VoxelSizeX) == 1 && length(VoxelSizeY) == 1 && length(VoxelSizeZ) == 1, ...
                 'Cannot combine the different files. Reason: Dimension or resolutions do not match')
             
-            NumberOfTimePoints =                            sum(cellfun(@(x) x.EntireMovie.NumberOfTimePoints, MetaDataCell));
+            ChannelList =                           unique(cell2mat(cellfun(@(x) x(2:end,15), obj.ImageMapPerFile)));
+                        NumberOfDifferentChannelsInMap =                length(ChannelList);
+            
+            NumberOfTimePoints =                            sum(cellfun(@(x) x.EntireMovie.NumberOfTimePoints, MetaDataCell))/NumberOfDifferentChannelsInMap;
             
             
             MergedMetaData.EntireMovie.NumberOfRows =           NumberOfRows;
             MergedMetaData.EntireMovie.NumberOfColumns=         NumberOfColumns;
             MergedMetaData.EntireMovie.NumberOfPlanes =         NumberOfPlanes;
-            MergedMetaData.EntireMovie.NumberOfTimePoints  =    NumberOfTimePoints;
+            
             MergedMetaData.EntireMovie.NumberOfChannels =       NumberOfChannels;
             
             MergedMetaData.EntireMovie.VoxelSizeX=              VoxelSizeX;
@@ -467,9 +1358,10 @@ classdef PMMovieTracking
             
             MyListWithTimeStamps =                                cellfun(@(x) x.TimeStamp, MetaDataCell, 'UniformOutput', false);
             
-            MergedMetaData.PooledTimeStamps =                                  vertcat(MyListWithTimeStamps{:});
+            MergedMetaData.PooledTimeStamps =                                  unique(vertcat(MyListWithTimeStamps{:}));
             MergedMetaData.RelativeTimeStamps =                                MergedMetaData.PooledTimeStamps - MergedMetaData.PooledTimeStamps(1);  
             
+            MergedMetaData.EntireMovie.NumberOfTimePoints  =    length(MergedMetaData.PooledTimeStamps);
             
             obj.MetaData =                                          MergedMetaData;
            
@@ -478,16 +1370,12 @@ classdef PMMovieTracking
         
         function obj =                      refreshTrackingResults(obj)
 
-            
             obj.TrackingAnalysis =                                 PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.MetaData);
-            
-          
-             
-             obj =                                                  obj.synchronizeTrackingResults;
-             
+            obj =                                                  obj.synchronizeTrackingResults;
+
         end
         
-        function obj = resetTrackingAnalysisToPhysicalUnits(obj)
+        function obj =                      resetTrackingAnalysisToPhysicalUnits(obj)
             
             
             obj.TrackingAnalysis =      obj.TrackingAnalysis.convertDistanceUnitsIntoUm;
@@ -512,10 +1400,89 @@ classdef PMMovieTracking
             
         end
         
-       
-       
+          
+        
+        %% mapping image-data:
+        % this time-consuming and potentially memory-intensive: therefore this is not called by default;
+        function obj =                                  AddImageMap(obj)
+            
+                    % usually this will done only a single time for each file;
+                    % then the map and meta-data are saved in file enabling faster reading, still using other functions for retrieving data from file (with the help of this map);
+                    myWaitBar =                                             waitbar(0.5, 'Mapping image file(s). This can take a few minutes for large files.'); % cannot do a proper waitbar because it is not a loop;
+                    obj=                                                    obj.updateFilePaths;
 
-        %% file-management
+                    [~,~,Extensions] =                                      cellfun(@(x) fileparts(x), obj.AttachedFiles, 'UniformOutput', false);
+                    
+                    Extension =                                             unique(Extensions);
+                    assert(length(Extension)==1, 'Can only work when all files have same format.')
+                    Extension =                                             Extension{1,1}; 
+                    
+                    switch Extension
+                        
+                        case {'.tif', '.lsm'}
+                              myImageDocuments =                            cellfun(@(x)  PMTIFFDocument(x), obj.ListWithPaths);
+                  
+                        case '.czi'
+                            myImageDocuments =                              cellfun(@(x)  PMCZIDocument(x), obj.ListWithPaths);
+                            
+                        case '.pic'
+                             myImageDocuments =                             cellfun(@(x)  PMImageBioRadPicFile(x), obj.ListWithPaths);
+                        otherwise % need to add pic
+                            error('Format of image file not supported.')
+
+                    end
+                    
+                    
+                    
+                    
+                    AtLeastOneTiffReadFailed = min(arrayfun(@(x) x.FilePointer, myImageDocuments)) == -1 ;
+                    if AtLeastOneTiffReadFailed
+                        
+                        obj.ImageMapPerFile =               [];
+                        obj.PointersPerFile =               -1;
+                        obj.FileCouldNotBeRead =            1;
+                    
+                       
+                        
+                        
+                    else
+
+                        % extract meta-data:
+                        obj.MetaDataOfSeparateMovies =          arrayfun(@(x) x.MetaData, myImageDocuments, 'UniformOutput', false);
+                         % extract image map -data:
+                        obj.ImageMapPerFile =                   arrayfun(@(x) x.ImageMap, myImageDocuments, 'UniformOutput', false);
+                        
+                        
+                        
+                        
+                        obj =                                   obj.createMergeOfMetaData;
+
+                        
+                        
+                       % Number = obj.getUniqueFrameNumberFromImageMap(obj.ImageMap);
+                        
+                        obj =                                   obj.autoCorrectChannels;
+                        obj =                                   obj.updateTimeStampStrings;
+                        obj =                                   obj.updatePlaneStampStrings;
+                        obj =                                   obj.updateScaleBarString;
+                        obj =                                   obj.resetViewPlanes;
+
+                        obj.PointersPerFile =                   -1;
+                        obj.FileCouldNotBeRead =               0;
+                           
+                    end
+                    
+
+                    if isvalid(myWaitBar)
+                       % waitbar(1, myWaitBar, 'Mapping image file(s)'); %
+                       % something strange is happening to waitBar
+                        close(myWaitBar);
+                    end
+
+        end
+        
+
+        %% file-management of images
         
         function [obj] =                                createFunctionalImageMap(obj)
             
@@ -531,11 +1498,7 @@ classdef PMMovieTracking
             
         end
         
-        function [obj] =                            resetFolder(obj, Folder)
-            obj.Folder =                            Folder;
-            
-            
-        end
+      
         
         function [obj] =                                updateFilePaths(obj)
             
@@ -545,9 +1508,11 @@ classdef PMMovieTracking
         
         
          function [obj] =                                createNewFilePointers(obj)
-
+            % each file gets its own pointer;
             obj =                                       obj.updateFilePaths;
             obj.PointersPerFile =                       cellfun(@(x) fopen(x), obj.ListWithPaths);
+            
+            % need to add an option to create pointers when image-sequence is comprised by multiple images: e.g. .pic file, then;
 
         end
         
@@ -555,8 +1520,8 @@ classdef PMMovieTracking
         function obj =                                  verifyPointerConnection(obj)
             
             
-                ConnectionFailureList = arrayfun(@(x) isempty(fopen(x)), obj.PointersPerFile);
-                AtLeastOnePointerFailedToRead = max(ConnectionFailureList);
+                ConnectionFailureList =                     arrayfun(@(x) isempty(fopen(x)), obj.PointersPerFile);
+                AtLeastOnePointerFailedToRead =             max(ConnectionFailureList);
                 
                 if AtLeastOnePointerFailedToRead % if that failed (because the hard-drive is disconnected or because the file was moved);;
                     obj.FileCouldNotBeRead = 1;
@@ -573,7 +1538,6 @@ classdef PMMovieTracking
         function obj =                                  replaceImageMapPointers(obj)
             
             % use the current file pointers and use them in the image map:
-
             PointerColumn =                     3;
             NumberOfImageMaps =     size(obj.ImageMapPerFile,1);
             for CurrentMapIndex = 1:NumberOfImageMaps
@@ -581,6 +1545,9 @@ classdef PMMovieTracking
                 obj.ImageMapPerFile{CurrentMapIndex,1}(2:end,PointerColumn) =       {CurrentNewPointer};
                   
             end
+            
+            % also need to add an option when there are multiple files (i.e. pointers per movie event);
+            
   
         end
         
@@ -623,9 +1590,119 @@ classdef PMMovieTracking
         end
         
         
-
-        %% helper functions for file- and image-managment:
         
+        
+        function [obj] =                                    autoCorrectNavigation(obj)
+            
+            
+            obj =           obj.autoCorrectChannels;
+            
+             timepoints = obj.MetaData.EntireMovie.NumberOfTimePoints;
+            planes = obj.MetaData.EntireMovie.NumberOfPlanes;
+            
+            if isempty(obj.SelectedFrames) ||  max(obj.SelectedFrames) > timepoints || min(obj.SelectedFrames) < 1
+                obj.SelectedFrames = 1;
+                
+            end
+            
+            if isempty(obj.SelectedPlanes) ||  max(obj.SelectedPlanes) > planes || min(obj.SelectedPlanes) < 1
+                obj.SelectedPlanes = 1;
+                
+            end
+          
+            
+        end
+        
+        function [obj] =                                    autoCorrectTrackingObject(obj)
+            
+           
+
+             if isempty(obj.TrackingAnalysis)
+                 return
+             end
+             
+             if isempty(obj.TrackingAnalysis.MetaData)
+                 obj.TrackingAnalysis.MetaData = obj.MetaData;
+                 
+             end
+             
+             NumberOfFrames =                       obj.MetaData.EntireMovie.NumberOfTimePoints;
+             obj.Tracking =                          obj.Tracking.fillEmptySpaceOfTrackingCellTime(NumberOfFrames);
+             
+             
+            
+            
+        end
+        
+
+     
+        
+        function [obj] =                                updateMaskOfActiveTrackByAdding(obj,yList,xList, plane)
+             
+             
+              if isempty(yList) || isempty(xList)
+                
+                return
+
+              end
+            
+                pixelListToAdd =                             [yList,xList];
+                pixelListToAdd(:,3) =                        plane;
+            
+            
+             
+                
+                pixelList_AfterAdding =                        getPixelsOfActiveTrackAfterAddingOf(obj, pixelListToAdd);
+                
+               
+                
+                 
+                 mySegementationCapture =                   PMSegmentationCapture(pixelList_AfterAdding, 'Manual');
+                [obj] =                                     obj.resetActivePixelListWith(mySegementationCapture);
+                
+                
+                
+            
+             
+         end
+     
+        
+        function [obj] =                                resetActivePixelListWith(obj, SegmentationCapture)
+            
+            
+                 RowInCell=                                     obj.FindLocationOfNewCellMask;
+                 activeFrame =                                  obj.getSelectedFrame;
+                 MyTrackID =                                    obj.IdOfActiveTrack;
+                  
+                 newPixels =                                    SegmentationCapture.MaskCoordinateList;
+                 
+                if isempty(newPixels)
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}(RowInCell,:) = [];
+                    
+                else
+                    
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getTrackIDColumn} =               MyTrackID;
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getAbsoluteFrameColumn} =         activeFrame;
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getCentroidYColumn} =             mean(newPixels(:,1));
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getCentroidXColumn} =             mean(newPixels(:,2));
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getCentroidZColumn} =              mean(newPixels(:,3));
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getPixelListColumn} =              newPixels;
+
+                     SegmentationInfo =                                                                                                         SegmentationCapture.RemoveImageData;
+                    obj.Tracking.TrackingCellForTime{activeFrame, 1}{RowInCell,obj.Tracking.getSegmentationInfoColumn}.SegmentationType=        SegmentationInfo;
+                     
+                end
+                
+                
+                 obj.Tracking =                           obj.Tracking.calculateNumberOfTracks;
+                       
+                obj =                       obj.setSavingStatus(true);
+                
+            
+        end
+        
+        
+
         function [obj] =                                  mergeImageMaps(obj)
             
             %% get from model
@@ -633,140 +1710,115 @@ classdef PMMovieTracking
             ImageMapPerFileInternal =                   obj.ImageMapPerFile;
             
             %% pool image maps: (this is done on a copy becausre otherwise we would overwrite the time frames in the original which we don't want;
-            FramesPerMap =                      cellfun(@(x) max(cell2mat(x(2:end,TimeColumn))), ImageMapPerFileInternal);
-            CumulativeTemp =                    cumsum(FramesPerMap);
-            CumulativeNumbers =                 [0; CumulativeTemp(1:end-1)];
+            
+            
+            pooledTemp =        cellfun(@(x) x(2:end,:), ImageMapPerFileInternal, 'UniformOutput', false);
+            pooledTemp =        vertcat(pooledTemp{:});
+            
+            sumTimeOfAllParts =     sum(cellfun(@(x) max(cell2mat(x(2:end,10))), ImageMapPerFileInternal));
+            
+            if obj.MetaData.EntireMovie.NumberOfTimePoints == sumTimeOfAllParts
+                FramesPerMap =                                          cellfun(@(x) max(cell2mat(x(2:end,TimeColumn))), ImageMapPerFileInternal);
+                CumulativeTemp =                                        cumsum(FramesPerMap);
+                NumbersForAdjustingFramesOfDifferentFiles =             [0; CumulativeTemp(1:end-1)];
+          
+            elseif obj.MetaData.EntireMovie.NumberOfTimePoints == size(pooledTemp,1)/obj.MetaData.EntireMovie.NumberOfChannels
+               
+                NumbersForAdjustingFramesOfDifferentFiles =             linspace(0,obj.MetaData.EntireMovie.NumberOfTimePoints-1,obj.MetaData.EntireMovie.NumberOfTimePoints);
+                NumbersForAdjustingFramesOfDifferentFiles =             repmat(NumbersForAdjustingFramesOfDifferentFiles, obj.MetaData.EntireMovie.NumberOfChannels,1);
+                NumbersForAdjustingFramesOfDifferentFiles =             NumbersForAdjustingFramesOfDifferentFiles(:);
+                
+            elseif obj.MetaData.EntireMovie.NumberOfTimePoints == max(cell2mat(pooledTemp(:,10)))
+                % do nothing 
+            else
+                error('Cannot interpret time-series')
+                
+            end
+            
             TemporaryImageMapPerFile =          ImageMapPerFileInternal;
             
-             NumberOfImageMaps =     size(TemporaryImageMapPerFile,1);
-            for CurrentMapIndex = 1:NumberOfImageMaps
-                OldMapNumbers =                                         cell2mat(ImageMapPerFileInternal{CurrentMapIndex,1}(2:end,TimeColumn));
-                TimeFrameAfterShift =                                   OldMapNumbers + CumulativeNumbers(CurrentMapIndex);
-                TemporaryImageMapPerFile{CurrentMapIndex,1}(2:end,TimeColumn) =      num2cell(TimeFrameAfterShift);
-               
+            
+            if exist('CumulativeNumbers') == 1
+                 NumberOfImageMaps =     size(TemporaryImageMapPerFile,1);
+                for CurrentMapIndex = 1:NumberOfImageMaps
+                    OldMapNumbers =                                         cell2mat(ImageMapPerFileInternal{CurrentMapIndex,1}(2:end,TimeColumn));
+                    TimeFrameAfterShift =                                   OldMapNumbers + NumbersForAdjustingFramesOfDifferentFiles(CurrentMapIndex);
+                    TemporaryImageMapPerFile{CurrentMapIndex,1}(2:end,TimeColumn) =      num2cell(TimeFrameAfterShift);
+
+                end
+            
             end
-            ImageMapsWithoutTitles =        cellfun(@(x) x(2:end,:), TemporaryImageMapPerFile, 'UniformOutput', false);
+            
+            ImageMapsWithoutTitles =                cellfun(@(x) x(2:end,:), TemporaryImageMapPerFile, 'UniformOutput', false);
             
             
             %% put result back into model:
-            obj.ImageMap =                  [ImageMapPerFileInternal{1,1}(1,:); vertcat(ImageMapsWithoutTitles{:})];
+            obj.ImageMap =                          [ImageMapPerFileInternal{1,1}(1,:); vertcat(ImageMapsWithoutTitles{:})];
             
 
         end
         
         
-        function [rows, columns, planes] =              getImageDimensions(obj)
-            
-            planes =        obj.MetaData.EntireMovie.NumberOfPlanes;
-            rows =          obj.MetaData.EntireMovie.NumberOfRows;
-            columns =       obj.MetaData.EntireMovie.NumberOfColumns;
-            
-        end
         
-        function [rows, columns, planes ] =              getImageDimensionsWithAppliedDriftCorrection(obj)
-            
-            if obj.DriftCorrectionOn
-                
 
-                planes =        obj.MetaData.EntireMovie.NumberOfPlanes + max(obj.DriftCorrection.PlaneShiftsAbsolute);
-                rows =          obj.MetaData.EntireMovie.NumberOfRows + max(obj.DriftCorrection.RowShiftsAbsolute);
-                columns =       obj.MetaData.EntireMovie.NumberOfColumns + max(obj.DriftCorrection.ColumnShiftsAbsolute);
-                
-            else
-                planes =        obj.MetaData.EntireMovie.NumberOfPlanes;
-                rows =          obj.MetaData.EntireMovie.NumberOfRows;
-                columns =       obj.MetaData.EntireMovie.NumberOfColumns;
-                
-                
-            end
-            
-            
-        end
-
-            
+        %% helper functions for file- and image-managment:
+        
+        
+         
         function [CurrentImageVolume] =                     Create5DImageVolume(obj, Settings)
             
             
-          
-            
+  
+            %% first filter the image map: only images that meet the defined source numbers will be kept;
+             FilteredImageMap =                         obj.ImageMap;   
             ImageMapColumns =                           obj.ImageMap(1,:);
             
-
-            ColumnForFrames =                           strcmp(ImageMapColumns,'TargetFrameNumber');
-            ColumnForPlanes =                           strcmp(ImageMapColumns,'TargetPlaneNumber');
-
-             SourceChannels =                           Settings.SourceChannels;
-             TargetChannels =                           Settings.TargetChannels;
-           
-             SourceFrames =                             Settings.SourceFrames;
-             TargetFrames =                             Settings.TargetFrames;
-             
-             SourcePlanes =                             Settings.SourcePlanes;
-             TargetPlanes =                             Settings.TargetPlanes;
+            if ~isempty(Settings)
             
+                [FilteredImageMap] =                        obj.FilterImageMap(FilteredImageMap, Settings,'TargetFrameNumber'); % filter for frames
+                [FilteredImageMap] =                        obj.FilterImageMap(FilteredImageMap, Settings,'TargetPlaneNumber'); % filter for planes
+                [FilteredImageMap] =                        obj.FilterImageMap(FilteredImageMap, Settings,'TargetChannelIndex'); % filter for channels
+
+
+                 %% then reset the numbers of the images in the file to rearrange if needed;
+                 % for example, you may want to change time frame from 10 to 1 if you want just a single image volume rather than a time-series;
+                [FilteredImageMap] =                        obj.resetImageMap(FilteredImageMap, Settings,'TargetFrameNumber'); % replace source frame numbers wiht target frame numbers
+                [FilteredImageMap] =                        obj.resetImageMap(FilteredImageMap, Settings,'TargetPlaneNumber'); 
+                [FilteredImageMap] =                        obj.resetImageMap(FilteredImageMap, Settings,'TargetChannelIndex');
+
+            end
+             FilteredImageMap(1,:) =                    [];
+ 
+             %% after filter the image map, verify that some contents are consistent and get precision and dimensions and initialize array;
              
-             %% first filter the image map: only images that meet the defined source numbers will be kept;
-             [FilteredImageMap] =                       obj.FilterImageMap(SourceFrames,SourcePlanes,SourceChannels);
-             
-             
-             %% then reset the numbers of the images in the file to rearrange if needed;
-             % for example, you may want to change time frame from 10 to 1 if you want just a single image volume rather than a time-series;
-             NumberOfChanges =                   length(SourceChannels);
-             for ChangeIndex = 1:NumberOfChanges
-                 originalNumber =                SourceChannels(ChangeIndex);
-                 newNumber =                     TargetChannels(ChangeIndex);
-                    
-                 [FilteredImageMap] =                   ResetChannelsInImageMap(obj, FilteredImageMap, originalNumber, newNumber);
-                 
-             end
-             
-             
-              NumberOfChanges =                   length(SourcePlanes);
-             for ChangeIndex = 1:NumberOfChanges
-                 originalNumber =                SourcePlanes(ChangeIndex);
-                 newNumber =                     TargetPlanes(ChangeIndex);
-                    
-                 [FilteredImageMap] =                   ResetPlanesInImageMap(obj, FilteredImageMap, originalNumber, newNumber);
-                 
-             end
-             
-               NumberOfChanges =                   length(SourceFrames);
-             for ChangeIndex = 1:NumberOfChanges
-                 originalNumber =                SourceFrames(ChangeIndex);
-                 newNumber =                     TargetFrames(ChangeIndex);
-                    
-                 [FilteredImageMap] =                   ResetFramesInImageMap(obj, FilteredImageMap, originalNumber, newNumber);
-                 
-             end
-             
-             %% after cleaning up the image map, simply read one "strip" after another, the correct target image will come automatically;
             [Structure]  =                              obj.VerifyImageMap(FilteredImageMap);
             Precision =                                 Structure.Precision;
+            
+            ColumnForPlanes =                           strcmp(ImageMapColumns, 'TargetPlaneNumber');
+            ColumnForFrames =                           strcmp(ImageMapColumns, 'TargetFrameNumber');
+            
             TotcalColumnsOfImage =                      Structure.TotcalColumnsOfImage ;
             TotalRowsOfImage =                          Structure.TotalRowsOfImage;
-            
-           
             TotalNumberOfChannels =                     max(cell2mat(FilteredImageMap(:,15)));
             TotalPlanes =                               max(cell2mat(FilteredImageMap(:,ColumnForPlanes)));
             TotalFrames =                               max(cell2mat(FilteredImageMap(:,ColumnForFrames)));
-            
             
             CurrentImageVolume=                         cast(uint8(0),Precision);
             CurrentImageVolume(TotalRowsOfImage,TotcalColumnsOfImage,TotalPlanes,TotalFrames,TotalNumberOfChannels)=                          0;
 
 
-
+            %% go through one entry after another in image map and reconstruct image;
             NumberOfImageDirectories =        size(FilteredImageMap,1);
 
-            for StripIndex=1:NumberOfImageDirectories
+            for IndexOfDirectory=1:NumberOfImageDirectories
 
-                CurrentImageDirectory =             FilteredImageMap(StripIndex,:);
+                CurrentImageDirectory =             FilteredImageMap(IndexOfDirectory,:);
 
                 
                 %% place file pointer to beginning of strip
                  % 'source' info:
                 fileID =                            CurrentImageDirectory{3};
-                CurrentPlane =                      CurrentImageDirectory{ColumnForPlanes};
+                CurrentPlanes =                      CurrentImageDirectory{ColumnForPlanes};
                 CurrentFrame =                      CurrentImageDirectory{ColumnForFrames};    
                 CurrentChannel =                    CurrentImageDirectory{15};
                
@@ -804,8 +1856,9 @@ classdef PMMovieTracking
 
                     %% reshape the strip so that it fits:
                     % 'target' info
-                    CurrentStripImage=                  (reshape(CurrentStripData, TotcalColumnsOfImage, RowsPerStrip ))';                
-                    CurrentImageVolume(CurrentUpperRow:CurrentBottomRow,1:TotcalColumnsOfImage, CurrentPlane, CurrentFrame, CurrentChannel)=     CurrentStripImage;
+                    CurrentStripImage=                  reshape(CurrentStripData,RowsPerStrip, TotcalColumnsOfImage, length(CurrentPlanes));                
+                    CurrentStripImage =         permute (CurrentStripImage, [2 1 3]);  % in image information comes usually as rows first, but reshape reads columns first that's why a switch is necessary;  
+                    CurrentImageVolume(CurrentUpperRow:CurrentBottomRow,1:TotcalColumnsOfImage, CurrentPlanes, CurrentFrame, CurrentChannel)=     CurrentStripImage;
                     
 
                 end
@@ -814,63 +1867,96 @@ classdef PMMovieTracking
             
         end
         
+
     
-        function [ImageMap] =                               FilterImageMap(obj,sourceFrameNumber,sourcePlaneNumber,sourceChannelNumber)
+        function [ImageMap] =                               FilterImageMap(obj,ImageMap, Settings, FilterCode)
               
             % filter image map: keep only images that are defined as "source";
               % if the inputs are empty, ignore and leave all rows;
             
-            ImageMap =                                  obj.ImageMap(2:end,:);
+            ColumnsOfImageMap  =          ImageMap(1,:);
+            ImageMapForFiltering =          ImageMap(2:end,:);
 
+            
+            switch FilterCode
+                
+                case 'TargetFrameNumber'
+                    ListWithWantedNumbers =         Settings.SourceFrames;
+                    
+                case 'TargetPlaneNumber'
+                    ListWithWantedNumbers =         Settings.SourcePlanes;
+                    
+                case 'TargetChannelIndex'
+                     ListWithWantedNumbers =         Settings.SourceChannels;   
+                        
+                
+            end
+            
+
+           if ~isempty(ListWithWantedNumbers)
+               
+                ColumnWithWantedParameter =                                 strcmp('TargetFrameNumber', ColumnsOfImageMap);
+                % filter for channels:
+                NumberOfSources =                                           length(ListWithWantedNumbers);
+                RowsThatShouldBeKept =                                      false(size(ImageMapForFiltering,1),NumberOfSources);
+                for CurrentIndex = 1:NumberOfSources
+                    RowsThatShouldBeKept(:,CurrentIndex) =                  cell2mat(ImageMapForFiltering(:,ColumnWithWantedParameter)) == ListWithWantedNumbers(CurrentIndex);
+                end
+
+                RowsThatShouldBeKept =                                      max(RowsThatShouldBeKept, [], 2);
+                ImageMapForFiltering=                                       ImageMapForFiltering(RowsThatShouldBeKept,:);
+
+           end
+            
+            ImageMap = [ColumnsOfImageMap; ImageMapForFiltering];
+           
           
-            
-           if ~isempty(sourceFrameNumber)
-                WantedColumn =                                              strcmp('TargetFrameNumber', obj.ImageMap(1,:));
-                % filter for channels:
-                NumberOfSources = length(sourceFrameNumber);
-                clear WantedRows
-                for CurrentIndex = 1:NumberOfSources
-                    WantedRows(:,CurrentIndex) =          cell2mat(ImageMap(:,WantedColumn)) == sourceFrameNumber(CurrentIndex);
-                end
-
-                ChannelCondition =                              max(WantedRows, [], 2);
-
-                ImageMap=                                       ImageMap(ChannelCondition,:);
-
-            end
-            
-            if ~isempty(sourcePlaneNumber)
-                 WantedColumn =                                              strcmp('TargetPlaneNumber', obj.ImageMap(1,:));
-                % filter for channels:
-                NumberOfSources = length(sourcePlaneNumber);
-                clear WantedRows
-                for CurrentIndex = 1:NumberOfSources
-                    WantedRows(:,CurrentIndex) =          cell2mat(ImageMap(:,WantedColumn)) == sourcePlaneNumber(CurrentIndex);
-                end
-
-                ChannelCondition =                              max(WantedRows, [], 2);
-
-                ImageMap=                                       ImageMap(ChannelCondition,:);
-
-            end
-            
-              
-            if ~isempty(sourceChannelNumber)
-                 WantedColumn =                                              strcmp('TargetChannelIndex', obj.ImageMap(1,:));
-                % filter for channels:
-                NumberOfSources = length(sourceChannelNumber);
-                clear WantedRows
-                for CurrentIndex = 1:NumberOfSources
-                    WantedRows(:,CurrentIndex) =          cell2mat(ImageMap(:,WantedColumn)) == sourceChannelNumber(CurrentIndex);
-                end
-
-                ChannelCondition =                              max(WantedRows, [], 2);
-
-                ImageMap=                                       ImageMap(ChannelCondition,:);
-
-            end
 
         end
+        
+        
+        
+         function [ImageMap] =                       resetImageMap(obj,ImageMap, Settings, FilterCode)
+                      
+                ColumnsOfImageMap  =                ImageMap(1,:);
+                ImageMapForFiltering =              ImageMap(2:end,:);
+
+                switch FilterCode
+
+                    case 'TargetFrameNumber'
+                        SourceNumbers =                 Settings.SourceFrames;
+                        TargetNumbers =                 Settings.TargetFrames;
+
+                    case 'TargetPlaneNumber'
+                        SourceNumbers =                 Settings.SourcePlanes;
+                        TargetNumbers =                 Settings.TargetPlanes;
+
+                    case 'TargetChannelIndex'
+                        SourceNumbers =                 Settings.SourceChannels;   
+                        TargetNumbers =                 Settings.TargetChannels;   
+
+                end
+
+                WantedColumn =                                              strcmp(FilterCode, ColumnsOfImageMap);
+
+                NumberOfChanges =                   length(SourceNumbers);
+                for ChangeIndex = 1:NumberOfChanges
+
+
+                    oldValue =                      SourceNumbers(ChangeIndex);
+                    newValue =                      TargetNumbers(ChangeIndex);
+
+
+                    RowsThatNeedChange =                                        cell2mat(ImageMapForFiltering(:,WantedColumn)) == oldValue;
+                    ImageMapForFiltering(RowsThatNeedChange,WantedColumn) =        {newValue};
+
+
+                end
+
+                ImageMap = [ColumnsOfImageMap; ImageMapForFiltering];
+
+                
+            end
 
         
         function [NonObjectImageMap] =                       ResetChannelsInImageMap(obj, NonObjectImageMap, oldValue, newValue)
@@ -922,327 +2008,10 @@ classdef PMMovieTracking
         end
         
         
-        function listWithPointers =                         getCurrentPointersInImageMap(obj)
-            
-            listWithPointers = cellfun(@(x) x{2,3}, obj.ImageMapPerFile);
-
-        end
-         
         
-        function [obj] =                                    autoCorrectNavigation(obj)
-            
-            
-            obj =           obj.autoCorrectChannels;
-            
-             timepoints = obj.MetaData.EntireMovie.NumberOfTimePoints;
-            planes = obj.MetaData.EntireMovie.NumberOfPlanes;
-            
-            if isempty(obj.SelectedFrames) ||  max(obj.SelectedFrames) > timepoints || min(obj.SelectedFrames) < 1
-                obj.SelectedFrames = 1;
-                
-            end
-            
-            if isempty(obj.SelectedPlanes) ||  max(obj.SelectedPlanes) > planes || min(obj.SelectedPlanes) < 1
-                obj.SelectedPlanes = 1;
-                
-            end
-          
-            
-        end
-        
-        function [obj] =                                    autoCorrectTrackingObject(obj)
-            
-            CurrentNumberOfColumns =    size(PMTrackingAnalysis().ListWithCompleteMaskInformation,2);
-
-             NumberOfFrames =           obj.MetaData.EntireMovie.NumberOfTimePoints;
-             EmptyContent =             cell(0,CurrentNumberOfColumns);
-             
-
-             if isempty(obj.TrackingAnalysis)
-                 return
-             end
-             
-             if isempty(obj.TrackingAnalysis.MetaData)
-                 obj.TrackingAnalysis.MetaData = obj.MetaData;
-                 
-             end
-             
-
-            if isempty(obj.Tracking.TrackingCellForTime) || size(obj.Tracking.TrackingCellForTime,1) < NumberOfFrames
-                
-                obj.Tracking.TrackingCellForTime{NumberOfFrames,1} =      EmptyContent;
-       
-            end
-            
-            for CurrentTime = 1:NumberOfFrames
-                
-                if isempty(obj.Tracking.TrackingCellForTime{CurrentTime,1})
-                    
-                    obj.Tracking.TrackingCellForTime{CurrentTime,1} =   EmptyContent;
-                elseif size(obj.Tracking.TrackingCellForTime{CurrentTime,1},2) == 6
-                    obj.Tracking.TrackingCellForTime{CurrentTime,1}(:,7) =  {PMSegmentationCapture};
-                    
-                end
-                
-                
-                
-                
-                
-            end
-            
-        end
-        
-  
-        function [RowForCurrentTrack]=                      FindLocationOfNewCellMask(obj)
-
-                %% find the row in the structure (and the mask ID) of a mask from a specific track (at a given frame);
-
-                TrackingResults =                           obj.Tracking.TrackingCellForTime;
-                ID_OfTrack =                                obj.IdOfActiveTrack;
-                State_CurrentFrame =                        obj.SelectedFrames(1);
-                FieldNames =                                obj.Tracking.FieldNamesForTrackingCell;
-                
-                if ~isempty(TrackingResults) && size(TrackingResults,1) >= State_CurrentFrame
-                    DataOfCurrentFrame =                        TrackingResults{State_CurrentFrame,1}; 
-                else
-                    DataOfCurrentFrame = [];
-                end
-
-                Column_TrackId=                             strcmp('TrackID', FieldNames);
-                Column_AbsoluteFrame=                       find(strcmp('AbsoluteFrame', FieldNames));
-                Column_CentroidY=                           find(strcmp('CentroidY', FieldNames));
-                Column_CentroidX=                           find(strcmp('CentroidX', FieldNames));
-                Column_CentroidZ=                           find(strcmp('CentroidZ', FieldNames));
-
-
-                if isempty(DataOfCurrentFrame)
-                    RowForCurrentTrack=     1;
-                    
-                else
-                    
-                    TracksOfCurrentTimePoint =              cell2mat(DataOfCurrentFrame(:,Column_TrackId));
-                    RowForCurrentTrack=                     find(TracksOfCurrentTimePoint==ID_OfTrack);
-                     
-                    if isempty(RowForCurrentTrack) %if the current track does not have a cell mask in the current frame;
-                        RowForCurrentTrack=                 size(DataOfCurrentFrame,1) + 1;
-                     end
-                
-                end
-
-
-
-        end
-
-        
-       
-
-        function [obj] = updateMaskOfActiveTrack(obj, FinalListWith3DCoordinates, varargin)
-                %TRACKINGRESULTS_ADDPIXELLIST Summary of this function goes here
-                %   Detailed explanation goes here
-                
-                
-                
-                
-                
- 
-                if isempty(FinalListWith3DCoordinates) || max(isnan(FinalListWith3DCoordinates(:,1)))
-                    error('It is not allowed to add empty coordinate lists or list wih nan')
-                end
-
-
-                 %% obtain data:
-                 MyTrackID =                                obj.IdOfActiveTrack;
-                 [RowInCell]=                               obj.FindLocationOfNewCellMask;
-                 MySelectedFrame =                          obj.SelectedFrames(1);
-
-                 FieldNames =                                obj.Tracking.FieldNamesForTrackingCell;
-
-                 %% process data:
-                Column_TrackId=                             strcmp('TrackID', FieldNames);
-                Column_AbsoluteFrame=                       strcmp('AbsoluteFrame', FieldNames);
-                Column_CentroidY=                           strcmp('CentroidY', FieldNames);
-                Column_CentroidX=                           strcmp('CentroidX', FieldNames);
-                Column_CentroidZ=                           strcmp('CentroidZ', FieldNames);
-                Column_PixelList =                          strcmp('ListWithPixels_3D', FieldNames);
-
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_TrackId} =               MyTrackID;
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_AbsoluteFrame} =         MySelectedFrame;
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidY} =             mean(FinalListWith3DCoordinates(:,1));
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidX} =             mean(FinalListWith3DCoordinates(:,2));
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidZ} =              mean(FinalListWith3DCoordinates(:,3));
-                obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              FinalListWith3DCoordinates;
-
-                   
-                NumberOfInputArguments =        length(varargin);
-                
-                if NumberOfInputArguments == 1
-                    
-                    
-                    SegmentationInfo = varargin{1};
-                    
-                    SegmentationInfo = SegmentationInfo.RemoveImageData;
-                    
-                   
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7} = SegmentationInfo;
-                    
-                    
-                end
-
-        end
-                
-        
-        function [obj] =  updateMaskOfActiveTrackByRemoval(obj,yList,xList)
-            
-            if isempty(yList) || isempty(xList)
-                
-                return
-
-            end
-            
-            
-               %% obtain data:
-                 MyTrackID =                                obj.IdOfActiveTrack;
-                 [RowInCell]=                               obj.FindLocationOfNewCellMask;
-                 MySelectedFrame =                          obj.SelectedFrames(1);
-
-                 FieldNames =                                obj.Tracking.FieldNamesForTrackingCell;
-
-                 %% process data:
-                Column_TrackId=                             strcmp('TrackID', FieldNames);
-                Column_AbsoluteFrame=                       strcmp('AbsoluteFrame', FieldNames);
-                Column_CentroidY=                           strcmp('CentroidY', FieldNames);
-                Column_CentroidX=                           strcmp('CentroidX', FieldNames);
-                Column_CentroidZ=                           strcmp('CentroidZ', FieldNames);
-                Column_PixelList =                          strcmp('ListWithPixels_3D', FieldNames);
-
-                
-                oldPixels =                             obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList};
-                deleteRows =                            min(ismember(oldPixels(:,1:2), [yList xList]), [], 2);
-                newPixels =                             oldPixels;
-                newPixels(deleteRows,:) =               [];
-                
-                if isempty(newPixels)
-                    
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}(RowInCell,:) = [];
-                else
-                    
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_TrackId} =               MyTrackID;
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_AbsoluteFrame} =         MySelectedFrame;
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidY} =             mean(newPixels(:,1));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidX} =             mean(newPixels(:,2));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidZ} =              mean(newPixels(:,3));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              newPixels;
-
-                     obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7}.SegmentationType = 'Manual';
-                    
-                end
-                
-                
-            
-            
-        end
-        
-        
-        
-         function [obj] =  updateMaskOfActiveTrackByAdding(obj,yList,xList, plane)
-             
-             
-                if isempty(yList) || isempty(xList)
-                
-                return
-
-            end
-            
-            
-               %% obtain data:
-                 MyTrackID =                                obj.IdOfActiveTrack;
-                 [RowInCell]=                               obj.FindLocationOfNewCellMask;
-                 MySelectedFrame =                          obj.SelectedFrames(1);
-
-                 FieldNames =                                obj.Tracking.FieldNamesForTrackingCell;
-
-                 %% process data:
-                Column_TrackId=                             strcmp('TrackID', FieldNames);
-                Column_AbsoluteFrame=                       strcmp('AbsoluteFrame', FieldNames);
-                Column_CentroidY=                           strcmp('CentroidY', FieldNames);
-                Column_CentroidX=                           strcmp('CentroidX', FieldNames);
-                Column_CentroidZ=                           strcmp('CentroidZ', FieldNames);
-                Column_PixelList =                          strcmp('ListWithPixels_3D', FieldNames);
-
-                
-                RowsThere =                             size(obj.Tracking.TrackingCellForTime{MySelectedFrame, 1},1);
-                
-                if RowsThere<RowInCell
-                    oldPixels =      zeros(0,3);
-                else
-                    oldPixels =                             obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList};
-                
-                    
-                end
-                
-                
-                addPixels =                             [yList,xList];
-                addPixels(:,3) =                        plane;
-                
-                
-                newPixels =             unique([oldPixels;addPixels], 'rows');
-                
-                
-               
-                
-                
-                if isempty(newPixels)
-                    
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}(RowInCell,:) = [];
-                else
-                    
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_TrackId} =               MyTrackID;
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_AbsoluteFrame} =         MySelectedFrame;
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidY} =             mean(newPixels(:,1));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidX} =             mean(newPixels(:,2));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_CentroidZ} =              mean(newPixels(:,3));
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,Column_PixelList} =              newPixels;
-
-                    obj.Tracking.TrackingCellForTime{MySelectedFrame, 1}{RowInCell,7}.SegmentationType = 'Manual';
-                    
-                    
-                end
-                
-                
-            
-             
-         end
-        
-
-
-
-        
-       function Check = verifyChannels(obj, NumberOfChannels)
-            
-               %% if the dimension of the channels are incorrect replace them with the default;
-               % if these numbers don't match this would lead to serious problems during execution of the program;
-               
-                SelectionNumber =       length(obj.SelectedChannels);
-                LowInNumber  =          length(obj.ChannelTransformsLowIn);
-                HighInNumber =          length(obj.ChannelTransformsHighIn);
-                ColorNumber =           length(obj.ChannelColors);
-                CommentNumber =         length(obj.ChannelComments);
-
-                Count = length(unique([NumberOfChannels; SelectionNumber; LowInNumber; HighInNumber; ColorNumber; CommentNumber]));
-
-                if Count == 1
-                    Check = true;
-                else
-                    Check = false;
-                end
-
-       end
-      
-           
     
-     
-     
+     end
         
          
-    end
+    
 end

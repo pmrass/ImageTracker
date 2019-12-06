@@ -15,8 +15,8 @@ classdef PMTrackingView
             %PMTRACKINGVIEW Construct an instance of this class
             %   Detailed explanation goes here
             
-            obj =                  obj.createMenu(ProjectViews);
-            obj =         obj.CreateTrackingViews(ProjectViews);
+            obj =                   obj.createMenu(ProjectViews);
+            obj =                   obj.CreateTrackingViews(ProjectViews);
 
         end
         
@@ -38,6 +38,11 @@ classdef PMTrackingView
             Tracks_Remove.Label=                                'Delete active track';
             Tracks_Remove.Tag=                                  'Tracks_Remove';
             Tracks_Remove.Enable=                               'on';
+            
+             Tracks_RemoveAll=                                      uimenu(Tracks_Main);
+            Tracks_RemoveAll.Label=                                'Delete all tracks';
+            Tracks_RemoveAll.Tag=                                  'Tracks_RemoveAll';
+            Tracks_RemoveAll.Enable=                               'on';
             
             Tracks_Merge=                                       uimenu(Tracks_Main);
             Tracks_Merge.Label=                                 'Merge selected tracks';
@@ -66,7 +71,7 @@ classdef PMTrackingView
             Masks_Remove.Enable=                                'on';
 
                  
-            
+            obj.Menu.DeleteAllTracks =                          Tracks_RemoveAll;
              obj.Menu.DeleteTrack =                          Tracks_Remove;
              obj.Menu.MergeTracks =                          Tracks_Merge;
              obj.Menu.SpitTracks =                          Tracks_Split;

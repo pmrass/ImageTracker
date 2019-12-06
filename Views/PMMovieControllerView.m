@@ -28,6 +28,7 @@ classdef PMMovieControllerView
             if ishghandle(Input,'axes') % if the input is only the 
                 
                 obj.Figure =           Input.Parent;  
+                
                 obj =                   obj.createMovieView(Input);
                 
             else % if input is the project view: create more views and put them in relation to the whole project window;
@@ -58,6 +59,14 @@ classdef PMMovieControllerView
             obj.Menu.Nickname.Tag=                                               'Movies_EditNickname';
             obj.Menu.Nickname.Enable=                                            'on';
             
+            
+            obj.Menu.RenameLinkedMovies=                                                   uimenu(MainMovieMenu);
+            obj.Menu.RenameLinkedMovies.Label=                                             'Rename linke movie files';
+            obj.Menu.RenameLinkedMovies.Tag=                                               'Movies_RenameLinkedMovies';
+            obj.Menu.RenameLinkedMovies.Enable=                                            'on';
+            
+            
+            
             obj.Menu.LinkedMovies=                                                   uimenu(MainMovieMenu);
             obj.Menu.LinkedMovies.Label=                                             'Relink movies';
             obj.Menu.LinkedMovies.Tag=                                               'Movies_LinkMovies';
@@ -87,10 +96,13 @@ classdef PMMovieControllerView
             obj.Menu.EraseAllDriftCorrections.Enable=                           'on';
 
             % access movie file
+            
+         
+            
             obj.Menu.ShowMetaData=                                              uimenu(MainMovieMenu);
             obj.Menu.ShowMetaData.Label=                                        'Show meta-data';
             obj.Menu.ShowMetaData.Tag=                                          'Movies_MovieInfo';
-            obj.Menu.ShowMetaData.Separator=                                    'on';
+            obj.Menu.ShowMetaData.Separator=                                    'off';
             obj.Menu.ShowMetaData.Enable=                                       'on';
 
             %
@@ -98,17 +110,30 @@ classdef PMMovieControllerView
             obj.Menu.ShowAttachedFiles.Label=                                   'Show attached files';
             obj.Menu.ShowAttachedFiles.Tag=                                     'Movies_ShowFiles';
             obj.Menu.ShowAttachedFiles.Enable=                                  'on';
+            
+            
+            %%
+            
          
             obj.Menu.ExportMovie =                                                  uimenu(MainMovieMenu);
-            obj.Menu.ExportMovie.Label=                                             'Export active movie';
+            obj.Menu.ExportMovie.Label=                                             'Export active movie into mp4 file';
             obj.Menu.ExportMovie.Tag=                                               'Movies_ExportMovie';
             obj.Menu.ExportMovie.Enable=                                             'on';
-            
+             obj.Menu.ExportMovie.Separator=                                        'on';
+             
               
             obj.Menu.ExportTrackCoordinates=                                   uimenu(MainMovieMenu);
-            obj.Menu.ExportTrackCoordinates.Label=                             'Export track coodinates';
-            obj.Menu.ExportTrackCoordinates.Separator=                         'on';
+            obj.Menu.ExportTrackCoordinates.Label=                             'Export track coodinates into csv file';
+            obj.Menu.ExportTrackCoordinates.Separator=                         'off';
             obj.Menu.ExportTrackCoordinates.Enable=                            'on';
+            
+                obj.Menu.ShowCompleteMetaData=                                              uimenu(MainMovieMenu);
+            obj.Menu.ShowCompleteMetaData.Label=                                        'Export complete meta-data into txt file';
+            obj.Menu.ShowCompleteMetaData.Tag=                                          'ShowCompleteMetaData';
+            obj.Menu.ShowCompleteMetaData.Separator=                                    'off';
+            obj.Menu.ShowCompleteMetaData.Enable=                                       'on';
+
+            
 
             
         end
@@ -466,6 +491,19 @@ classdef PMMovieControllerView
                         ScalebarTextHandle.String =                 'Scalebar';
                         ScalebarTextHandle.Parent=                     ViewMovieAxes;
                    
+                        
+                          ScaleBarLineHandle=                          line; 
+                         ScaleBarLineHandle.Parent=                   ViewMovieAxes;
+                         ScaleBarLineHandle.Marker=                   's';
+                         ScaleBarLineHandle.MarkerSize=               8;
+                         ScaleBarLineHandle.Color=                    'w';
+                         ScaleBarLineHandle.Tag=                      'ScaleBarLineHandle';
+                         ScaleBarLineHandle.LineStyle=                '-';
+                         ScaleBarLineHandle.MarkerFaceColor=          'none';
+                         ScaleBarLineHandle.MarkerEdgeColor=          'w';
+                         ScaleBarLineHandle.LineWidth=                3;
+                        ScaleBarLineHandle.Visible =                'off';
+                      
 
 
                         %% drift correction and tracking:
@@ -518,6 +556,8 @@ classdef PMMovieControllerView
                         obj.MovieView.ViewMovieAxes=                     ViewMovieAxes;
                         obj.MovieView.MainImage=                         HandleOfMainImage;
                         obj.MovieView.ScalebarText=                      ScalebarTextHandle;
+                        obj.MovieView.ScaleBarLine=                      ScaleBarLineHandle;
+                        
                         obj.MovieView.TimeStampText=                     TimeStampTextHandle;
                         obj.MovieView.ZStampText=                        ZStampTextHandle;
                         obj.MovieView.ManualDriftCorrectionLine=         HandleOfManualDriftCorrectionLine;
@@ -626,6 +666,8 @@ classdef PMMovieControllerView
             
             obj.MovieView.TimeStampText.String =                    '';
             obj.MovieView.ScalebarText.String =                     '';
+            obj.MovieView.ScaleBarLine.Visible =                    'off';
+            
             obj.MovieView.CentroidLine.Visible =                    'off';
             obj.MovieView.CentroidLine_SelectedTrack.Visible =      'off';
             obj.MovieView.Rectangle.Visible =                       'off';
@@ -635,14 +677,7 @@ classdef PMMovieControllerView
         end
         
         
-        function obj = reverseBlackOut(obj)   
-           
-            obj.MovieView.CentroidLine.Visible =                    'on';
-            obj.MovieView.CentroidLine_SelectedTrack.Visible =      'on';
-            obj.MovieView.Rectangle.Visible =                       'on';
-            obj.MovieView.ManualDriftCorrectionLine.Visible =       'on';
-            
-        end
+        
 
     end
     

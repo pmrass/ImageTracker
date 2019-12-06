@@ -270,8 +270,7 @@ classdef PMTrackingAnalysis
             OldDistanceUnits =                                              obj.CurrentDistanceUnits;              
             obj.CurrentDistanceUnits =                                      'um';
 
-            MetaDataInternal =                                              obj.MetaData;
-
+        
             CoordinateList =                                                obj.ListWithCompleteMaskInformationWithDrift;
             CoordinateListColumnTitles =                                    obj.FieldNamesOfMaskInformation;
 
@@ -281,21 +280,24 @@ classdef PMTrackingAnalysis
 
 
                     ColumnWithCentroidZ =                                           strcmp(CoordinateListColumnTitles, 'CentroidZ');
-                    ColumnWitCentroidY =                                            strcmp(CoordinateListColumnTitles, 'CentroidY');
+                    ColumnWithCentroidY =                                            strcmp(CoordinateListColumnTitles, 'CentroidY');
                     ColumnWithCentroidX =                                           strcmp(CoordinateListColumnTitles, 'CentroidX');
 
-
-                    Meta_DistanceBetweenPixels_Z=                                   MetaDataInternal.EntireMovie.VoxelSizeZ*10^6;
-                    Meta_DistanceBetweenPixels_Y=                                   MetaDataInternal.EntireMovie.VoxelSizeY*10^6;
-                    Meta_DistanceBetweenPixels_X=                                   MetaDataInternal.EntireMovie.VoxelSizeX*10^6;
-
+                  
+                   
+                    
+                    Xoordinates_pixel =                                             cell2mat(CoordinateList(:,ColumnWithCentroidX));
+                    Yoordinates_pixel =                                             cell2mat(CoordinateList(:,ColumnWithCentroidY));
+                    Zoordinates_pixel =                                             cell2mat(CoordinateList(:,ColumnWithCentroidZ));
+                    
+                    
+                     [pixelList_um] =                                               obj.convertPixelsIntoUm([Yoordinates_pixel Xoordinates_pixel Zoordinates_pixel]);
+                  
                     CoordinateList_um=                                              CoordinateList;
 
-                    CoordinateList_um(:,ColumnWithCentroidX)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidX))*Meta_DistanceBetweenPixels_X);   % µm 
-                    CoordinateList_um(:,ColumnWitCentroidY)=                        num2cell(cell2mat(CoordinateList(:,ColumnWitCentroidY))*Meta_DistanceBetweenPixels_Y);  % µm
-                    CoordinateList_um(:,ColumnWithCentroidZ)=                       num2cell(cell2mat(CoordinateList(:,ColumnWithCentroidZ))*Meta_DistanceBetweenPixels_Z);
-
-
+                    CoordinateList_um(:,ColumnWithCentroidX)=                       num2cell(pixelList_um(:,2));   % µm 
+                    CoordinateList_um(:,ColumnWithCentroidY)=                        num2cell(pixelList_um(:,1));  % µm
+                    CoordinateList_um(:,ColumnWithCentroidZ)=                       num2cell(pixelList_um(:,3));
 
                     obj.ListWithCompleteMaskInformationWithDrift =                  CoordinateList_um;
 
@@ -313,6 +315,44 @@ classdef PMTrackingAnalysis
 
 
 
+        end
+        
+        function [pixelList_um] = convertPixelsIntoUm(obj, pixelList)
+            
+            
+                MetaDataInternal =                                              obj.MetaData;
+
+            
+            
+              Meta_DistanceBetweenPixels_Z=                                   MetaDataInternal.EntireMovie.VoxelSizeZ*10^6;
+                    Meta_DistanceBetweenPixels_Y=                                   MetaDataInternal.EntireMovie.VoxelSizeY*10^6;
+                    Meta_DistanceBetweenPixels_X=                                   MetaDataInternal.EntireMovie.VoxelSizeX*10^6;
+
+            
+                     pixelList_um(:,1) =                                               pixelList(:,1)*Meta_DistanceBetweenPixels_X;
+                    pixelList_um(:,2) =                                               pixelList(:,2)*Meta_DistanceBetweenPixels_Y;       
+                    pixelList_um(:,3) =                                               pixelList(:,3)*Meta_DistanceBetweenPixels_Z;
+                    
+            
+            
+        end
+        
+        function [pixelList] = convertUmIntoPixels(obj, pixelList_um)
+            
+             MetaDataInternal =                                              obj.MetaData;
+
+
+            Meta_DistanceBetweenPixels_Z=                                   MetaDataInternal.EntireMovie.VoxelSizeZ*10^6;
+            Meta_DistanceBetweenPixels_Y=                                   MetaDataInternal.EntireMovie.VoxelSizeY*10^6;
+            Meta_DistanceBetweenPixels_X=                                   MetaDataInternal.EntireMovie.VoxelSizeX*10^6;
+
+
+            pixelList(:,1) =                                               pixelList_um(:,1)/Meta_DistanceBetweenPixels_X;
+            pixelList(:,2) =                                               pixelList_um(:,2)/Meta_DistanceBetweenPixels_Y;       
+            pixelList(:,3) =                                               pixelList_um(:,3)/Meta_DistanceBetweenPixels_Z;
+
+            
+            
         end
 
 
@@ -755,6 +795,16 @@ classdef PMTrackingAnalysis
             
              speeds =                                   cellfun(@(x) obj.getAverageTrackSpeed(x),  inputTrackCell);
            
+        end
+        
+        function [displacements] =              getTotalTrackDisplacements(obj)
+            
+            
+            inputTrackCell =                            obj.TrackCell;
+            
+            displacements =             cellfun(@(x) obj.getDisplacementOfTrack(x),  inputTrackCell);
+            
+            
         end
         
 
