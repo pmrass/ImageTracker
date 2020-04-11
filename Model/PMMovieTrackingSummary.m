@@ -6,6 +6,7 @@ classdef PMMovieTrackingSummary
         
         NickName =                      ''
         Folder =                        ''
+        AttachedFiles =                 ''
         DataType =                      ''
         Keywords =                      cell(0,1);
         DriftCorrectionWasPerformed =   false
@@ -29,11 +30,26 @@ classdef PMMovieTrackingSummary
                 
                      
                 obj.NickName =                          movieTrackingObject.NickName;
+                obj.AttachedFiles =                          movieTrackingObject.AttachedFiles;
                 obj.Folder =                            movieTrackingObject.Folder;
                 obj.DataType =                          movieTrackingObject.getDataType;
                 obj.Keywords =                          movieTrackingObject.Keywords;
-                obj.DriftCorrectionWasPerformed =       movieTrackingObject.DriftCorrection.testForExistenceOfDriftCorrection;
-                obj.TrackingWasPerformed =              movieTrackingObject.Tracking.NumberOfTracks>=1;
+                
+                if isempty(movieTrackingObject.DriftCorrection)
+                     obj.DriftCorrectionWasPerformed =       false;
+                    
+                else
+                     obj.DriftCorrectionWasPerformed =       movieTrackingObject.DriftCorrection.testForExistenceOfDriftCorrection;
+                    
+                end
+                
+               if isempty(movieTrackingObject.Tracking) || isempty(movieTrackingObject.Tracking.Tracking)
+                   obj.TrackingWasPerformed =               false;
+               else
+                    obj.TrackingWasPerformed =              movieTrackingObject.Tracking.NumberOfTracks>=1;
+               end
+               
+               
                 obj.MappingWasPerformed =               ~isempty(movieTrackingObject.MetaData);
                 
                 if ~isempty(movieTrackingObject.MetaData)

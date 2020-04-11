@@ -39,6 +39,11 @@ classdef PMTrackingView
             Tracks_Remove.Tag=                                  'Tracks_Remove';
             Tracks_Remove.Enable=                               'on';
             
+             Tracks_RemoveShortTracks=                                      uimenu(Tracks_Main);
+            Tracks_RemoveShortTracks.Label=                                'Delete tracks equal or less than x frame';
+            Tracks_RemoveShortTracks.Tag=                                  'Tracks_RemoveShortTracks';
+            Tracks_RemoveShortTracks.Enable=                               'on';
+            
              Tracks_RemoveAll=                                      uimenu(Tracks_Main);
             Tracks_RemoveAll.Label=                                'Delete all tracks';
             Tracks_RemoveAll.Tag=                                  'Tracks_RemoveAll';
@@ -72,6 +77,9 @@ classdef PMTrackingView
 
                  
             obj.Menu.DeleteAllTracks =                          Tracks_RemoveAll;
+            obj.Menu.RemoveShortTracks =                          Tracks_RemoveShortTracks;
+            
+            
              obj.Menu.DeleteTrack =                          Tracks_Remove;
              obj.Menu.MergeTracks =                          Tracks_Merge;
              obj.Menu.SpitTracks =                          Tracks_Split;

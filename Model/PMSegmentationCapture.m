@@ -32,20 +32,20 @@ classdef PMSegmentationCapture
         ActiveYCoordinate
         ActiveZCoordinate
         
-        ActiveChannel =                         1
+        ActiveChannel =                         2
         
-        MinimumCellRadius =                      3  %5
+        MinimumCellRadius =                     3  %5
         MaximumCellRadius =                     30 %30
-        PlaneNumberAboveAndBelow =              3
-        MaximumDisplacement =                   60
+        PlaneNumberAboveAndBelow =              10
+        MaximumDisplacement =                   50
         
-        PixelNumberForMaxAverage = 20; %25
+        PixelNumberForMaxAverage =              20; %25
         
         
         % edge detection:
         PixelShiftForEdgeDetection =            1; %1
-        WidenMaskAfterDetectionByPixels =       1;
-        NumberOfPixelsForBackground =           10;
+        WidenMaskAfterDetectionByPixels =       0;
+        NumberOfPixelsForBackground =           20;
         ListWithEdgePositions =                 NaN;
         BoostBackgroundFactor =                 1;
        
@@ -88,18 +88,18 @@ classdef PMSegmentationCapture
                     if strcmp(class(varargin{1}),  'PMMovieController')
                         
                         MovieControllerObject =                         varargin{1};
-                        [obj]=                                             obj.resetWithMovieController(MovieControllerObject);
+                        [obj]=                                          obj.resetWithMovieController(MovieControllerObject);
                     
-                        Coordinates =                               varargin{2};
-                        obj.ActiveYCoordinate =                     Coordinates(1);
-                        obj.ActiveXCoordinate =                     Coordinates(2);
-                        obj.ActiveZCoordinate =                     Coordinates(3);
-                        obj.MaskCoordinateList =                    Coordinates;
+                        Coordinates =                                   varargin{2};
+                        obj.ActiveYCoordinate =                         Coordinates(1);
+                        obj.ActiveXCoordinate =                         Coordinates(2);
+                        obj.ActiveZCoordinate =                         Coordinates(3);
+                        obj.MaskCoordinateList =                        Coordinates;
                         
                     else
                         
-                        obj.MaskCoordinateList =                    varargin{1};
-                        obj.SegmentationType =                      varargin{2};
+                        obj.MaskCoordinateList =                        varargin{1};
+                        obj.SegmentationType =                          varargin{2};
                         
                     end
 
@@ -217,7 +217,10 @@ classdef PMSegmentationCapture
             
           [CoordinatesList] =    convertRectangleLimitToCoordinates(obj,[column  listWithRows(column) Size Size]);
             
+          CoordinatesList(:,3) =     obj.ActiveZCoordinate;
         
+         
+          
          end
         
          
@@ -269,20 +272,27 @@ classdef PMSegmentationCapture
         function [CoordinatesWithMaximumIntensity] =   getBrightestPixelsOfActiveMask(obj)
 
 
-        PreCoordinateList =                     obj.MaskCoordinateList;
-        PixelIntensities =                      obj.getPixelIntensitiesOfActiveMask;
+        PreCoordinateList =                             obj.MaskCoordinateList;
+        PixelIntensities =                              obj.getPixelIntensitiesOfActiveMask;
 
 
 
         NumberOfRequiredPixels =                        obj.PixelNumberForMaxAverage;
 
-        CoordinatesWithIntensity =              [PreCoordinateList, PixelIntensities];
+        CoordinatesWithIntensity =                      [PreCoordinateList, PixelIntensities];
 
-        CoordinatesWithIntensity =              sortrows(CoordinatesWithIntensity, -4);
-
-
+        CoordinatesWithIntensity =                      sortrows(CoordinatesWithIntensity, -4);
 
 
+
+
+        if size(CoordinatesWithIntensity,1) < NumberOfRequiredPixels
+            
+            fprintf('PMSegmentationCapture: @getBrightestPixelsOfActiveMask.\n')
+            fprintf('The "reference mask" contains only %i pixels, but %i pixels are required.\n', size(CoordinatesWithIntensity,1), NumberOfRequiredPixels)
+            error('An error was thrown because not enough reference pixels are available.')
+            
+        end
 
 
          CoordinatesWithMaximumIntensity =                           CoordinatesWithIntensity(1:NumberOfRequiredPixels,:);
@@ -342,8 +352,23 @@ classdef PMSegmentationCapture
                     check = false;
                     return
                 end
+                
+                %% 
 
-                  explanation =   'Pixels were acceptable';
+                MeanOne =   round(mean(NewPixels(:,1)));
+                MeanTwo =   round(mean(NewPixels(:,2)));
+                MeanThree =   round(mean(NewPixels(:,3)));
+                
+                
+                MeanRow =   find(ismember(NewPixels,[MeanOne,MeanTwo,MeanThree],'rows'));
+                
+                if isempty(MeanRow)
+                    explanation = 'Center of mass was empty.';
+                    check = false;
+                    return
+                end
+                
+                 explanation =   'Pixels were acceptable';
                 check = true;
 
 
@@ -495,7 +520,7 @@ classdef PMSegmentationCapture
         function [obj]=                                             resetWithMovieController(obj, MovieControllerObject)
             
                     CurrentFrame =                                  MovieControllerObject.LoadedMovie.SelectedFrames(1);
-                    ImageVolumeOfActiveChannel =                    MovieControllerObject.LoadedImageVolumes{CurrentFrame,1}(:,:,:,:,MovieControllerObject.LoadedMovie.ActiveChannel);
+                    ImageVolumeOfActiveChannel =                    MovieControllerObject.LoadedImageVolumes{CurrentFrame,1}(:,:,:,:,obj.ActiveChannel);
 
                     obj.ImageVolume =                               ImageVolumeOfActiveChannel;
                     obj.SegmentationOfCurrentFrame =                MovieControllerObject.LoadedMovie.getUnfilteredSegmentationOfCurrentFrame;
@@ -506,9 +531,9 @@ classdef PMSegmentationCapture
                     if ~isempty(SegmentationOfActiveTrack)
                         
                         obj.CurrentTrackId =                        SegmentationOfActiveTrack{1,1};
-                        obj.ActiveYCoordinate =                     SegmentationOfActiveTrack{1,3};
-                        obj.ActiveXCoordinate =                     SegmentationOfActiveTrack{1,4};
-                        obj.ActiveZCoordinate =                     SegmentationOfActiveTrack{1,5};
+                        obj.ActiveYCoordinate =                     round(SegmentationOfActiveTrack{1,3});
+                        obj.ActiveXCoordinate =                     round(SegmentationOfActiveTrack{1,4});
+                        obj.ActiveZCoordinate =                     round(SegmentationOfActiveTrack{1,5});
                         obj.MaskCoordinateList =                    SegmentationOfActiveTrack{1,6};
          
                     end
@@ -529,7 +554,7 @@ classdef PMSegmentationCapture
             myZCoordinate =                                     obj.ActiveZCoordinate;
             Channel =                                           obj.ActiveChannel;
 
-            obj.Threshold =                                     MyImageVolume(myYCoordinate,myXCoordinate,myZCoordinate,Channel);
+            obj.Threshold =                                     MyImageVolume(myYCoordinate,myXCoordinate,myZCoordinate);
             
         end
 
@@ -568,7 +593,9 @@ classdef PMSegmentationCapture
                     if WantedIncrease>MaximumIncrease
                         ThresholdRow = NaN;
                         Threshold = NaN;
+                        
                     else
+                        
                           % around the place where a higher intensity difference can be found: this should be ;;
                     ThresholdRow =                      find(ListWithIntensityDifferences>= WantedIncrease, 1, 'first')+EdgeShift;
                     Threshold =                         IntensityList(ThresholdRow);
@@ -704,7 +731,7 @@ classdef PMSegmentationCapture
             obj.CroppedImageVolume =       MyImageVolume(...
             MinimumRow:MaximumRow,...
             MinimumColumn:MaximumColumn, ...
-            :, 1, Channel);           
+            :);           
 
 
         end
@@ -925,7 +952,7 @@ classdef PMSegmentationCapture
             if length(varargin) ==1
                 Image = varargin{1};
             else
-                Image =                                                 obj.ImageVolume;
+                Image =                                                 obj.ImageVolume(:,:,obj.ActiveZCoordinate);
 
             end
             
@@ -935,9 +962,14 @@ classdef PMSegmentationCapture
             PixelList(PixelList(:,2)>size(Image,2),:) =             [];
 
 
+            PixelList(isnan(PixelList(:,1)),:) = [];
+            PixelList(isnan(PixelList(:,2)),:) = [];
+          
+            
+            
             NumberOfPixels = size(PixelList,1);
             for PixelIndex = 1:NumberOfPixels % there should be a more efficient way to do this:
-                Image(PixelList(PixelIndex,1),PixelList(PixelIndex,2),PixelList(PixelIndex,3)) = 0;
+                Image(PixelList(PixelIndex,1),PixelList(PixelIndex,2)) = 0;
 
             end
             
@@ -1045,6 +1077,11 @@ classdef PMSegmentationCapture
         
           function highLightAutoEdgeDetection(obj, ImageHandle)
             
+              if isempty(obj.SegmentationType)
+                 return 
+                  
+              end
+              
               switch obj.SegmentationType
                   
                   case 'ThresholdingByEdgeDetection'
@@ -1089,7 +1126,7 @@ classdef PMSegmentationCapture
 
         %% helper functions:
                                 
-           function [Image]= convertCoordinatesToImage(obj,ListWithCoordinates)
+        function [Image]= convertCoordinatesToImage(obj,ListWithCoordinates)
             
              Image(obj.MaximumRows,obj.MaximumColumns) = 0;
              NumberOfCoordinates =  size(ListWithCoordinates,1);
@@ -1117,24 +1154,23 @@ classdef PMSegmentationCapture
             
             NumberOfPlanes = size(Image,3);
             
-            
             CorrdinateCell = cell(NumberOfPlanes,1);
             for CurrentPlane =1 :NumberOfPlanes
                 
                  [rows, columns] =           find(Image(:,:,CurrentPlane));
             
-            myCoordinates =    [rows, columns];
-           
-            
-            myCoordinates(myCoordinates(:,1)<=0,:) = [];
-            myCoordinates(myCoordinates(:,2)<=0,:) = [];
-            myCoordinates(myCoordinates(:,1)>obj.MaximumRows,:) =  [];
-            myCoordinates(myCoordinates(:,2)>obj.MaximumColumns,:) = [];
-            
-             
-             myCoordinates(:,3) =     CurrentPlane;
-             
-             CorrdinateCell{CurrentPlane,1} =   myCoordinates;
+                myCoordinates =    [rows, columns];
+
+
+                myCoordinates(myCoordinates(:,1)<=0,:) = [];
+                myCoordinates(myCoordinates(:,2)<=0,:) = [];
+                myCoordinates(myCoordinates(:,1)>obj.MaximumRows,:) =  [];
+                myCoordinates(myCoordinates(:,2)>obj.MaximumColumns,:) = [];
+
+
+                 myCoordinates(:,3) =     CurrentPlane;
+
+                 CorrdinateCell{CurrentPlane,1} =   myCoordinates;
                 
             end
             

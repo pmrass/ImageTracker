@@ -17,6 +17,8 @@ classdef PMImagingProjectViewer
         
         InfoView
         
+        TagForKeywordEditor =           'PMImagingProject_EditKeywordsViewer'
+        
          % positioning
         WidthOfProjectViews =           0.2; 
         LeftPositionOfProjectViews =    0.01;
@@ -168,7 +170,11 @@ classdef PMImagingProjectViewer
                     obj.ProjectMenu.AddAllCaptures.Tag=                   'Movies_AddAllImagesInDir';
                     obj.ProjectMenu.AddAllCaptures.Enable=                'on';
 
-                    
+                      obj.ProjectMenu.ShowMissingCaptures=                       uimenu(ProjectMenuInside);
+                    obj.ProjectMenu.ShowMissingCaptures.Label=                 'Show image/movie files that have not yet been imported';
+                    obj.ProjectMenu.ShowMissingCaptures.Tag=                   'Movies_ShowMissingCaptures';
+                    obj.ProjectMenu.ShowMissingCaptures.Enable=                'on';
+
                     
                     
                     obj.ProjectMenu.Mapping=                                   uimenu(ProjectMenuInside);
@@ -182,6 +188,16 @@ classdef PMImagingProjectViewer
                     obj.ProjectMenu.UnMapping.Enable=                            'on';
                    
                       
+                     obj.ProjectMenu.ReplaceKeywords=                                   uimenu(ProjectMenuInside);
+                    obj.ProjectMenu.ReplaceKeywords.Label=                             'Replace keywords';
+                    obj.ProjectMenu.ReplaceKeywords.Separator=                         'on';
+                    obj.ProjectMenu.ReplaceKeywords.Enable=                            'on';
+                    
+                        
+                     obj.ProjectMenu.UpdateMovieSummary=                                   uimenu(ProjectMenuInside);
+                    obj.ProjectMenu.UpdateMovieSummary.Label=                             'Update movie summaris from file';
+                    obj.ProjectMenu.UpdateMovieSummary.Separator=                         'off';
+                    obj.ProjectMenu.UpdateMovieSummary.Enable=                            'on';
                     
                     obj.ProjectMenu.Info=                                   uimenu(ProjectMenuInside);
                     obj.ProjectMenu.Info.Label=                             'Info';
@@ -568,6 +584,136 @@ classdef PMImagingProjectViewer
 
         end
         
+        
+        function [KeywordManagerHandles]=       createKeywordEditorView(obj)
+            
+            
+            
+                FirstColumnFilter =                 0.1;
+                SecondColumnFilter =                0.5;
+
+                FirstRowFilter =                    0.9;
+                SecondRowFilter =                   0.8;
+                ThirdRowFilter =                    0.1;
+
+                FilterOptions =                     {'Keywords'};
+
+                %% figure
+
+                FigureHandle=                                                                   findobj('Tag', obj.TagForKeywordEditor);
+                if isempty(FigureHandle)
+                    FigureHandle=                                                               figure;
+
+                else
+                    clf(FigureHandle)
+
+                end
+
+
+                figure(FigureHandle)
+                FigureHandle.Units=                                                             'normalized';
+                FigureHandle.Position=                                                          [0.05 0.2  0.6 0.7];
+                FigureHandle.MenuBar=                                                           'none';
+                FigureHandle.Tag=                                                              obj.TagForKeywordEditor;
+
+                %% finish button
+
+
+                DoneField=                              uicontrol;
+                DoneField.Style=                        'checkbox';
+                DoneField.String=                       'Done';
+                DoneField.Value =                       0;
+                DoneField.Units=                        'normalized';
+                DoneField.Position=                     [0.8 0.85  0.1 0.15];
+
+
+
+                %% pre-
+                SelectFilterTypeSource=                                           uicontrol;
+                SelectFilterTypeSource.Style=                                    'popupmenu';
+                SelectFilterTypeSource.String=                                    FilterOptions;
+                SelectFilterTypeSource.Units=                                     'normalized';
+                SelectFilterTypeSource.HorizontalAlignment=                       'left';	
+
+
+              
+                SelectFilterTypeSource.Position=                                  [FirstColumnFilter  FirstRowFilter 0.15 0.05];
+
+
+
+                PreFilterSource=                                          uicontrol;
+                PreFilterSource.Style=                                  'edit';
+                PreFilterSource.String=                                  '';
+                PreFilterSource.Units=                                            'normalized';
+                PreFilterSource.HorizontalAlignment=                                  'left';	
+
+
+               
+                PreFilterSource.Position=                                             [FirstColumnFilter  SecondRowFilter 0.29 0.05];
+
+
+                ListWithFilterWordsSource=                                           uicontrol;
+                ListWithFilterWordsSource.Style=                                     'listbox';
+                ListWithFilterWordsSource.String=                                    '';
+                ListWithFilterWordsSource.Units=                                     'normalized';
+                ListWithFilterWordsSource.Min=                                       0;
+                ListWithFilterWordsSource.Max=                                       1;
+                ListWithFilterWordsSource.HorizontalAlignment=                       'left';	
+
+              
+                ListWithFilterWordsSource.Position=                                  [FirstColumnFilter  ThirdRowFilter 0.29 0.4];
+
+                %% target keywords:
+
+                SelectFilterTypeTarget=                                           uicontrol;
+                SelectFilterTypeTarget.Style=                                    'popupmenu';
+                SelectFilterTypeTarget.String=                                    ['Delete', FilterOptions];
+                SelectFilterTypeTarget.Units=                                     'normalized';
+                SelectFilterTypeTarget.HorizontalAlignment=                       'left';	
+
+                SelectFilterTypeTarget.Value = 2;
+               
+                SelectFilterTypeTarget.Position=                                  [SecondColumnFilter  FirstRowFilter 0.15 0.05];
+
+
+
+                PreFilterTarget=                                                    uicontrol;
+                PreFilterTarget.Style=                                                  'edit';
+                PreFilterTarget.String=                                                 '';
+                PreFilterTarget.Units=                                                  'normalized';
+                PreFilterTarget.HorizontalAlignment=                                    'left';	
+
+
+               
+                PreFilterTarget.Position=                                             [SecondColumnFilter  SecondRowFilter 0.29 0.05];
+
+
+                ListWithFilterWordsTarget=                                           uicontrol;
+                ListWithFilterWordsTarget.Style=                                     'listbox';
+                ListWithFilterWordsTarget.String=                                    '';
+                ListWithFilterWordsTarget.Units=                                     'normalized';
+                ListWithFilterWordsTarget.Min=                                       0;
+                ListWithFilterWordsTarget.Max=                                       1;
+                ListWithFilterWordsTarget.HorizontalAlignment=                       'left';	
+
+             
+                ListWithFilterWordsTarget.Position=                                  [SecondColumnFilter  ThirdRowFilter 0.29 0.4];
+
+
+                KeywordManagerHandles.FigureHandle =                                  FigureHandle;
+                KeywordManagerHandles.DoneField =                                    DoneField;
+
+                KeywordManagerHandles.SelectFilterTypeSource =                        SelectFilterTypeSource;
+                KeywordManagerHandles.PreFilterSource =                               PreFilterSource;
+                KeywordManagerHandles.ListWithFilterWordsSource =                     ListWithFilterWordsSource;
+
+                KeywordManagerHandles.SelectFilterTypeTarget =                                  SelectFilterTypeTarget;
+                KeywordManagerHandles.PreFilterTarget =                               PreFilterTarget;
+                KeywordManagerHandles.ListWithFilterWordsTarget =                     ListWithFilterWordsTarget;
+
+
+            
+        end
         
           
     end

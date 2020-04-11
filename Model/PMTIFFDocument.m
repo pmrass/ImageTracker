@@ -41,7 +41,7 @@ classdef PMTIFFDocument
                 case 'LSM'
 
                     %% extract metadata:
-                    obj.MetaData =                                          ExtractLSMMetaData(obj);
+                    obj.MetaData =                                          obj.ExtractLSMMetaData;
 
                     %% remove thumbnails from image-directories:
                     DimensionX=                                             obj.MetaData.EntireMovie.NumberOfRows;
@@ -53,9 +53,9 @@ classdef PMTIFFDocument
                     
                     
                     
-                   [CellMapContents, CellMapTitles] =              cellfun(@(dir,x,y) obj.ExtractFieldsForImageReading(dir,x,y), obj.ImageFileDirectories, OrderOfImages(:,1), OrderOfImages(:,2), 'UniformOutput', false);
+                   [CellMapContents, CellMapTitles] =                       cellfun(@(dir,x,y) obj.ExtractFieldsForImageReading(dir,x,y), obj.ImageFileDirectories, OrderOfImages(:,1), OrderOfImages(:,2), 'UniformOutput', false);
                    ListWithAllDirectories =                                vertcat(CellMapContents{:});
-                    obj.ImageMap=                                       [CellMapTitles{1,1};ListWithAllDirectories];
+                    obj.ImageMap=                                           [CellMapTitles{1,1};ListWithAllDirectories];
 
 
                 case 'OME'
@@ -63,7 +63,7 @@ classdef PMTIFFDocument
                     
                     
                     
-                    ParsedOMEMetaData =                                      ExtractOMESpecificMappingData(obj);
+                    ParsedOMEMetaData =                                      obj.ExtractOMESpecificMappingData;
                     
                      obj.MetaData =                                         obj.ExtractMetaDataFromOMEContent(ParsedOMEMetaData);
                      
@@ -491,8 +491,8 @@ classdef PMTIFFDocument
         
         function [MetaData] =                    ExtractLSMMetaData(obj)
             
-            RowWithLSMData=                                             cell2mat(obj.ImageFileDirectories{1,1}(:,1))==34412;
-                    LSMFieldData=                                               obj.ImageFileDirectories{1,1}{RowWithLSMData, 4};
+                    RowWithLSMData=                                                 cell2mat(obj.ImageFileDirectories{1,1}(:,1))==34412;
+                    LSMFieldData=                                                   obj.ImageFileDirectories{1,1}{RowWithLSMData, 4};
 
                     NumberOfRows=                                                   LSMFieldData.DimensionY;
                     NumberOfColumns=                                                LSMFieldData.DimensionX;
@@ -527,14 +527,41 @@ classdef PMTIFFDocument
         end
 
         %% extract meta-data:
+        
+        function [rawMetaData] =                    getRawMetaData(obj)
+            
+             obj.Type =                                          DetermineTIFFType(obj);
+            
+            switch obj.Type
+                
+                case 'LSM'
+                    
+                    
+                        RowWithLSMData=                                                 cell2mat(obj.ImageFileDirectories{1,1}(:,1))==34412;
+                    rawMetaData=                                                   obj.ImageFileDirectories{1,1}{RowWithLSMData, 4};
+
+                case 'OME'
+                    
+                    
+                     ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
+                     rawMetaData=               ContentOfAllImageDescriptionFields{1,1};
+
+                    
+                    
+                    
+            end
+            
+            
+        end
+        
         function [ParsedOMEMetaData] =                                                       ExtractOMESpecificMappingData(obj)
 
             
             
                      %% get first image-description content (contains information for entire file);
-                     ContentOfAllImageDescriptionFields =        obj.getAllImageDescriptionFieldContents;
-                     ImageDescriptionField_FirstEntry=               ContentOfAllImageDescriptionFields{1,1};
-
+                    
+                     
+                     MetaDataString=          obj.getRawMetaData;
                    
                      %% parse OME-XML field:
                     ElementName =                       'Image';
@@ -542,10 +569,10 @@ classdef PMTIFFDocument
                     StartTag=                           ['<' ElementName];
                     EndTag=                             ['</' ElementName '>'];
 
-                    StartPositions=                     (strfind(ImageDescriptionField_FirstEntry, StartTag))';
-                    EndPositions=                       (strfind(ImageDescriptionField_FirstEntry, EndTag))';
+                    StartPositions=                     (strfind(MetaDataString, StartTag))';
+                    EndPositions=                       (strfind(MetaDataString, EndTag))';
 
-                    ImageElements_EachTimeFrame=       arrayfun(@(start, stop) ImageDescriptionField_FirstEntry(start:stop), StartPositions, EndPositions, 'UniformOutput', false);
+                    ImageElements_EachTimeFrame=       arrayfun(@(start, stop) MetaDataString(start:stop), StartPositions, EndPositions, 'UniformOutput', false);
 
 
     

@@ -25,7 +25,7 @@ classdef PMMovieControllerView
             %   Creation of views that support navigating through the loaded image-sequences;
 
             
-            if ishghandle(Input,'axes') % if the input is only the 
+            if ishghandle(Input,'axes') % if the input is only the axes;
                 
                 obj.Figure =           Input.Parent;  
                 
@@ -524,7 +524,7 @@ classdef PMMovieControllerView
 
                         HandleOfCentroidLine=                          line; 
                          HandleOfCentroidLine.Parent=                   ViewMovieAxes;
-                         HandleOfCentroidLine.Marker=                   's';
+                         HandleOfCentroidLine.Marker=                   'x';
                          HandleOfCentroidLine.MarkerSize=               8;
                          HandleOfCentroidLine.Color=                    'c';
                          HandleOfCentroidLine.Tag=                      'CentroidLine';

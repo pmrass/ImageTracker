@@ -193,6 +193,82 @@ classdef PMMovieLibrary
          
         %% setters:
         
+        function obj = updateMovieSummariesFromFiles(obj)
+            
+             numberOfMovies =                                        size(obj.ListhWithMovieObjects,1);
+            
+           
+            
+            for MovieIndex=1:numberOfMovies
+              
+                CurrentMovieObjectSummary =                                obj.ListWithMovieObjectSummary{MovieIndex,1};
+                %CurrentMovieObject.Folder =                         MainFolder;
+                
+               
+              
+                    
+                    
+                    
+                    
+                     MovieStructure.NickName =           CurrentMovieObjectSummary.NickName;
+             
+                mainFolder =                        obj.getMainFolder;
+                CurrentMovieObject =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
+                
+                    
+                obj.ListWithMovieObjectSummary{MovieIndex,1} = PMMovieTrackingSummary(CurrentMovieObject);
+                
+                
+            end
+            
+            
+            
+        end
+        
+        
+        function obj = replaceKeywords(obj,SourceKeyword,TargetKeyword)
+            
+           
+            numberOfMovies =                                        size(obj.ListhWithMovieObjects,1);
+            
+           
+            
+            for MovieIndex=1:numberOfMovies
+              
+                CurrentMovieObjectSummary =                                obj.ListWithMovieObjectSummary{MovieIndex,1};
+                %CurrentMovieObject.Folder =                         MainFolder;
+                
+                CurrentKeyword =                                CurrentMovieObjectSummary.Keywords{1,1};
+                
+                if strcmp(CurrentKeyword, SourceKeyword)
+                    
+                    obj.ListWithMovieObjectSummary{MovieIndex,1}.Keywords{1,1} = TargetKeyword;
+                    
+                    
+                     MovieStructure.NickName =           CurrentMovieObjectSummary.NickName;
+             
+                mainFolder =                        obj.getMainFolder;
+                CurrentMovieObject =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
+                
+                    CurrentMovieObject.Keywords{1,1} = TargetKeyword;
+                    
+
+                    if ~isempty(obj.ListhWithMovieObjects{MovieIndex,1})
+                        
+                        obj.ListhWithMovieObjects{MovieIndex,1}.Keywords{1,1} = TargetKeyword;
+
+                    end
+
+                    CurrentMovieObject.saveMovieDataWithOutCondition;
+                
+                end
+                
+            end
+            
+            
+            
+        end
+        
         function obj = loadMovieIntoListhWithMovieObjects(obj, NickName)
             
                 MovieStructure.NickName =           NickName;
@@ -330,7 +406,7 @@ classdef PMMovieLibrary
         
         function [obj] =                resetFolders(obj, Path)
             
-            obj.ListhWithMovieObjects = cellfun(@(x) x.resetFolder(Path), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
+            obj.ListWithMovieObjectSummary = cellfun(@(x) x.resetFolder(Path), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
             
             
         end
@@ -469,11 +545,31 @@ classdef PMMovieLibrary
             
         end
     
+        
+        
              
         function [obj] =                filterMoviesWithNoKeyWord(obj)
             
             
-            rowsThatHaveNoKeyword =                                 cellfun(@(x) isempty(x.Keywords), obj.ListWithMovieObjectSummary);
+            function check = keyWordCheck(keywords)
+                
+                if isempty(keywords) 
+                   
+                    check = false;
+                elseif isempty(keywords{1,1})
+                    check = false;
+                else
+                    
+                    check = true;
+                end
+                
+                
+            end
+           
+            
+         
+            
+            rowsThatHaveNoKeyword =                                 cellfun(@(x) ~keyWordCheck(x.Keywords), obj.ListWithMovieObjectSummary);
 
             obj.FilterList  =                                       min([obj.FilterList rowsThatHaveNoKeyword], [], 2);
 
@@ -542,7 +638,7 @@ classdef PMMovieLibrary
                 
                 obj.ListWithMovieObjectSummary{MovieIndex,1} =      CurrentMovieObjectSummary;
                 
-                
+               
                 CurrentMovieObject.saveMovieData
                 
             end
