@@ -1,13 +1,15 @@
 function [myMovieController] = ReadAndViewImage
-%READANDVIEWIMAGE introduction into using PMMovieTracking
+%READANDVIEWIMAGE introduction into using PMMovieController
 %   Detailed explanation goes here
-% Use this as way to learn how to use PMMovieTracking;
+% Use this as way to learn how to use PMMovieController;
 % Set setpoints at specific locations to learn how specifically this class is working;
-% This is just a simple example of how to use PMMovieTracking;
+% This is just a simple example of how to use PMMovieController;
 % Once you are familar with this class feel free to use it at your convenience;
 
-% them ain output is myFavoriteMovieObject:
-% Of particular interest are:
+% the ain output is myMovieController:
+% Of particular interest are the following contents:
+% PMMovieTracking: contains main information of read movies
+% e.g.:
 % ImageMapPerFile: contains information of how to read images from file;
 % MetaData: they contain time and spatial dimension;
 
