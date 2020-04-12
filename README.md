@@ -1,2 +1,2 @@
 # ImageTracker
- Allows viewing, managing and tracking of lsm-files.
+ Allows viewing, managing and tracking of various image files.
