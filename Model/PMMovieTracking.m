@@ -7,57 +7,57 @@ classdef PMMovieTracking
         % information related to source files:
         NickName
         
-        Keywords =                  cell(0,1)
-        Folder                      % movie folder:
-        FolderAnnotation =          '' % folder that contains files with annotation information added by user;
-        AttachedFiles =             cell(0,1) % list files that contain movie-information;
+        Keywords =                                  cell(0,1)
+        Folder                                      % movie folder:
+        FolderAnnotation =                          '' % folder that contains files with annotation information added by user;
+        AttachedFiles =                             cell(0,1) % list files that contain movie-information;
         
         ListWithPaths
-        PointersPerFile =           -1
-        FileCouldNotBeRead =        1
+        PointersPerFile =                           -1
+        FileCouldNotBeRead =                        1
         
         
         % tracking: stats
-        IdOfActiveTrack =           NaN
-        ActiveTrackIsHighlighted =  false
-        CentroidsAreVisible =       false
-        TracksAreVisible =          false
-        MasksAreVisible =           false
-        CollapseAllTracking =       false
+        IdOfActiveTrack =                           NaN
+        ActiveTrackIsHighlighted =                  false
+        CentroidsAreVisible =                       false
+        TracksAreVisible =                          false
+        MasksAreVisible =                           false
+        CollapseAllTracking =                       false
         
-        DriftCorrectionOn =         false
-        TrackingOn =                false
+        DriftCorrectionOn =                         false
+        TrackingOn =                                false
         
         
         % state for navigation: this is mostly relevant for the window controller but is here so that it can be saved conveniently on file;
-        ScaleBarSize =              50
-        ScaleBarVisible =           1   
+        ScaleBarSize =                              50
+        ScaleBarVisible =                           1   
         ScalebarStamp
         
-        SelectedFrames =            1
+        SelectedFrames =                            1
         ListWithTimeStamps
-        TimeVisible =               1
+        TimeVisible =                               1
 
-        SelectedPlanes =            1
-        SelectedPlanesForView =     1
+        SelectedPlanes =                            1
+        SelectedPlanesForView =                     1
         ListWithPlaneStamps
-        CollapseAllPlanes =         1
-        PlanePositionVisible =      1
+        CollapseAllPlanes =                         1
+        PlanePositionVisible =                      1
         
-        SelectedChannels =          1 % if selected channels is 0 it shows incompleteness: check this field when using the channels ;
-        SelectedChannelForEditing = 1
+        SelectedChannels =                          1 % if selected channels is 0 it shows incompleteness: check this field when using the channels ;
+        SelectedChannelForEditing =                 1
         ChannelTransformsLowIn
         ChannelTransformsHighIn
-        ChannelColors =             cell(0,1);
-        ChannelComments =           cell(0,1);
+        ChannelColors =                             cell(0,1);
+        ChannelComments =                           cell(0,1);
         
-        ActiveChannel =             1 % this is used for tracking for example, need to add option that user can change this;
-        
-        
+        ActiveChannel =                             1 % this is used for tracking for example, need to add option that user can change this;
         
         
-        EditingActivity =       'No editing'
-        AllPossibleEditingActivities =  {'No editing','Manual drift correction','Tracking'};
+        
+        
+        EditingActivity =                           'No editing'
+        AllPossibleEditingActivities =              {'No editing','Manual drift correction','Tracking'};
         
         
         %%  information that is read from linked files; 
@@ -82,9 +82,9 @@ classdef PMMovieTracking
         MaximumPlaneShift =                             0
         
         
-        CroppingGate =              [1 1 1 1]
+        CroppingGate =                                  [1 1 1 1]
         AppliedCroppingGate
-        CroppingOn =                0
+        CroppingOn =                                    0
         
         
         % tracking model content used for displaying data
@@ -98,7 +98,7 @@ classdef PMMovieTracking
         
         
        %% saving status
-       UnsavedTrackingDataExist =                                   true
+       UnsavedTrackingDataExist =                       true
         
         
 

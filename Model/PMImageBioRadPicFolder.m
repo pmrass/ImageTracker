@@ -53,6 +53,14 @@ classdef PMImageBioRadPicFolder
                 IsNotAPicFile =     cellfun('isempty', IndexC);
                 FilesInCurrentDirectory_Matrix(IsNotAPicFile,:)=[];
                 
+                
+
+                IsASystemFile=                                         cellfun(@(x) (strcmp(x(1,1), '.')), FilesInCurrentDirectory_Matrix(:,1));   
+                FilesInCurrentDirectory_Matrix(IsASystemFile,:)=             [];
+
+    
+   
+                
 
                 %% get positions of all numeric characters in filenames;
                  ShowIfFileNameCharacterIsString_Cell =     isstrprop(FilesInCurrentDirectory_Matrix(:,1), 'digit');
