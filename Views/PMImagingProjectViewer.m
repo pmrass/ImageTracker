@@ -46,12 +46,12 @@ classdef PMImagingProjectViewer
             %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
             %   Detailed explanation goes here
                 
+            fprintf('\n@Create PMImagingProjectViewer:\n')
             
                 obj =                                   obj.CreateProjectFigure;
              
                 obj =                                   obj.CreateFileMenu;
                 obj =                                   obj.CreateProjectMenu;
-                
                 
                 obj =                                   obj.CreateProjectViews;
                 obj =                                   obj.createInfoView;
@@ -75,6 +75,8 @@ classdef PMImagingProjectViewer
         end
         
         function [obj] =                            CreateProjectFigure(obj)
+            
+            fprintf('PMImagingProjectViewer:@CreateProjectFigure.\n')
             
             ProjectWindowHandle=                                                    findobj('Tag', 'MainProjectWindow_V2');
             if ~isempty(ProjectWindowHandle)
@@ -104,6 +106,8 @@ classdef PMImagingProjectViewer
         
         function [obj] =                            CreateFileMenu(obj)
             
+            fprintf('PMImagingProjectViewer:@CreateFileMenu.\n')
+            
                     FigureHandle=               obj.Figure;
 
                     FileMain=                                            uimenu(FigureHandle);
@@ -130,6 +134,8 @@ classdef PMImagingProjectViewer
         
         function [obj] =                            CreateProjectMenu(obj)
             
+            
+             fprintf('PMImagingProjectViewer:@CreateProjectMenu.\n')
             
             FigureHandle=               obj.Figure;
           
@@ -226,6 +232,8 @@ classdef PMImagingProjectViewer
         
           function [obj] =                         CreateHelpMenu(obj)
             
+               fprintf('PMImagingProjectViewer:@CreateHelpMenu.\n')
+              
                     HelpMenuInside=                                 uimenu(obj.Figure);
                     HelpMenuInside.Label=                           'Help';
 
@@ -241,6 +249,7 @@ classdef PMImagingProjectViewer
           
           function [obj]=                        CreateProjectViews(obj)
             
+                 fprintf('PMImagingProjectViewer:@CreateProjectViews.\n')
 
                     ViewHeightInternal =                                            obj.ViewHeight;
                     WidthOfContents =                                               obj.WidthOfProjectViews;
@@ -322,6 +331,7 @@ classdef PMImagingProjectViewer
                 
          function [obj] =                 createInfoView(obj)
               
+               fprintf('PMImagingProjectViewer:@createInfoView.\n')
                 %% obtain information:
                 FontSize =                      13;
                 FigureHandle =                  obj.Figure;

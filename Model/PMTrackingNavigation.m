@@ -1108,14 +1108,14 @@ classdef PMTrackingNavigation
               % this should probably be done in purely as a view: not
               % written directly into model:
              %% read:
-             MyTrackModel =                              obj.Tracking;
+             MyTrackModel =                                     obj.Tracking;
              
              %process
-             ColumnWithLineThickness =                   strcmp(obj.ColumnsInTrackingCell, 'LineColor');
-             MyTrackModel(:,ColumnWithLineThickness) =        {color};
+             ColumnWithLineThickness =                          strcmp(obj.ColumnsInTrackingCell, 'LineColor');
+             MyTrackModel(:,ColumnWithLineThickness) =          {color};
              
              %% apply
-             obj.Tracking =            MyTrackModel;
+             obj.Tracking =                                     MyTrackModel;
                 
              
           end

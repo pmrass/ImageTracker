@@ -41,6 +41,8 @@ classdef PMMovieLibraryManager < handle
 
             %% update project with previous file:
             obj.Viewer =                                                                        PMImagingProjectViewer;
+            
+            fprintf('\n')
             obj =                                                                               obj.setPreviouslyUsedFileName;
             
             obj.ActiveMovieController       =                                                   PMMovieController(obj.Viewer);  
@@ -137,6 +139,7 @@ classdef PMMovieLibraryManager < handle
         
         function [obj] =    saveProjectClicked(obj,src,~)
             
+            fprintf('\nPMMovieLibraryManager:@saveProjectClicked.\n')
             [obj] = obj.saveProjectToFile;
             
         end
@@ -381,21 +384,32 @@ classdef PMMovieLibraryManager < handle
             end
             
             function obj =          resetActiveNickNameWith(obj, NickNameString)
-                 obj.MovieLibrary.SelectedNickname=                                  NickNameString;
-                 obj.Viewer.ProjectViews.SelectedNickname.String =                   NickNameString;
+                
+                fprintf('PMMovieLibraryManger:@resetActiveNickNameWith "%s".\n', NickNameString)
+                obj.MovieLibrary.SelectedNickname=                                  NickNameString;
+                obj.Viewer.ProjectViews.SelectedNickname.String =                   NickNameString;
 
                 
             end
 
             function [obj] =          setPreviouslyUsedFileName(obj)
               
+                fprintf('PMMovieLibraryManager:@setPreviouslyUsedFileName.\n')
                 if exist(obj.FileWithPreviousSettings,'file')==2
                     load(obj.FileWithPreviousSettings, 'FileNameOfProject')
                     if exist(FileNameOfProject)==2
                         obj.FileNameForLoadingNewObject =  FileNameOfProject;
+                        fprintf('FileNameForLoadingNewObject was changed to "%s".\n', FileNameOfProject)
+                    else
+                        fprintf('The settings file could not found. However, it had the wrong format and therefore the FileNameForLoadingNewObject was not changed.\n')
                     end
 
+                else
+                    
+                    fprintf('The settings file could not be found. Therefore FileNameForLoadingNewObject was not changed.\n')
                 end
+                
+                
 
             end
           
@@ -513,6 +527,7 @@ classdef PMMovieLibraryManager < handle
         
         function [obj] =        addCallbacksToNavigationAndTracking(obj)
             
+            fprintf('PMMovieLibraryManger:@addCallbacksToNavigationAndTracking.\n')
             
             % tracking menu:
             obj.Viewer.TrackingViews.Menu.DeleteTrack.MenuSelectedFcn =                         @obj.deleteTrackClicked;
@@ -746,27 +761,24 @@ classdef PMMovieLibraryManager < handle
                     CurrentMovieObject =                    obj.MovieLibrary.getActiveMovieTrackingFromFile;
                 end
 
-
-                
-                
                 % do the actual mapping
-                CurrentMovieObject =                                                                                CurrentMovieObject.AddImageMap;
+                CurrentMovieObject =                            CurrentMovieObject.AddImageMap;
                 
-                 CurrentMovieObject =   CurrentMovieObject.setFolderAnnotation(obj.MovieLibrary.getMainFolder);
-                CurrentMovieObject =                                                                                CurrentMovieObject.saveMovieDataWithOutCondition;
+                 CurrentMovieObject =                           CurrentMovieObject.setFolderAnnotation(obj.MovieLibrary.getMainFolder);
+                CurrentMovieObject =                            CurrentMovieObject.saveMovieDataWithOutCondition;
                 
-                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1} =                 CurrentMovieObject;
-                obj.MovieLibrary.ListWithMovieObjectSummary{listWithWantedRowsInLibrary(movieIndex),1} =            PMMovieTrackingSummary(CurrentMovieObject);
+                obj.MovieLibrary.ListhWithMovieObjects{listWithWantedRowsInLibrary(movieIndex),1} =                     CurrentMovieObject;
+                obj.MovieLibrary.ListWithMovieObjectSummary{listWithWantedRowsInLibrary(movieIndex),1} =                PMMovieTrackingSummary(CurrentMovieObject);
                 
                 % update filter view (i.e. remove mapped movie from "unmapped list";
-                [obj] =                                                                                                     obj.callbackForFilterChange(src, 0);
+                [obj] =                                                                                                 obj.callbackForFilterChange(src, 0);
 
             end
 
             waitbar(1, h, 'Finished mapping')
             close(h)
 
-            obj =                                           obj.updateView;
+            obj =                                       obj.updateView;
             obj =                                       obj.callbackForFilterChange;
 
         end
@@ -782,7 +794,7 @@ classdef PMMovieLibraryManager < handle
             
             %% get data
             listWithAllNicknames =                                      cellfun(@(x) x.NickName, obj.MovieLibrary.ListhWithMovieObjects, 'UniformOutput', false);
-             numberOfNickNamesToUnMap =                                    length(listWithAllNicknames);
+            numberOfNickNamesToUnMap =                                    length(listWithAllNicknames);
             listWithWantedRowsInLibrary =                               (1:numberOfNickNamesToUnMap)';
             
             
@@ -1483,22 +1495,19 @@ classdef PMMovieLibraryManager < handle
         function [obj] =        movieListClicked(obj, src, ~)
             
 
+            fprintf('\nPMMovieLibraryManager: @movieListClicked\n')
+            
             SelectionType =                                         obj.Viewer.Figure.SelectionType;
             switch SelectionType
                 
                 case 'open'
                     
-                    % transfer info of "active movie" to MovieLibrary list;
+                    %% save active movie and transfer info of "active movie" to MovieLibrary list;
                     
+                    fprintf('PMMovieLibraryManager: @movieListClicked: double-click registered\n')
                    
-                    if ~isempty(obj.ActiveMovieController.LoadedMovie)  && strcmp(class(obj.ActiveMovieController.LoadedMovie), 'PMMovieTracking')
-                            [obj.ActiveMovieController.LoadedMovie] =                               obj.ActiveMovieController.LoadedMovie.setFolderAnnotation(obj.MovieLibrary.getMainFolder);
-                            obj.ActiveMovieController.LoadedMovie =                                 obj.ActiveMovieController.LoadedMovie.saveMovieData;
-                            obj.MovieLibrary =                                                      obj.MovieLibrary.synchronizeMovieLibraryWithActiveMovie(obj.ActiveMovieController);
-                    end
-                    
-                    
-                     
+                     obj =                                                                          obj.saveAndSynchronizeActiveMovie;
+               
                      currentlySelectedNickName =                                                    obj.getCurrentlySelectedNickName;
                      obj =                                                                          obj.resetActiveNickNameWith(currentlySelectedNickName);
                      
@@ -1662,12 +1671,14 @@ classdef PMMovieLibraryManager < handle
                  return
              end
              
-             % first erase all the image volumes (if something was wrong we don't want these anymore);
-             obj.ActiveMovieController.LoadedImageVolumes =     cell(obj.ActiveMovieController.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
+             % first erase all the image volumes;
+             obj.ActiveMovieController    =                  obj.ActiveMovieController.emptyOutLoadedImageVolumes;
+            
              
              % then replace the image maps:
              obj.ActiveMovieController.LoadedMovie =            obj.ActiveMovieController.LoadedMovie.AddImageMap;
-             obj.MovieLibrary =                                            obj.MovieLibrary.synchronizeMovieLibraryWithActiveMovie(obj.ActiveMovieController);
+             obj.MovieLibrary =                                 obj.MovieLibrary.synchronizeMovieLibraryWithActiveMovie(obj.ActiveMovieController);
+             
              obj =                                              obj.changeDisplayedMovie;
              
               
@@ -1677,13 +1688,14 @@ classdef PMMovieLibraryManager < handle
         function  [obj] = deleteImageCacheClicked(obj,src,~)
               
                
-             if isempty(obj.ActiveMovieController)  || isempty(obj.ActiveMovieController.LoadedMovie)
+             if isempty(obj.ActiveMovieController) 
                  return
              end
              
              % first erase all the image volumes (if something was wrong we don't want these anymore);
-             obj.ActiveMovieController.LoadedImageVolumes =     cell(obj.ActiveMovieController.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
-      
+            obj.ActiveMovieController    =                  obj.ActiveMovieController.emptyOutLoadedImageVolumes;
+             
+           
               
         end
         
@@ -2243,20 +2255,14 @@ classdef PMMovieLibraryManager < handle
                 %% load file
                 
                  
-                obj.MovieLibrary =                                  PMMovieLibrary(obj.FileNameForLoadingNewObject);
-                obj.MovieLibrary =                                  obj.MovieLibrary.sortByNickName;
-                 obj.ActiveMovieController       =                  PMMovieController(obj.Viewer);  
+                obj.MovieLibrary =                                      PMMovieLibrary(obj.FileNameForLoadingNewObject);
+                obj.MovieLibrary =                                      obj.MovieLibrary.sortByNickName;
+                obj.ActiveMovieController       =                       PMMovieController(obj.Viewer);  
 
                 obj.Viewer.MovieControllerViews.blackOutMovieView;
-           
-                
-                if isempty(obj.FileNameForLoadingNewObject)
-                    return
-                end
 
-                obj =                                               obj.updateView;
-                obj =                                               obj.updateInfoView;
-          %     obj =                                               obj.changeDisplayedMovie;
+                obj =                                                   obj.updateView;
+                obj =                                                   obj.updateInfoView;
                 
           end
           
@@ -2264,59 +2270,51 @@ classdef PMMovieLibraryManager < handle
 
           function [obj ] =       changeDisplayedMovie(obj,src,~)
             
+              
+                fprintf('PMMovieLibraryManager:@changeDisplayedMovie: ')
 
                 %% if no movies exist or are not specified, just black out all the movie views and leave;
                 if isempty(obj.MovieLibrary.ListhWithMovieObjects) || isempty(obj.MovieLibrary.SelectedNickname)
+                    
+                    fprintf('ListhWithMovieObjects or no SelectedNickname specified: Black out views and return.\n')
                     obj.Viewer.MovieControllerViews.blackOutMovieView;
                     return
+                    
                 end
 
-                [obj.ActiveMovieController] =                                           obj.ActiveMovieController.deleteAllTrackLineViews;
-             
-             
-                obj.ActiveMovieController       =                                       PMMovieController(obj.Viewer);  
-                obj.Viewer.MovieControllerViews.blackOutMovieView;
 
-
-                %% if a movie is there: change the "active movie";
+                %% get data of selected movie from memory and if necessary from file;
                 SelectedRow =                                                           obj.MovieLibrary.getSelectedRowInLibrary;
                 LoadedMovie =                                                           obj.MovieLibrary.ListhWithMovieObjects{SelectedRow,1};
+                LoadedImageVolumesFromMemory =                                          obj.MovieLibrary.ListWithLoadedImageData{SelectedRow,1};
+
                 if isempty(LoadedMovie)
                     LoadedMovie =                                                       obj.MovieLibrary.getActiveMovieTrackingFromFile;
                 end
-                obj.ActiveMovieController.LoadedMovie =                                 LoadedMovie;  
-
-                LoadedImageVolumesFromMemory =                                          obj.MovieLibrary.ListWithLoadedImageData{SelectedRow,1};
-
-                obj.ActiveMovieController.LoadedImageVolumes =                          LoadedImageVolumesFromMemory;  
-                obj.ActiveMovieController.LoadedMovie.Folder =                          obj.MovieLibrary.PathOfMovieFolder; 
                 
-                
-                if isempty(obj.ActiveMovieController.LoadedMovie.AttachedFiles)
-                    error('No filenames attached to this nickname. Update to make work!')
-                else
+                if isempty(LoadedMovie.AttachedFiles)
+                    error('No filenames attached to this nickname. This needs to be fixed!')
                     
-                     obj.ActiveMovieController =                                             obj.ActiveMovieController.finalizeMovieController;
-                
-                    %% if everything was ok: upload all the views with the newly loaded data:
-
-
-                    obj.ActiveMovieController =                                             obj.ActiveMovieController.resetDriftDependentParameters;
-
-
-                    obj.ActiveMovieController =                                               obj.ActiveMovieController.setCentroidAndMovieData;
-                    obj.ActiveMovieController    =                                            obj.ActiveMovieController.setViewsForCurrentEditingActivity;
-                    obj.ActiveMovieController =                                               obj.ActiveMovieController.updateImageHelperViewsMore; % time, plane etc.
-                    obj.ActiveMovieController =                                               obj.ActiveMovieController.updateChannelSettingView; % changes the display of settings of selected channel;
-
-                    obj.ActiveMovieController =                                               obj.ActiveMovieController.resetViewsForCurrentDriftCorrection; % many views including main image, tracks etc.;
-
-
-                    obj.ActiveMovieController =                                               obj.ActiveMovieController.updateAllTrackingViews;
-
                 end
                 
-               
+                
+                %% create a new movie controller and update with data of selected nickname:
+                obj.ActiveMovieController       =                                           PMMovieController(obj.Viewer);  
+
+                obj.Viewer.MovieControllerViews.blackOutMovieView;
+
+                obj.ActiveMovieController.LoadedMovie =                                     LoadedMovie;  
+                obj.ActiveMovieController.LoadedImageVolumes =                              LoadedImageVolumesFromMemory;  
+                obj.ActiveMovieController.LoadedMovie.Folder =                              obj.MovieLibrary.PathOfMovieFolder; 
+                
+                     
+                %% if everything was ok: upload all the views with the newly loaded data:
+                obj.ActiveMovieController =                                                 obj.ActiveMovieController.finalizeMovieController;
+                obj.ActiveMovieController =                                                 obj.ActiveMovieController.resetDriftDependentParameters;
+
+                obj.ActiveMovieController =                                                 obj.ActiveMovieController.updateChannelSettingView; % changes the display of settings of selected channel;
+                obj.ActiveMovieController =                                                 obj.ActiveMovieController.updateAllTrackingViews;
+
 
           end
 
@@ -2328,10 +2326,16 @@ classdef PMMovieLibraryManager < handle
                 %   Detailed explanation goes here
 
 
+                fprintf('\nPMMovieLibraryManager:@updateView: \n')
+                
+                
                 %% inactivate the controller views if nothing is selected: (maybe this should be at a different location)
                 if isempty(obj.MovieLibrary.ListWithMovieObjectSummary) || isempty(obj.MovieLibrary.SelectedNickname)
+                    fprintf('No movie objects available or no movie selected. Therefore disable views.\n')
                     obj.ActiveMovieController.disableAllViews;
                 end
+                
+                fprintf('Update nickname view.\n')
                 obj.Viewer.ProjectViews.SelectedNickname.String =                   obj.MovieLibrary.SelectedNickname;
                
                 
@@ -2341,6 +2345,7 @@ classdef PMMovieLibraryManager < handle
                 
     
                 %% general filter
+                fprintf('Update view for image type filter.\n')
                 
                 ProjectWindowHandles.FilterForKeywords.Enable=                      'on';
                 ProjectWindowHandles.FilterForKeywords.String=                      [obj.ProjectFilterList];
@@ -2358,6 +2363,7 @@ classdef PMMovieLibraryManager < handle
                
                
                %% keyword filter:
+               fprintf('Update view for keyword-filter.\n')
                
                 ListWithKeywordStrings =                                            obj.MovieLibrary.getKeyWordList;
                 
@@ -2388,12 +2394,15 @@ classdef PMMovieLibraryManager < handle
                 
                 
                 %% show nicknames of all selected movies:
-                ListWithSelectedNickNames =               obj.MovieLibrary.ListWithFilteredNicknames;
+                
+                fprintf('Update view for shown movies.\n')
+                
+                ListWithSelectedNickNames =                                             obj.MovieLibrary.ListWithFilteredNicknames;
 
                 if ~isempty(ListWithSelectedNickNames)
 
                     if obj.MovieLibrary.SortIndex == 1 % currently always sorted by nickanme
-                        ListWithSelectedNickNames =                         sort(ListWithSelectedNickNames);
+                        ListWithSelectedNickNames =                                     sort(ListWithSelectedNickNames);
                         
 
                     end
@@ -2605,21 +2614,27 @@ classdef PMMovieLibraryManager < handle
           
           function [obj] = saveProjectToFile(obj)
 
+            fprintf('\nPMMovieLibraryManager:@saveProjectToFile.\n')
+            
+            obj =                                                               obj.saveAndSynchronizeActiveMovie;
+            obj.MovieLibrary =                                                  obj.MovieLibrary.saveMovieLibraryToFile;
+            obj.ActiveMovieController =                                         obj.ActiveMovieController.updateSaveStatusView;
+
+                
+          end
+          
+          function [obj] = saveAndSynchronizeActiveMovie(obj)
+                    
+            fprintf('\nPMMovieLibraryManager:@saveAndSynchronizeActiveMovie.\n\n')
+
+            if ~isempty(obj.ActiveMovieController.LoadedMovie)  && strcmp(class(obj.ActiveMovieController.LoadedMovie), 'PMMovieTracking')
+                [obj.ActiveMovieController.LoadedMovie] =                               obj.ActiveMovieController.LoadedMovie.setFolderAnnotation(obj.MovieLibrary.getMainFolder);
+                obj.ActiveMovieController.LoadedMovie =                                 obj.ActiveMovieController.LoadedMovie.saveMovieData;
+                obj.MovieLibrary =                                                      obj.MovieLibrary.synchronizeMovieLibraryWithActiveMovie(obj.ActiveMovieController);
+            else
+                fprintf('No valid LoadedMovie available: therefore no action taken.\n')
+            end
               
-              if ~isempty(obj.ActiveMovieController.LoadedMovie)
-              
-                 obj.ActiveMovieController.LoadedMovie.FolderAnnotation =  obj.MovieLibrary.getMainFolder;
-                  
-                obj.ActiveMovieController.LoadedMovie =                 obj.ActiveMovieController.LoadedMovie.saveMovieData;
-                
-              end
-                
-                obj.MovieLibrary =                                      obj.MovieLibrary.synchronizeMovieLibraryWithActiveMovie(obj.ActiveMovieController); % first synchronize movie (otherwise current edits of active movie will be lost;
-                obj.MovieLibrary =                                      obj.MovieLibrary.saveMovieLibraryToFile;
-                obj.ActiveMovieController =                             obj.ActiveMovieController.updateSaveStatusView;
-               
-                
-             
           end
 
   

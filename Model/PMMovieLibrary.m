@@ -4,35 +4,37 @@ classdef PMMovieLibrary
     
     properties
         
-        Version =                                   4;
-        FileName
-        FileCouldNotBeLoaded =                      1;
-        UnsupportedVersion =                        1;
+        Version =                                           4;
+        FileName % filename where library is saved
+        FileCouldNotBeLoaded =                              1;
+        UnsupportedVersion =                                1;
         
-        PathOfMovieFolder
-        PathForExport
+        PathOfMovieFolder % folder where movies are located
+        PathForExport % path where data are exported
         
         % list that contain entry for every single movie:
        
-        ListWithMovieObjectSummary =                        cell(0,1);
+        ListWithMovieObjectSummary =                        cell(0,1); % summary of movie objects; this is stored in library file, and needed for example to filter files by movie vs. Z-stack etc;
         FilterList =                                        true
-        ListhWithMovieObjects =                             cell(0,1);
+        
+        % ListhWithMovieObjects and ListWithLoadedImageData is not stored in library, instead this information is stored in mat-filed specific for each movie or for ImageData this will always be retrieved from original file;
+        ListhWithMovieObjects =                             cell(0,1); % list with complete information; this is stored in memory so that data do not have to be reloaded
         ListWithLoadedImageData =                           cell(0,1);
         
         % scalar filter settings
-        SelectedKeywords =                              ''
-        SelectedNickname =                              ''
+        SelectedKeywords =                                  ''
+        SelectedNickname =                                  ''
         ListWithFilteredNicknames
         
         
-        FilterSelectionIndex =                      1;
-        FilterSelectionString =                     ''
+        FilterSelectionIndex =                              1;
+        FilterSelectionString =                             ''
         
-        KeywordFilterSelectionIndex =               1;
-        KeywordFilterSelectionString =              'Ignore keywords';
+        KeywordFilterSelectionIndex =                       1;
+        KeywordFilterSelectionString =                      'Ignore keywords';
         
         
-        SortIndex =                                 1;
+        SortIndex =                                         1;
         
     end
     
@@ -43,24 +45,24 @@ classdef PMMovieLibrary
         function obj = PMMovieLibrary(FileNameForLoadingNewObject)
             
             
+            
             %% attempt to load and update load status:
-            if exist(FileNameForLoadingNewObject)~=2
-                return
-                   
-            end
             
+            fprintf('@Create PMMovieLibrary: ')
+            assert(exist(FileNameForLoadingNewObject)==2, 'Invalid filepath.')
+                
             
-            
+            fprintf(' loading file, ')
             load(FileNameForLoadingNewObject, 'ImagingProject');
             obj.FileCouldNotBeLoaded =              0;
 
             
             %% get version:
             if ~strcmp(class(ImagingProject), 'PMMovieLibrary')
-                obj.Version = 2;
+                obj.Version =                           2;
   
             else
-                obj.Version = ImagingProject.Version;
+                obj.Version =                           ImagingProject.Version;
 
             end
             
@@ -83,12 +85,14 @@ classdef PMMovieLibrary
                         obj.SelectedNickname=               obj.ListWithFilteredNicknames{1, 1};
                     end
                     
-                case 3 % this is the current version: just read the file directly, that's it; no parsing required;
+                case 3 % 
                      obj =   ImagingProject;
                      obj.FileName =                         FileNameForLoadingNewObject;
-                      obj =                               obj.convertVersionThreeToFour;
+                     obj =                               obj.convertVersionThreeToFour;
                     
-                case 4
+                case 4 % current version; only update FileName;
+                    
+                      fprintf(' updating FileName, ')
                     obj =                               ImagingProject;
                     obj.FileName =                      FileNameForLoadingNewObject;
                     
@@ -99,6 +103,7 @@ classdef PMMovieLibrary
                 
             end
             
+            fprintf(' set size of movie lists.\n')
             numberOfMovies =                                        obj.getNumberOfMovies;
             obj.ListhWithMovieObjects =                             cell(numberOfMovies,1); % these two are not saved in file: initialize with right number of rows after loading;
             obj.ListWithLoadedImageData =                           cell(numberOfMovies,1);
@@ -134,16 +139,18 @@ classdef PMMovieLibrary
          end
         
         
-        function [SelectedRow] =        getSelectedRowInLibrary(obj)
-            ListWithAllNickNamesInternal =      cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
-            SelectedRow =                       strcmp(ListWithAllNickNamesInternal, obj.SelectedNickname);
+        function [SelectedRow] =                    getSelectedRowInLibrary(obj)
+            ListWithAllNickNamesInternal =          cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
+            SelectedRow =                           strcmp(ListWithAllNickNamesInternal, obj.SelectedNickname);
 
         end
         
-        function [SelectedRow] =        getSelectedRowInLibraryOf(obj,NickNameString)
-            ListWithAllNickNamesInternal =      cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
-            SelectedRow =               strcmp(ListWithAllNickNamesInternal, NickNameString);
-
+        function [SelectedRow] =                    getSelectedRowInLibraryOf(obj,NickNameString)
+            
+            ListWithAllNickNamesInternal =          cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
+            SelectedRow =                           strcmp(ListWithAllNickNamesInternal, NickNameString);
+            fprintf('PMMovieLibrary:@getSelectedRowInLibraryOf nickname "%s": %i matches\n', NickNameString, sum(SelectedRow))
+         
             
             
         end
@@ -154,6 +161,27 @@ classdef PMMovieLibrary
              NickNames =                        cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);      
             
         end
+        
+        function [RowToAddData]=        getActiveRowInLibraryFromSelectedRows(obj,SelectedRows)
+            
+            fprintf('PMMovieLibrary:@getActiveRowInLibraryFromSelectedRows: ')
+            
+            if sum(SelectedRows) == 0 % if the movie is not yet in the library, add it to the bottom of the current library
+                
+                RowToAddData = size( obj.ListWithMovieObjectSummary,1) + 1;
+                fprintf('No match. Target row is at %i. (Below bottom of current list)\n', RowToAddData);
+                
+            elseif sum(SelectedRows) == 1
+                RowToAddData = find(SelectedRows);
+                 fprintf('One row (#%i) matched.\n', RowToAddData);
+            else
+                error('Duplicates of the selected nickname exist. This needs to be fixed.')
+            end
+
+            
+            
+        end
+        
         
         function [Movie] =              getMovieWithNickName(obj, Nickname)
 
@@ -182,8 +210,9 @@ classdef PMMovieLibrary
         
          function [MovieTracking] =         getActiveMovieTrackingFromFile(obj)
              
-             MovieStructure.NickName =      obj.SelectedNickname;
+             fprintf('PMMovieLibrary:@getActiveMovieTrackingFromFile.\n')
              
+             MovieStructure.NickName =      obj.SelectedNickname;
              mainFolder =                   obj.getMainFolder;
              MovieTracking =                PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
              
@@ -271,12 +300,12 @@ classdef PMMovieLibrary
         
         function obj = loadMovieIntoListhWithMovieObjects(obj, NickName)
             
-                MovieStructure.NickName =           NickName;
+                MovieStructure.NickName =                       NickName;
              
-                mainFolder =                        obj.getMainFolder;
-                MovieTracking =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
+                mainFolder =                                    obj.getMainFolder;
+                MovieTracking =                                 PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
                 
-                [SelectedRow] =                     getSelectedRowInLibraryOf(obj,NickName);
+                [SelectedRow] =                                 getSelectedRowInLibraryOf(obj,NickName);
                 
                 obj.ListhWithMovieObjects{SelectedRow,1} =      MovieTracking;
                 
@@ -303,37 +332,37 @@ classdef PMMovieLibrary
         
          function [obj] =           synchronizeMovieLibraryWithActiveMovie(obj, ActiveMovieController)
              
+             fprintf('\nPMMovieLibrary:@synchronizeMovieLibraryWithActiveMovie: ')
              
-              %% put changes in currently edit movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
-            if ~isempty(ActiveMovieController.LoadedMovie)
+            %% put changes in currently edit movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
+            if isempty(ActiveMovieController.LoadedMovie)
+                fprintf('ActiveMovieController has no valid LoadedMovie: therefore no action taken.\n')
+                return
                 
-
-                % get row in library that corresponds to active movie 
-                NickNameOfActiveMovie =                                                             ActiveMovieController.LoadedMovie.NickName;
-                CurrentlyEditedRowInLibrary =                                                       obj.getSelectedRowInLibraryOf(NickNameOfActiveMovie);
+            elseif isempty(ActiveMovieController.LoadedMovie.AttachedFiles)
+                 error('LoadedMovie of ActiveMovieController has no AttachedFiles: this needs to be fixed.\n')
                 
-                if sum(CurrentlyEditedRowInLibrary) == 0 % if the movie is not yet in the library, add it to the bottom of the current library
-                    CurrentlyEditedRowInLibrary = size( obj.ListWithMovieObjectSummary,1) + 1;
-                    
-                   
-                end
-                
-                % update library
-                
-                if isempty(ActiveMovieController.LoadedMovie.AttachedFiles)
-                    return
-                else
-                    obj.ListWithMovieObjectSummary{CurrentlyEditedRowInLibrary,1} =        PMMovieTrackingSummary(ActiveMovieController.LoadedMovie);
-                    obj.ListhWithMovieObjects{CurrentlyEditedRowInLibrary,1} =             ActiveMovieController.LoadedMovie;
-                    obj.ListWithLoadedImageData{CurrentlyEditedRowInLibrary,1} =           ActiveMovieController.LoadedImageVolumes;
-
-                    
-                    
-                end
-                
-               
             end
             
+           
+                % get row in library that corresponds to active movie 
+                NickNameOfActiveMovie =                                                             ActiveMovieController.LoadedMovie.NickName;
+                fprintf('with movie %s.\n', NickNameOfActiveMovie)
+                
+                RowInLibraryOfSelectedNickname =                                                    obj.getSelectedRowInLibraryOf(NickNameOfActiveMovie);
+                ActiveRowInLibrary =                                                                obj.getActiveRowInLibraryFromSelectedRows(RowInLibraryOfSelectedNickname);
+                
+                % update library
+                mySummary =                                                                         PMMovieTrackingSummary(ActiveMovieController.LoadedMovie);
+                
+      
+                fprintf('Add MovieTracking summary, MovieTracking, Image volumes to row %i of PMMovieLibrary.\n\n', ActiveRowInLibrary)
+                obj.ListWithMovieObjectSummary{ActiveRowInLibrary,1} =                              mySummary;
+                obj.ListhWithMovieObjects{ActiveRowInLibrary,1} =                                   ActiveMovieController.LoadedMovie;
+                obj.ListWithLoadedImageData{ActiveRowInLibrary,1} =                                 ActiveMovieController.LoadedImageVolumes;
+
+                    
+ 
          end
 
          
@@ -347,14 +376,14 @@ classdef PMMovieLibrary
         
         function [obj] =                removeMovieFromLibrary(obj)
             
-            SelectedRow =                                               obj.getSelectedRowInLibrary;
+            SelectedRow =                                                   obj.getSelectedRowInLibrary;
 
-            obj.ListhWithMovieObjects(SelectedRow, :)=                  [];
-            obj.ListWithMovieObjectSummary(SelectedRow, :)=             [];
-            obj.FilterList(SelectedRow, :)=                             [];
-            obj.ListWithLoadedImageData(SelectedRow, :) =               [];
+            obj.ListhWithMovieObjects(SelectedRow, :)=                      [];
+            obj.ListWithMovieObjectSummary(SelectedRow, :)=                 [];
+            obj.FilterList(SelectedRow, :)=                                 [];
+            obj.ListWithLoadedImageData(SelectedRow, :) =                   [];
 
-            obj.SelectedNickname = '';
+            obj.SelectedNickname =                                          '';
 
 
             
@@ -656,6 +685,10 @@ classdef PMMovieLibrary
         %% file management:
         function obj =  saveMovieLibraryToFile(obj)
             
+                % get a copy of the entire library:
+                fprintf('PMMovieLibrary:@saveMovieLibraryToFile: ')
+                
+                fprintf('Create copy of library, ')
                 ImagingProject =                        obj;
                 CompletePathOfCurrentProject =          obj.FileName;
 
@@ -663,18 +696,26 @@ classdef PMMovieLibrary
                 if exist('ImagingProject', 'var')== 1 && ~isempty(CompletePathOfCurrentProject)
                     
                         %% store imaging project in specified path:
+                        
+                        fprintf(' remove non-essential data, ')
                         numberOfMovies =                                    obj.getNumberOfMovies;
+                        
+                        % before saving "erase" ListhWithMovieObjects and ListWithLoadedImageData;
+                        % these are large files and are saved elsewhere;
                         ImagingProject.ListhWithMovieObjects =              cell(numberOfMovies,1);
                         ImagingProject.ListWithLoadedImageData =            cell(numberOfMovies,1);% remove ListWithMovieObjects; these are now stored in separted files for each movies
+                        
+                        fprintf(' save library in path "%s".\n', CompletePathOfCurrentProject)
                         save (CompletePathOfCurrentProject, 'ImagingProject')
+
+                else
+                    error('Library could not be saved. Reason: either the library did not exist or no file-path was specified')
 
                 end
                 
                 
                % [obj] = synchronizeMovieLibraryWithActiveMovie(obj);
-                
-             
-            
+
             
         end
         

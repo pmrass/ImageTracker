@@ -16,6 +16,9 @@ classdef PMCZIDocument
     methods
         
         function obj = PMCZIDocument(FileName)
+            
+            fprintf('@Create PMCZIDocument for file %s.\n', FileName)
+            
             %PMCZIDOCUMENT Construct an instance of this class
             %   Detailed explanation goes here
              obj.FileName =                                      FileName;

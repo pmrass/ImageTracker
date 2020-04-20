@@ -1,6 +1,6 @@
 classdef PMMovieTrackingSummary
-    %PMMOVIETRACKINGSUMMARY Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIETRACKINGSUMMARY summary of PMMovieTracking object
+    %   This summary is used to to add key features that are needed for filtering etc. from PMMovieTracking;
     
     properties
         
@@ -24,13 +24,19 @@ classdef PMMovieTrackingSummary
             %PMMOVIETRACKINGSUMMARY Construct an instance of this class
             %   Detailed explanation goes here
             
+            fprintf('Create @PMMovieTrackingSummary for')
+            
+            
             if isempty(movieTrackingObject)
+                
+                fprintf('empty default object.\n')
                 
             else
                 
+                fprintf('PMMovieTracking object "%s".\n', movieTrackingObject.NickName)
                      
                 obj.NickName =                          movieTrackingObject.NickName;
-                obj.AttachedFiles =                          movieTrackingObject.AttachedFiles;
+                obj.AttachedFiles =                     movieTrackingObject.AttachedFiles;
                 obj.Folder =                            movieTrackingObject.Folder;
                 obj.DataType =                          movieTrackingObject.getDataType;
                 obj.Keywords =                          movieTrackingObject.Keywords;

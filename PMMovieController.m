@@ -26,6 +26,7 @@ classdef PMMovieController < handle
         
         LoadedImageVolumes                              % saving image information (saves actual images and settings for how many images should be loaded)
         NumberOfLoadedFrames =                          40
+        DefaultNumberOfLoadedFrames =                   40
          
         CurrentTrackIDs % currently relevant segmentation information (this comes directly from model but may be filter, corrected for drift etc.);
         CurrentXOfCentroids 
@@ -46,7 +47,7 @@ classdef PMMovieController < handle
         MaskColor =                                     [NaN NaN 150]; % some settings for how 
         MaskColorForActiveTrack =                       [100 100 100];
         MaskColorForActiveTrackAllFrames =              [150 NaN NaN];
-        MaskColorForAlternativeTrackAllFrames =                     [NaN 150 150];
+        MaskColorForAlternativeTrackAllFrames =         [NaN 150 150];
         
         
         BackgroundColor =                               [0 0.1 0.2];
@@ -59,6 +60,7 @@ classdef PMMovieController < handle
         
         function obj =                          PMMovieController(varargin)
             
+            fprintf('@Create PMMovieController ')
             if ~isempty(varargin) % input should be movie controller views
                 
                 switch length(varargin)
@@ -68,6 +70,8 @@ classdef PMMovieController < handle
                         Input =     varargin{1};
                         
                         if strcmp(class(Input), 'PMImagingProjectViewer')
+                            
+                            fprintf('from PMImagingProjectViewer\n')
                             obj.Views =                                                   Input.MovieControllerViews;
                             obj.Views.Figure =                                            Input.Figure;   
                             
@@ -104,7 +108,8 @@ classdef PMMovieController < handle
                 
                 if ~isempty(obj.LoadedMovie)
                     
-                     obj.LoadedImageVolumes =                            cell(obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
+                    
+                    obj    =                  obj.emptyOutLoadedImageVolumes;
                     
                      obj =                                              obj.resetDriftDependentParameters;
                    
@@ -129,6 +134,18 @@ classdef PMMovieController < handle
         
        %% set model and view:
 
+       function obj    =                  emptyOutLoadedImageVolumes(obj)
+           
+           fprintf('PMMovieController:@emptyOutLoadedImageVolumes.\n')
+           
+           if isempty(obj.LoadedMovie) 
+                 obj.LoadedImageVolumes =                           cell(0,1);
+           else
+                obj.LoadedImageVolumes =                            cell(obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
+           end     
+           
+           
+       end
        
         % navigation
         function [obj]  =                       resetFrame(obj, newFrame)
@@ -334,6 +351,8 @@ classdef PMMovieController < handle
          
              function obj =             updateLoadedImageVolumes(obj)
             
+                 
+              fprintf('\nEnter PMMovieController:@updateLoadedImageVolumes:\n')
              
              %% first check whether any frames need to loaded;
 
@@ -349,134 +368,139 @@ classdef PMMovieController < handle
              
              numericalNeededFrames =            find(neededFrames);
 
-             numberOfNeedeFrames = length(numericalNeededFrames);
+             numberOfNeedeFrames =          length(numericalNeededFrames);
              
              %% don't do anything if no frames are needed
              if numberOfNeedeFrames<1 % don't do anything if no frames are needed;
                  return
-             end
+                 
+             else
+                 
+                 
              
-             %% otherwise check whether the files can be connected and inactivate various controls;
-             obj.disableAllViews;% don't let anybody do anything until movie sequence was loaded succesfully;
              
-             [obj.LoadedMovie] =                                obj.LoadedMovie.createFunctionalImageMap;
-            if obj.LoadedMovie.FileCouldNotBeRead % check whether the files could be connected: if not do not try to read;
-                    obj.enableAllViews;
-                    return
-            
-            end
-            obj.LoadedMovie.FileCouldNotBeRead = true; % now anticipate that during the reading something might go wrong and set this to false x;
-            % if something goes wrong it will stay there and indicate that the load wasn't complete;
-            
-             
-            
-            if iscell(obj.LoadedImageVolumes)
-                TemporaryImageVolumes =            obj.LoadedImageVolumes;
-            else
-                TemporaryImageVolumes =             cell(0,1);
-            end
-            
-            
-            
-            
-             %% then read all the needed data into a temporary buffer
-             for frameIndex = 1:numberOfNeedeFrames
+                     %% otherwise check whether the files can be connected and inactivate various controls;
+                     obj.disableAllViews;% don't let anybody do anything until movie sequence was loaded succesfully;
 
-                 if frameIndex == 1 % waitbar should not show up when nothing needs to be loaded.
-                    h = waitbar((0/numberOfNeedeFrames), 'Loading images from file.');
-                 else
-                     waitbar(frameIndex/numberOfNeedeFrames, h, 'Loading images from file.');
-                 end
-                 
-                 currentFrame =                                 numericalNeededFrames(frameIndex);
-                 settings.SourceFrames =                        currentFrame;
-                 wantedImageVolume =                            obj.LoadedMovie.Create5DImageVolume(settings);
-                 
-                 
-                 %% apply median filter:
-                 NumberOfPlanes =       size(wantedImageVolume,3);
-                 NumberOfChannels =       size(wantedImageVolume,5);
-                
-                 
-                 
-                 for CurrentPlane = 1:NumberOfPlanes
-                    for CurrentChannel = 1: NumberOfChannels
-                        
-                        
-                         SourceImage =  wantedImageVolume(:,:,CurrentPlane,1,CurrentChannel);
 
-                        
-                        if CurrentChannel == 1
-                            ReconstructionType = 1;
-                        else
-                            ReconstructionType = 2;
-                        end
-                        
-                        switch ReconstructionType
-                            
-                            case 1
-                                FinalImage =  medfilt2(SourceImage);
-                        
-                            case 2
-                                
-                                
-                                 
-                                 
-                                 
-                                    
-                                    
-                                    
-                                   
-                                     % Remove objects having a radius less than x pixels by opening it with the disk-shaped structuring element.
-                                    NoiseSize =         2;
-                                    se =                strel('disk',NoiseSize);
-                                    OpenedImage =             imopen(SourceImage, se); % open image
-                                   
-                                  
-                                    % I don't think these two lines make a big difference (nice idea to get rid of background but doesn't work well;
-                                     BackGroundImage =             imsubtract(SourceImage, OpenedImage);
-                                     OriginalImageWithoutBackGround =    imsubtract(medfilt2(SourceImage), medfilt2(BackGroundImage));
-                                    
-                                    
-                                   
-                                    FinalImage =      OriginalImageWithoutBackGround;
-                            
-                        end
-                        
+                    [obj.LoadedMovie] =                                obj.LoadedMovie.createFunctionalImageMap;
+                    if obj.LoadedMovie.FileCouldNotBeRead % check whether the files could be connected: if not do not try to read;
+                            obj.enableAllViews;
+                            return
 
-    
-                        
-                        if strcmp(class(FinalImage), 'uint8')
-                            
-                           
-                            if sum(FinalImage(:)>=100) >= length(FinalImage(:))/5 % get rid of highly saturated images 
-                                FinalImage(:,:) = 0;
-                            end
-                            
-                        end
-                        
-                        wantedImageVolume(:,:,CurrentPlane,1,CurrentChannel) = FinalImage;
-                            
-                    
                     end
-                
-                end
-                 
-                 TemporaryImageVolumes{currentFrame,1} =        wantedImageVolume;
-                 
-                  if frameIndex == numberOfNeedeFrames
-                      close(h)
-                  end
-                 
-                
-                 
+                    obj.LoadedMovie.FileCouldNotBeRead = true; % now anticipate that during the reading something might go wrong and set this to false x;
+                    % if something goes wrong it will stay there and indicate that the load wasn't complete;
+
+
+
+                    if iscell(obj.LoadedImageVolumes)
+                        TemporaryImageVolumes =            obj.LoadedImageVolumes;
+                    else
+                        TemporaryImageVolumes =             cell(0,1);
+                    end
+
+
+
+
+                     %% then read all the needed data into a temporary buffer
+                     for frameIndex = 1:numberOfNeedeFrames
+
+                         if frameIndex == 1 % waitbar should not show up when nothing needs to be loaded.
+                            h =         waitbar((0/numberOfNeedeFrames), 'Loading images from file.');
+
+                         else
+                             waitbar(frameIndex/numberOfNeedeFrames, h, 'Loading images from file.');
+
+                         end
+
+                         currentFrame =                                 numericalNeededFrames(frameIndex);
+                         settings.SourceFrames =                        currentFrame;
+                         wantedImageVolume =                            obj.LoadedMovie.Create5DImageVolume(settings);
+                         ReconstructionParameters=                      obj.LoadedMovie.ChannelReconstruction;
+
+                         %% apply median filter:
+                         NumberOfPlanes =                               size(wantedImageVolume,3);
+                         NumberOfChannels =                             size(wantedImageVolume,5);
+
+                         fprintf('Transfer to LoadedImageVolumes: ')
+                         
+                         for CurrentPlane = 1:NumberOfPlanes
+
+                            for CurrentChannel = 1: NumberOfChannels
+
+
+                                SourceImage =                           wantedImageVolume(:,:,CurrentPlane,1,CurrentChannel);
+                                ReconstructionType =                    ReconstructionParameters(CurrentChannel);
+
+                                fprintf('t(%i) z(%i) c(%i): ', frameIndex, CurrentPlane, CurrentChannel)
+
+                                switch ReconstructionType
+
+                                    case 0 
+                                        fprintf('original')
+                                         FinalImage =                                SourceImage;
+
+                                    case 1
+                                        fprintf('median filter')
+                                        FinalImage =                                medfilt2(SourceImage);
+
+                                    case 2
+                                         fprintf('complex filter')    
+
+                                         % Remove objects having a radius less than x pixels by opening it with the disk-shaped structuring element.
+                                        NoiseSize =                             2;
+                                        se =                                    strel('disk',NoiseSize);
+                                        OpenedImage =                           imopen(SourceImage, se); % open image
+
+
+                                        % I don't think these two lines make a big difference (nice idea to get rid of background but doesn't work well;
+                                         BackGroundImage =                      imsubtract(SourceImage, OpenedImage);
+                                         OriginalImageWithoutBackGround =       imsubtract(medfilt2(SourceImage), medfilt2(BackGroundImage));
+
+
+
+                                        FinalImage =                            OriginalImageWithoutBackGround;
+
+                                end
+
+
+                                if strcmp(class(FinalImage), 'uint8')
+
+                                    if sum(FinalImage(:)>=100) >= length(FinalImage(:))/5 % get rid of highly saturated images 
+                                        
+                                         fprintf(', hypersaturated: black out')
+                                        FinalImage(:,:) = 0;
+                                    end
+
+                                end
+
+                                wantedImageVolume(:,:,CurrentPlane,1,CurrentChannel) = FinalImage;
+
+                                fprintf('; ')
+                            end
+
+                        end
+
+                         TemporaryImageVolumes{currentFrame,1} =        wantedImageVolume;
+                          if frameIndex == numberOfNeedeFrames
+                              close(h)
+                          end
+
+
+
+                     end
+
+
+                     obj.LoadedImageVolumes =                       TemporaryImageVolumes;
+
+                     obj.LoadedMovie.FileCouldNotBeRead =           false;
+
+
              end
              
-            
-             obj.LoadedImageVolumes =                       TemporaryImageVolumes;
              
-             obj.LoadedMovie.FileCouldNotBeRead =           false;
-             
+             fprintf('\nExit PMMovieController:@updateLoadedImageVolumes.\n\n')
    
          end
         
@@ -549,7 +573,9 @@ classdef PMMovieController < handle
         
           function [obj] =                              finalizeMovieController(obj)
                 
-            %% when the file was not yet mapped successfully, do the mapping now
+                fprintf('\nPMMovieController:@finalizeMovieController:\n')
+              
+                %% when the file was not yet mapped successfully, do the mapping now
                 if isempty(obj.LoadedMovie.ImageMapPerFile)
                      
                      obj.LoadedMovie =                              obj.LoadedMovie.AddImageMap;
@@ -561,9 +587,8 @@ classdef PMMovieController < handle
                 end 
             
                                      
-                
-                % this shouldn't be necessary: but if for some reason the set plane etc. is inaccurate change this before doing anything with the data;
                 obj.LoadedMovie =                                   obj.LoadedMovie.autoCorrectNavigation;
+                
                 obj.enableAllViews;
                 obj =                                               obj.ensureCurrentImageFrameIsInMemory;
                 obj.enableAllViews;
@@ -571,7 +596,7 @@ classdef PMMovieController < handle
                 
                 %% finalize loaded movie so that it works together with the controller views:
                 if isempty(obj.LoadedMovie.DriftCorrection)
-                    obj.LoadedMovie.DriftCorrection =   PMDriftCorrection(0,0);
+                    obj.LoadedMovie.DriftCorrection =               PMDriftCorrection(0,0);
                 end
                 
                 obj.LoadedMovie.DriftCorrection =                   obj.LoadedMovie.DriftCorrection.update(obj.LoadedMovie.MetaData);
@@ -579,7 +604,7 @@ classdef PMMovieController < handle
                 
 
               
-
+                fprintf('Exit PMMovieController:@finalizeMovieController.\n')
             
             
           end
@@ -776,12 +801,12 @@ classdef PMMovieController < handle
         %% setting controller state only (indirect effect may still occur):
         function obj =  setCentroidPositions(obj)
             
-                segmentationOfCurrentFrame =                         obj.LoadedMovie.getSegmentationOfCurrentFrame;
-                myIDOfActiveTrack =                                 obj.LoadedMovie.IdOfActiveTrack;
+                segmentationOfCurrentFrame =                            obj.LoadedMovie.getSegmentationOfCurrentFrame;
+                myIDOfActiveTrack =                                     obj.LoadedMovie.IdOfActiveTrack;
              
                 completeSegmentationOfActiveTrack =                     obj.LoadedMovie.getUnfilteredSegmentationOfTrack(myIDOfActiveTrack);
                 
-                 SelectedTrackIDs =                       obj.getCurrentlySelectedTrackIDs;
+                 SelectedTrackIDs =                                     obj.getCurrentlySelectedTrackIDs;
                 
                 completeSegmentationOfClickedTrack =                    obj.LoadedMovie.getUnfilteredSegmentationOfTrack(SelectedTrackIDs);
                 
@@ -837,10 +862,13 @@ classdef PMMovieController < handle
        
            function obj =             setCentroidAndMovieData(obj)
              
+               fprintf('Enter PMMovieController: @setCentroidAndMovieData:\n')
+               
                 obj =                                               obj.setCentroidPositions;
                 obj =                                               obj.addDriftCorrectionToCentroids;         
                 obj =                                               obj.updateLoadedImageVolumes;
 
+                fprintf('Exit PMMovieController: @setCentroidAndMovieData.\n')
                 
          end
          
@@ -859,13 +887,12 @@ classdef PMMovieController < handle
 
          function obj =         ensureCurrentImageFrameIsInMemory(obj)
              
+                fprintf('Enter PMMovieController:@ensureCurrentImageFrameIsInMemory:.\n')
              
-             %% if the active movie controller has no image in memory, it needs to be loaded now(just load one frame), otherwise it should be there (it goes back to the same place where it came before)
                 if isempty(obj.LoadedImageVolumes)
                      % reserve space for actual imaging data;
-                    obj.LoadedImageVolumes =                      cell(obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints,1);
-                    
-
+                     obj =                                          obj.emptyOutLoadedImageVolumes;
+                     
                 end
                 
                 if isempty(obj.LoadedImageVolumes{obj.LoadedMovie.SelectedFrames(1),1})
@@ -873,20 +900,20 @@ classdef PMMovieController < handle
                     PressedKey =                            obj.PressedKeyValue;  
                     PressedKeyAsciiCode=                    double(PressedKey);
 
-                    %% pre-load single image: this prevents loading multiple frames when the current frame is empty;
+                   
                     if PressedKeyAsciiCode == 29 
-                        obj.NumberOfLoadedFrames =                    40;
+                        obj.NumberOfLoadedFrames =                    obj.DefaultNumberOfLoadedFrames;
 
                     else
-                        
                         obj.NumberOfLoadedFrames =                    0;
 
                     end
+                    
                     obj =                                         obj.updateLoadedImageVolumes;
                     
                     obj.enableAllViews;
                     
-                    obj.NumberOfLoadedFrames =                    40;
+                    obj.NumberOfLoadedFrames =                    obj.DefaultNumberOfLoadedFrames;
                     
                     
                     
@@ -898,6 +925,7 @@ classdef PMMovieController < handle
                 
                 
              
+             fprintf('Exit PMMovieController:@ensureCurrentImageFrameIsInMemory.\n')
              
              
              
@@ -1231,29 +1259,38 @@ classdef PMMovieController < handle
 
             function [neededFrames] =                                           getFramesThatNeedToBeLoaded(obj)
 
+                fprintf('PMMovieController:@getFramesThatNeedToBeLoaded: ')
 
+                %% first check whether the current frame needs to be loaded:
+                WantedTimeFrame =                                           obj.LoadedMovie.SelectedFrames(1); % currently this is just for one frame, to do this for multiple frames will be more complicated
+                Range =                                                     obj.NumberOfLoadedFrames;  
+                TotalFramesInMovie =                                        obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints;
+                CurrentlyLoadedImageCell =                                  obj.LoadedImageVolumes;
 
-            %% first check whether the current frame needs to be loaded:
-            WantedTimeFrame =                                           obj.LoadedMovie.SelectedFrames(1); % currently this is just for one frame, to do this for multiple frames will be more complicated
-            Range =                                                     obj.NumberOfLoadedFrames;  
-            TotalFramesInMovie =                                        obj.LoadedMovie.MetaData.EntireMovie.NumberOfTimePoints;
-            CurrentlyLoadedImageCell =                                  obj.LoadedImageVolumes;
+                neededFrames(TotalFramesInMovie,1) = false;
+                
+                if ~isempty(CurrentlyLoadedImageCell{WantedTimeFrame,1})
+                    
+                    
+                    
+                else
+                    %% then get numbers before and after;
+                    range =                                                     WantedTimeFrame-Range:WantedTimeFrame+Range;
+                    range(range<=0) =                                           [];
+                    range(range>TotalFramesInMovie) =                           [];
+                    neededFrames(range,1) =                                     true;
 
-            neededFrames(TotalFramesInMovie,1) = false;
-            if ~isempty(CurrentlyLoadedImageCell{WantedTimeFrame,1})
-                return
-            end
+                    %% and remove all the frames that are currently already loaded:
+                    framesThatHaveTheMovieAlreadyLoaded =                           cellfun(@(x)  ~isempty(x),     CurrentlyLoadedImageCell);                  
+                    neededFrames(framesThatHaveTheMovieAlreadyLoaded,1) =           false;
 
+                    
+                end
 
-            %% then get numbers before and after;
-            range =                                                     WantedTimeFrame-Range:WantedTimeFrame+Range;
-            range(range<=0) =                                           [];
-            range(range>TotalFramesInMovie) =                           [];
-            neededFrames(range,1) =                                     true;
-
-            %% and remove all the frames that are currently already loaded:
-            framesThatHaveTheMovieAlreadyLoaded =                           cellfun(@(x)  ~isempty(x),     CurrentlyLoadedImageCell);                  
-            neededFrames(framesThatHaveTheMovieAlreadyLoaded,1) =           false;
+                arrayfun(@(x) fprintf('%i ', x),  find(neededFrames))
+                
+                fprintf('\n')
+               
 
 
             end
@@ -2722,7 +2759,8 @@ classdef PMMovieController < handle
         % centroid line, image
         function obj =                              updateImageView(obj)
             
-
+            fprintf('\nEnter PMMovieController:@updateImageView:\n')
+            
             % update views that are directly within image area:
             obj =                                                                   obj.setViewsForCurrentEditingActivity;
             obj =                                                                   obj.updateAnnotationViews;
@@ -2740,18 +2778,13 @@ classdef PMMovieController < handle
             
             
             if obj.LoadedMovie.FileCouldNotBeRead
-                fprintf('\nPMMovieController: @updateImageView. File could not be read.\n')
+                fprintf('Exit PMMovieController:@updateImageView. File could not be read.\n\n')
                 return
                 
             end
             
             
-            rgbImage =                                                              obj.extractCurrentRgbImage; % this is by far the slowest component (but ok): consider changing;
-            if obj.LoadedMovie.MasksAreVisible && ~isempty(obj.ListOfAllPixels)
-                obj.ListOfAllPixels(isnan(obj.ListOfAllPixels(:,1)),:) =            [];
-                rgbImage =                                                          obj.addMasksToImage(rgbImage);
-                
-            end
+           
             
             
             
@@ -2785,12 +2818,31 @@ classdef PMMovieController < handle
         
              end
            
-             
-                obj.Views.MovieView.MainImage.CData=                                    rgbImage;
+             obj =           obj.updateRgbImage;
             
                 obj.Views.MovieView.ViewMovieAxes.Color =                           [0.1 0.1 0.1];
              
+                
+                fprintf('\nExit PMMovieController:@updateImageView.\n\n')
 
+        end
+        
+        
+        function obj =                          updateRgbImage(obj)
+            
+            fprintf('PMMovieController:@updateRgbImage.\n')
+            
+             rgbImage =                                                              obj.extractCurrentRgbImage; % this is by far the slowest component (but ok): consider changing;
+            if obj.LoadedMovie.MasksAreVisible && ~isempty(obj.ListOfAllPixels)
+                obj.ListOfAllPixels(isnan(obj.ListOfAllPixels(:,1)),:) =            [];
+                rgbImage =                                                          obj.addMasksToImage(rgbImage);
+                
+            end
+                obj.Views.MovieView.MainImage.CData=                                    rgbImage;
+            
+            
+            
+            
         end
         
         % time/ Z/ scale
@@ -3109,7 +3161,7 @@ classdef PMMovieController < handle
             obj =                       obj.updateViewsAfterChangesInTracks; % change drift correction of tracks
             obj =                       obj.updateImageHelperViews; % plane number may change
             obj =                       obj.updateImageHelperViewsMore; % drift setting may change
-            obj =                      obj.updateAnnotationViews;  % adjust position of annotation within views
+            obj =                       obj.updateAnnotationViews;  % adjust position of annotation within views
             
             
           
@@ -3270,6 +3322,8 @@ classdef PMMovieController < handle
 
         function obj =                  updateChannelSettingView(obj)
         
+            
+            fprintf('PMMovieController:@updateChannelSettingView.\n')
             if isempty(obj.Views.Channels)
                return 
             end
@@ -3303,6 +3357,7 @@ classdef PMMovieController < handle
          
         function obj =                              updateCentroidVisibility(obj)
             
+            fprintf('PMMovieController:@updateCentroidVisibility.\n')
              obj.TrackingViews.ShowCentroids.Value =        obj.LoadedMovie.CentroidsAreVisible;
              obj.Views.MovieView.CentroidLine.Visible =      obj.LoadedMovie.CentroidsAreVisible;
              
@@ -3312,6 +3367,7 @@ classdef PMMovieController < handle
         
          function obj =                              updateMaskVisibility(obj)
 
+           
             obj.TrackingViews.ShowMasks.Value =                 obj.LoadedMovie.MasksAreVisible;
             obj =                                               obj.updateImageView; 
             
@@ -3321,6 +3377,7 @@ classdef PMMovieController < handle
          %% update tracking views: this should be moved directly to tracking views;
             function obj =                              updateAllTrackingViews(obj)
             
+                fprintf('\nEnter PMMovieController:@updateAllTrackingViews:\n')
 
                 obj.TrackingViews.ShowMaximumProjection.Value =    obj.LoadedMovie.CollapseAllTracking;
 
@@ -3332,6 +3389,8 @@ classdef PMMovieController < handle
                 obj =                                               obj.updateHighlightingOfActiveTrack;
                 
                 obj =                                               obj.updateTrackView;
+                
+                fprintf('Exit PMMovieController:@updateAllTrackingViews.\n\n')
 
             end
         
@@ -3351,6 +3410,8 @@ classdef PMMovieController < handle
            function obj   =                updateTrackListView(obj)
                 % shows all current tracks in table
             
+                fprintf('PMMovieController:@updateTrackListView.\n')
+                
                 if isempty(obj.TrackingViews)
                    return 
                 end
@@ -3425,20 +3486,29 @@ classdef PMMovieController < handle
           
              function obj =                  updateSaveStatusView(obj)
             
-                 if ~isempty(obj.LoadedMovie)
+                 fprintf('PMMovieController:@updateSaveStatusView: ')
                  
-            UnsavedTrackingDataExist = obj.LoadedMovie.UnsavedTrackingDataExist;
+                 if isempty(obj.LoadedMovie)
+                 
+                     fprintf('No active movie detected: no action taken.\n')
+                     
+                 else
+                     
+                    UnsavedTrackingDataExist = obj.LoadedMovie.UnsavedTrackingDataExist;
             
-            switch UnsavedTrackingDataExist
-                
-                case true
-                    obj.TrackingViews.TrackingTitle.ForegroundColor = 'red';
-                   
-                otherwise
-                
-                    obj.TrackingViews.TrackingTitle.ForegroundColor = 'green';
-                
-            end
+                    switch UnsavedTrackingDataExist
+
+                        case true
+                            
+                            fprintf('Unsaved data exist: Set color to red.\n')
+                            obj.TrackingViews.TrackingTitle.ForegroundColor = 'red';
+
+                        otherwise
+
+                            fprintf('All relevant data are already saved: Set color to green.\n')
+                            obj.TrackingViews.TrackingTitle.ForegroundColor = 'green';
+
+                    end
             
                  end
              end
@@ -3673,6 +3743,7 @@ classdef PMMovieController < handle
         
         function [obj] =                            deleteAllTrackLineViews(obj)
             
+            fprintf('PMMovieController:@deleteAllTrackLineViews: find all currently existing track lines and deleted them.\n')
             
             AllLines =                  findobj(obj.Views.MovieView.ViewMovieAxes, 'Type', 'Line');
             TrackLineRows  =            arrayfun(@(x) ~isnan(str2double(x.Tag)), AllLines);
@@ -3696,9 +3767,13 @@ classdef PMMovieController < handle
         
         function changeAppearance(obj)
             
+            fprintf('PMMovieController:@changeAppearance: change foreground and background of view ')
+            
             [ListWithAllViews] =               obj.getListWithAllViews;
             NumberOfViews = size(ListWithAllViews,1);
             for CurrentIndex=1:NumberOfViews
+                
+                fprintf('%i of % %i ', CurrentIndex, NumberOfViews)
                 
                 CurrentView =   ListWithAllViews{CurrentIndex,1};
                 if strcmp(CurrentView.Style, 'popupmenu')
@@ -3708,8 +3783,11 @@ classdef PMMovieController < handle
                 end
                 CurrentView.BackgroundColor =       obj.BackgroundColor;
 
+                
+                
             end
             
+            fprintf('\n')
             
         end
         
@@ -3733,14 +3811,17 @@ classdef PMMovieController < handle
         
         function disableAllViews(obj)
             
+            fprintf('PMMovieController:@disableAllViews ')
             [ListWithAllViews] =               obj.getListWithAllViews;
             NumberOfViews = size(ListWithAllViews,1);
             for CurrentIndex=1:NumberOfViews
+                
+                fprintf('%i of %i ', CurrentIndex, NumberOfViews)
                 CurrentView =   ListWithAllViews{CurrentIndex,1};
                 CurrentView.Enable = 'off';
                 
             end
-            
+            fprintf('\n')
             
         end
         

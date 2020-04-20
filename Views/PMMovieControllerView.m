@@ -193,6 +193,7 @@ classdef PMMovieControllerView
             
             CurrentTimePoint=                                                       uicontrol;
             CurrentTimePoint.Style=                                                 'PopupMenu';
+            CurrentTimePoint.String =                                               'Empty';
             CurrentTimePoint.Tag=                                                   'CurrentTimePoint';
             CurrentTimePoint.Units=                                                 'normalized';
             CurrentTimePoint.Position=                                              [SecondColumn PositionRow1 WidthOfSecondColumnInside ViewHeightInside];
@@ -211,6 +212,7 @@ classdef PMMovieControllerView
 
             CurrentPlane=                                                           uicontrol;
             CurrentPlane.Style=                                                     'PopupMenu';
+                 CurrentPlane.String =                                               'Empty';
             CurrentPlane.Tag=                                                       'CurrentPlane';
             CurrentPlane.Units=                                                     'normalized';
             CurrentPlane.Position=                                                  [SecondColumn PositionRow2 WidthOfSecondColumnInside ViewHeightInside];
@@ -295,6 +297,7 @@ classdef PMMovieControllerView
 
             SelectedChannelHandle=                                              uicontrol;
             SelectedChannelHandle.Style=                                        'PopupMenu';
+                 SelectedChannelHandle.String =                                               'Empty';
             SelectedChannelHandle.Tag=                                          'SelectedChannel';
             SelectedChannelHandle.Units=                                           'normalized';
             SelectedChannelHandle.Position=                                        [SecondColumn PositionRow0 WidthOfSecondColumnInside ViewHeightInside];
@@ -623,6 +626,7 @@ classdef PMMovieControllerView
             SizeOfScaleBarHandle= uicontrol;
             SizeOfScaleBarHandle.Tag=                                  'SizeOfScaleBar';
             SizeOfScaleBarHandle.Style=                                     'PopupMenu';
+             SizeOfScaleBarHandle.String=                                     'Empty';
             SizeOfScaleBarHandle.Units=                                     'normalized';
             SizeOfScaleBarHandle.Position=                                  [SecondColumn PositionRow3 WidthOfSecondColumnInside ViewHeightInside];
             SizeOfScaleBarHandle.String=                                    1:100;

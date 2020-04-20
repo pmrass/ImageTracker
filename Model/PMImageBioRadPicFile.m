@@ -32,6 +32,9 @@ classdef PMImageBioRadPicFile
         function obj = PMImageBioRadPicFile(FileName)
             %PMIMAGEBIORADPICFILE Construct an instance of this class
             %   Detailed explanation goes here
+            
+            fprintf('@Create PMImageBioRadPicFile for file %s.\n', FileName)
+            
             obj.FileName = FileName;
             
                obj.FilePointer =                                   fopen(FileName,'r','l');

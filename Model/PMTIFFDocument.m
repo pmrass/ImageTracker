@@ -21,6 +21,7 @@ classdef PMTIFFDocument
         function obj =                                                          PMTIFFDocument(FileName)
             
             %% reading from file: get header and image directories: this should be the same for all TIFF-files:
+            fprintf('@Create PMTIFFDocument for file %s.\n', FileName)
             obj.FileName =                                      FileName;
             obj.FilePointer =                                   fopen(FileName,'r','l');
  
