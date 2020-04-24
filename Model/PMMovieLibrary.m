@@ -48,66 +48,77 @@ classdef PMMovieLibrary
             
             %% attempt to load and update load status:
             
-            fprintf('@Create PMMovieLibrary: ')
-            assert(exist(FileNameForLoadingNewObject)==2, 'Invalid filepath.')
+            fprintf('\nEnter @Create PMMovieLibrary: for path %s\n', FileNameForLoadingNewObject)
+            
+            
+            if(exist(FileNameForLoadingNewObject)==2)
                 
             
-            fprintf(' loading file, ')
-            load(FileNameForLoadingNewObject, 'ImagingProject');
-            obj.FileCouldNotBeLoaded =              0;
+                fprintf('Path could be found: load PMMovieLibrary from file.\n')
+                load(FileNameForLoadingNewObject, 'ImagingProject');
+                obj.FileCouldNotBeLoaded =              0;
 
-            
-            %% get version:
-            if ~strcmp(class(ImagingProject), 'PMMovieLibrary')
-                obj.Version =                           2;
-  
+
+                %% get version:
+                if ~strcmp(class(ImagingProject), 'PMMovieLibrary')
+                    obj.Version =                           2;
+
+                else
+                    obj.Version =                           ImagingProject.Version;
+
+                end
+
+                %% load file and/or update version status:
+                switch obj.Version
+
+                    case 2
+                        obj.UnsupportedVersion =            0;
+
+                        obj.FileName =                      ImagingProject.Files_ProjectName;
+                        obj.FileName =                      FileNameForLoadingNewObject;
+
+                        obj =                               obj.convertVersionTwoToThree(ImagingProject);
+                        obj.Version =                       3;
+                        OldFilename =                       obj.FileName;
+                        NewFilename =                       [OldFilename(1:end-4) '_Version3.mat'];
+                        obj.FileName =                      NewFilename; % now the file will be saved as version 3, but with a new filename do prevent overwriteing
+
+                        if size(obj.ListWithFilteredNicknames,1) >= 1
+                            obj.SelectedNickname=               obj.ListWithFilteredNicknames{1, 1};
+                        end
+
+                    case 3 % 
+                         obj =   ImagingProject;
+                         obj.FileName =                         FileNameForLoadingNewObject;
+                         obj =                               obj.convertVersionThreeToFour;
+
+                    case 4 % current version; only update FileName;
+
+                          fprintf(' updating FileName, ')
+                        obj =                               ImagingProject;
+                        obj.FileName =                      FileNameForLoadingNewObject;
+
+
+                    otherwise
+                        obj = [];
+
+
+                end
+
             else
-                obj.Version =                           ImagingProject.Version;
-
-            end
-            
-            %% load file and/or update version status:
-            switch obj.Version
                 
-                case 2
-                    obj.UnsupportedVersion =            0;
-                    
-                    obj.FileName =                      ImagingProject.Files_ProjectName;
-                    obj.FileName =                      FileNameForLoadingNewObject;
-                    
-                    obj =                               obj.convertVersionTwoToThree(ImagingProject);
-                    obj.Version =                       3;
-                    OldFilename =                       obj.FileName;
-                    NewFilename =                       [OldFilename(1:end-4) '_Version3.mat'];
-                    obj.FileName =                      NewFilename; % now the file will be saved as version 3, but with a new filename do prevent overwriteing
-                   
-                    if size(obj.ListWithFilteredNicknames,1) >= 1
-                        obj.SelectedNickname=               obj.ListWithFilteredNicknames{1, 1};
-                    end
-                    
-                case 3 % 
-                     obj =   ImagingProject;
-                     obj.FileName =                         FileNameForLoadingNewObject;
-                     obj =                               obj.convertVersionThreeToFour;
-                    
-                case 4 % current version; only update FileName;
-                    
-                      fprintf(' updating FileName, ')
-                    obj =                               ImagingProject;
-                    obj.FileName =                      FileNameForLoadingNewObject;
-                    
-                    
-                otherwise
-                    obj = [];
-                    
+                fprintf('Path could not be found: create empty PMMovieLibrary.\n')
+                obj.FileName =                                      FileNameForLoadingNewObject;
                 
             end
             
-            fprintf(' set size of movie lists.\n')
             numberOfMovies =                                        obj.getNumberOfMovies;
+            fprintf('Create %i empty ListhWithMovieObjects and ListWithLoadedImageData.\n', numberOfMovies)
+            
             obj.ListhWithMovieObjects =                             cell(numberOfMovies,1); % these two are not saved in file: initialize with right number of rows after loading;
             obj.ListWithLoadedImageData =                           cell(numberOfMovies,1);
           
+            fprintf('\nExit @Create PMMovieLibrary.\n\n')
             
         end
         
@@ -140,6 +151,7 @@ classdef PMMovieLibrary
         
         
         function [SelectedRow] =                    getSelectedRowInLibrary(obj)
+            
             ListWithAllNickNamesInternal =          cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
             SelectedRow =                           strcmp(ListWithAllNickNamesInternal, obj.SelectedNickname);
 
@@ -149,6 +161,8 @@ classdef PMMovieLibrary
             
             ListWithAllNickNamesInternal =          cellfun(@(x) x.NickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);   
             SelectedRow =                           strcmp(ListWithAllNickNamesInternal, NickNameString);
+            
+            
             fprintf('PMMovieLibrary:@getSelectedRowInLibraryOf nickname "%s": %i matches\n', NickNameString, sum(SelectedRow))
          
             
@@ -222,31 +236,61 @@ classdef PMMovieLibrary
          
         %% setters:
         
-        function obj = updateMovieSummariesFromFiles(obj)
-            
-             numberOfMovies =                                        size(obj.ListhWithMovieObjects,1);
+        
+        function [obj] =           synchronizeMovieLibraryWithActiveMovie(obj, ActiveMovieController)
+             
+             fprintf('\nEnter PMMovieLibrary:@synchronizeMovieLibraryWithActiveMovie:\n')
+             
+            %% put changes in currently edit movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
+            if isempty(ActiveMovieController.LoadedMovie)
+                fprintf('ActiveMovieController has no valid LoadedMovie: therefore no action taken.\n')
+                return
+                
+            elseif isempty(ActiveMovieController.LoadedMovie.AttachedFiles)
+                 error('LoadedMovie of ActiveMovieController has no AttachedFiles: this needs to be fixed.\n')
+                
+            end
             
            
+                % get row in library that corresponds to active movie 
+                NickNameOfActiveMovie =                                                             ActiveMovieController.LoadedMovie.NickName;
+                fprintf('with movie %s.\n', NickNameOfActiveMovie)
+                
+                RowInLibraryOfSelectedNickname =                                                    obj.getSelectedRowInLibraryOf(NickNameOfActiveMovie);
+                ActiveRowInLibrary =                                                                obj.getActiveRowInLibraryFromSelectedRows(RowInLibraryOfSelectedNickname);
+                
+                % update library
+                mySummary =                                                                         PMMovieTrackingSummary(ActiveMovieController.LoadedMovie);
+                
+      
+                fprintf('Add MovieTracking summary, MovieTracking, Image volumes to row %i of PMMovieLibrary.\n\n', ActiveRowInLibrary)
+                obj.ListWithMovieObjectSummary{ActiveRowInLibrary,1} =                              mySummary;
+                obj.ListhWithMovieObjects{ActiveRowInLibrary,1} =                                   ActiveMovieController.LoadedMovie;
+                obj.ListWithLoadedImageData{ActiveRowInLibrary,1} =                                 ActiveMovieController.LoadedImageVolumes;
+
+                    
+                fprintf('Exit PMMovieLibrary:@synchronizeMovieLibraryWithActiveMovie.\n')
+ 
+          end
+
+      
+         
+        
+        function obj = updateMovieSummariesFromFiles(obj)
+            
+             numberOfMovies =                                                   size(obj.ListhWithMovieObjects,1);
             
             for MovieIndex=1:numberOfMovies
               
                 CurrentMovieObjectSummary =                                obj.ListWithMovieObjectSummary{MovieIndex,1};
-                %CurrentMovieObject.Folder =                         MainFolder;
+                %CurrentMovieObject.Folder =                                MainFolder;
                 
-               
-              
-                    
-                    
-                    
-                    
-                     MovieStructure.NickName =           CurrentMovieObjectSummary.NickName;
+                MovieStructure.NickName =                                   CurrentMovieObjectSummary.NickName;
              
-                mainFolder =                        obj.getMainFolder;
-                CurrentMovieObject =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
+                mainFolder =                                                obj.getMainFolder;
+                CurrentMovieObject =                                        PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
                 
-                    
-                obj.ListWithMovieObjectSummary{MovieIndex,1} = PMMovieTrackingSummary(CurrentMovieObject);
-                
+                obj.ListWithMovieObjectSummary{MovieIndex,1} =              PMMovieTrackingSummary(CurrentMovieObject);
                 
             end
             
@@ -259,8 +303,6 @@ classdef PMMovieLibrary
             
            
             numberOfMovies =                                        size(obj.ListhWithMovieObjects,1);
-            
-           
             
             for MovieIndex=1:numberOfMovies
               
@@ -276,9 +318,9 @@ classdef PMMovieLibrary
                     
                      MovieStructure.NickName =           CurrentMovieObjectSummary.NickName;
              
-                mainFolder =                        obj.getMainFolder;
-                CurrentMovieObject =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
-                
+                    mainFolder =                        obj.getMainFolder;
+                    CurrentMovieObject =                     PMMovieTracking(MovieStructure, {obj.PathOfMovieFolder, mainFolder},1);
+
                     CurrentMovieObject.Keywords{1,1} = TargetKeyword;
                     
 
@@ -330,42 +372,7 @@ classdef PMMovieLibrary
         
         
         
-         function [obj] =           synchronizeMovieLibraryWithActiveMovie(obj, ActiveMovieController)
-             
-             fprintf('\nPMMovieLibrary:@synchronizeMovieLibraryWithActiveMovie: ')
-             
-            %% put changes in currently edit movie back to library: not if the movie in active controller is empty (this happens when no movie could be loaded successfully): 
-            if isempty(ActiveMovieController.LoadedMovie)
-                fprintf('ActiveMovieController has no valid LoadedMovie: therefore no action taken.\n')
-                return
-                
-            elseif isempty(ActiveMovieController.LoadedMovie.AttachedFiles)
-                 error('LoadedMovie of ActiveMovieController has no AttachedFiles: this needs to be fixed.\n')
-                
-            end
-            
-           
-                % get row in library that corresponds to active movie 
-                NickNameOfActiveMovie =                                                             ActiveMovieController.LoadedMovie.NickName;
-                fprintf('with movie %s.\n', NickNameOfActiveMovie)
-                
-                RowInLibraryOfSelectedNickname =                                                    obj.getSelectedRowInLibraryOf(NickNameOfActiveMovie);
-                ActiveRowInLibrary =                                                                obj.getActiveRowInLibraryFromSelectedRows(RowInLibraryOfSelectedNickname);
-                
-                % update library
-                mySummary =                                                                         PMMovieTrackingSummary(ActiveMovieController.LoadedMovie);
-                
-      
-                fprintf('Add MovieTracking summary, MovieTracking, Image volumes to row %i of PMMovieLibrary.\n\n', ActiveRowInLibrary)
-                obj.ListWithMovieObjectSummary{ActiveRowInLibrary,1} =                              mySummary;
-                obj.ListhWithMovieObjects{ActiveRowInLibrary,1} =                                   ActiveMovieController.LoadedMovie;
-                obj.ListWithLoadedImageData{ActiveRowInLibrary,1} =                                 ActiveMovieController.LoadedImageVolumes;
-
-                    
- 
-         end
-
-         
+          
         
         function [obj] =                addPostFixToFileName(obj,PostFix)
             
@@ -374,9 +381,9 @@ classdef PMMovieLibrary
              obj.FileName =         [mainFolder, '/', name,PostFix, ext];
         end
         
-        function [obj] =                removeMovieFromLibrary(obj)
+        function [obj] =                removeFromLibraryMovieWithNickName(obj, NickName)
             
-            SelectedRow =                                                   obj.getSelectedRowInLibrary;
+            SelectedRow =                                                   obj.getSelectedRowInLibraryOf(NickName);
 
             obj.ListhWithMovieObjects(SelectedRow, :)=                      [];
             obj.ListWithMovieObjectSummary(SelectedRow, :)=                 [];
@@ -435,6 +442,9 @@ classdef PMMovieLibrary
         
         function [obj] =                resetFolders(obj, Path)
             
+            fprintf('PMMovieLibrary:@resetFolders change names of movie-folder and adjust all movie-object summaries.\n')
+            
+            obj.PathOfMovieFolder =            Path;
             obj.ListWithMovieObjectSummary = cellfun(@(x) x.resetFolder(Path), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
             
             

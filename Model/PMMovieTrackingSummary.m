@@ -5,8 +5,8 @@ classdef PMMovieTrackingSummary
     properties
         
         NickName =                      ''
-        Folder =                        ''
-        AttachedFiles =                 ''
+        Folder =                        '' % movie-folder
+        AttachedFiles =                 '' % attached files
         DataType =                      ''
         Keywords =                      cell(0,1);
         DriftCorrectionWasPerformed =   false

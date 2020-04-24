@@ -51,7 +51,7 @@ classdef PMMovieTracking
         ChannelTransformsHighIn
         ChannelColors =                             cell(0,1);
         ChannelComments =                           cell(0,1);
-        ChannelReconstruction =                     zeros(0,1);
+        ChannelReconstruction =                     1;
         
         ActiveChannel =                             1 % this is used for tracking for example, need to add option that user can change this;
         
@@ -927,7 +927,7 @@ classdef PMMovieTracking
         
         
         
-        function metaDataSummary =                  getMetaDataSummary(obj)
+        function [metaDataSummary,MetaDataString] =                  getMetaDataSummary(obj)
             
             
             fileType =                                           obj.getFileType;
@@ -954,7 +954,13 @@ classdef PMMovieTracking
                     
                     for laserIndex = 1:numberOfLasers
                         
-                        NumberText = sprintf('%i, ', round(lsminf{1, 1}.ScanInfo.WAVELENGTH{laserIndex}));
+                        if iscell(lsminf{1, 1}.ScanInfo.WAVELENGTH)
+                            NumberText = sprintf('%i, ', round(lsminf{1, 1}.ScanInfo.WAVELENGTH{laserIndex}));
+                        else
+                            NumberText = sprintf('%i, ', round(lsminf{1, 1}.ScanInfo.WAVELENGTH));
+                            
+                        end
+                        
                         
                         
                          LaserString =  [LaserString , NumberText];
@@ -1156,10 +1162,12 @@ classdef PMMovieTracking
         
           function [obj] =            changeMovieKeyword(obj)
             
-            
+            fprintf('PMMovieTracking:@changeMovieKeyword in movie "%s".\n', obj.NickName)
             if strcmp(class(obj), 'PMMovieTracking')
-              KeywordString=                        char(inputdlg('Enter new keyword'));
-              obj.Keywords{1,1} =       KeywordString;
+                KeywordString=                        char(inputdlg('Enter new keyword'));
+                obj.Keywords{1,1} =                   KeywordString;
+            else
+                error('Invalid object.')
             end
                  
         end
@@ -1167,10 +1175,10 @@ classdef PMMovieTracking
         
         function [obj] =            changeMovieNickname(obj, String)
             
-             
+             fprintf('PMMovieTracking:@changeMovieNickname from %s to %s.\n', obj.NickName, String)
              if strcmp(class(obj), 'PMMovieTracking')
               
-              obj.NickName =       String;
+                obj.NickName =       String;
              end
             
              
@@ -1381,28 +1389,48 @@ classdef PMMovieTracking
         
         
     
+        function [obj]= renameMovieDataFile(obj, OriginalPath)
+            
+             
+            
+            NewPath =                                   obj.getFileNameOfAnnotation;
+           
+            status =                                    movefile(OriginalPath,NewPath);
+            
+            if status~=1
+               error('Renaming file failed.') 
+            else
+                 fprintf('File %s was renamed successfully to %s.\n', OriginalPath, NewPath)
+            end
+            
+           
+            obj =                               obj.setSavingStatus(false);
+
+        end
         
         
         function [obj] = saveMovieDataWithOutCondition(obj)
             
-                fprintf('\nPMMovieTracking:@saveMovieDataWithOutCondition\n.')
+                    fprintf('\nEnter PMMovieTracking:@saveMovieDataWithOutCondition:\n')
                 
-                
-                fprintf('Get copy of PMMovieTracking object.\n')
-                CompletPath =                               obj.getFileNameOfAnnotation;
-                MovieAnnotationData =                       obj;
+                    fprintf('Get copy of PMMovieTracking object.\n')
+                    CompletPath =                               obj.getFileNameOfAnnotation;
+                    MovieAnnotationData =                       obj;
 
-                fprintf('Remove redundant data like TrackingAnalysis and ImageSequence from object.\n')
-                MovieAnnotationData.TrackingAnalysis =      '';
-                if ~isempty(MovieAnnotationData.AutomatedCellRecognition)
-                    MovieAnnotationData.AutomatedCellRecognition.ImageSequence = cell(size(MovieAnnotationData.AutomatedCellRecognition.ImageSequence,1),1);
-                end
-                
-                save(CompletPath, 'MovieAnnotationData')
-                fprintf('File %s was saved successfully.\n', CompletPath)
-                obj =                               obj.setSavingStatus(false);
+                    fprintf('Remove redundant data like TrackingAnalysis and ImageSequence from object.\n')
+                    MovieAnnotationData.TrackingAnalysis =      '';
+                    if ~isempty(MovieAnnotationData.AutomatedCellRecognition)
+                        MovieAnnotationData.AutomatedCellRecognition.ImageSequence = cell(size(MovieAnnotationData.AutomatedCellRecognition.ImageSequence,1),1);
+                    end
+
+                    save(CompletPath, 'MovieAnnotationData')
+                    fprintf('File %s was saved successfully.\n', CompletPath)
+                    obj =                               obj.setSavingStatus(false);
+
+                    fprintf('Exit PMMovieTracking:@saveMovieDataWithOutCondition.\n\n')
             
         end
+        
         
        function  [obj] = saveMovieData(obj)
         
@@ -1459,7 +1487,7 @@ classdef PMMovieTracking
                 iChannelTransformsHighIn(1:NumberOfChannels,1)=         0.7;
                 iChannelColors(1:NumberOfChannels,1) =                  {'Green'}; 
                 iChannelComments(1:NumberOfChannels,1)=                 {''};
-                iChannelReconstruction(1:NumberOfChannels,1)=           0;
+                iChannelReconstruction(1:NumberOfChannels,1)=           1;
 
                 obj.SelectedChannels=                                   iSelectedChannels;
                 obj.SelectedChannels =                                  iSelectedChannels;
@@ -1916,7 +1944,7 @@ classdef PMMovieTracking
             
             if obj.FileCouldNotBeRead
                 obj.ImageMap =                          [];
-               c fprintf('Files could not be read. No ImageMap available.\n')
+                fprintf('Files could not be read. No ImageMap available.\n')
                 
             else
                 
@@ -2134,8 +2162,7 @@ classdef PMMovieTracking
 
         function [obj] =                                  mergeImageMaps(obj)
             
-            
-            
+ 
             %% get from model
             TimeColumn =                                    10;
             ImageMapPerFileInternal =                       obj.ImageMapPerFile;
@@ -2143,7 +2170,7 @@ classdef PMMovieTracking
             fprintf('\nEnter PMMovieTracking: @mergeImageMaps\n')
             fprintf('Pooling %i ImageMaps.\n', length(ImageMapPerFileInternal))
             
-            
+
             %% pool image maps: (this is done on a copy becausre otherwise we would overwrite the time frames in the original which we don't want;  
             pooledTemp =        cellfun(@(x) x(2:end,:), ImageMapPerFileInternal, 'UniformOutput', false);
             pooledTemp =        vertcat(pooledTemp{:});
@@ -2192,16 +2219,9 @@ classdef PMMovieTracking
             
             %% put result back into model:
             obj.ImageMap =                          [ImageMapPerFileInternal{1,1}(1,:); vertcat(ImageMapsWithoutTitles{:})];
-            
             fprintf('\nExit PMMovieTracking: @mergeImageMaps.\n\n')
 
         end
-        
-        
-      
-        
-        
-        
         
         
 

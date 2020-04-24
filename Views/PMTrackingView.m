@@ -2,6 +2,8 @@ classdef PMTrackingView
     %PMTRACKINGVIEW Summary of this class goes here
     %   Detailed explanation goes here
     
+    
+    
     properties
         
         Menu
@@ -33,11 +35,17 @@ classdef PMTrackingView
             Tracks_Main.Tag=                                    'Tracks_Main';
 
 
+            Tracks_AutoCellRecognition=                            uimenu(Tracks_Main);
+            Tracks_AutoCellRecognition.Label=                     'Auto detection of cells';
+            Tracks_AutoCellRecognition.Tag=                       'Tracks_AutoCellRecognition';
+            Tracks_AutoCellRecognition.Enable=                   'on';
+            
 
             Tracks_Remove=                                      uimenu(Tracks_Main);
             Tracks_Remove.Label=                                'Delete active track';
             Tracks_Remove.Tag=                                  'Tracks_Remove';
             Tracks_Remove.Enable=                               'on';
+            Tracks_Remove.Separator=                               'on';
             
              Tracks_RemoveShortTracks=                                      uimenu(Tracks_Main);
             Tracks_RemoveShortTracks.Label=                                'Delete tracks equal or less than x frame';
@@ -80,6 +88,7 @@ classdef PMTrackingView
             obj.Menu.RemoveShortTracks =                          Tracks_RemoveShortTracks;
             
             
+            obj.Menu.AutoCellRecognition =           Tracks_AutoCellRecognition;
              obj.Menu.DeleteTrack =                          Tracks_Remove;
              obj.Menu.MergeTracks =                          Tracks_Merge;
              obj.Menu.SpitTracks =                          Tracks_Split;

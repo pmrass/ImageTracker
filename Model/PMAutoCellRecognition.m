@@ -1,16 +1,16 @@
 classdef PMAutoCellRecognition
-    %PMAUTOCELLRECOGNITION Summary of this class goes here
+    %PMAUTOCELLRECOGNITION Enables autodetection of roundish objects in image-sequence;
     %   Detailed explanation goes here
     
     properties
         
-        ShowViewsForControl =               0;
+        ShowViewsForControl =                       0;
         
-        Channel =                           false;
+        ActiveChannel =                           false;
 
         % also currently misssing: information of how the image was created (e.g. was opening used?);
         
-        % approach : use circel recognition to detect cells;
+        % approach : use circle recognition to detect cells;
         % currently this is done by user defined edge-thresholds radius and sensitivty;
         % a future approach could be:;
         % 1: loop through different contrasts (e.g. 0.2 to 0.02);
@@ -21,58 +21,61 @@ classdef PMAutoCellRecognition
         % set these values for each plane;
         % cells get to get smaller/dimmer in deeper planes therefore size of filter/ radisu and sensitivy should be increase; 
        
-        NumberOfPlanes =                    NaN;
+        NumberOfChannels =                          NaN;
         
-        NumberOfFrames =                    NaN;
+        NumberOfPlanes =                            NaN;
         
-        AnalyzedFrames =                    NaN;
-
-        RadiusRange =                       [5,9; 5,9; 5,9; 5,10; 5,10; ...
-                                            5,10; 5,10;5,10; 5,10; 5,10; ...
-                                            5,10; 5,10;5,10; 5,10; 5,10; ...
-                                            5,10; 5,10; 5,10;];
-
-        Sensitivity =                       [0.92; 0.93; 0.93; 0.93; 0.93; ...
-                                             0.93; 0.93; 0.93; 0.93; 0.93; ...
-                                             0.93; 0.92; 0.92; 0.92; 0.92;...
-                                             0.92; 0.92; 0.92;
-                                             ]% higher values make it more sensitive (more circles are detected (use between 0.85 and 0.95;
-
-        EdgeThreshold =                         [   0.09 ]; % higher values require higher contrast;
-                                    
-                                    
-        HighDensityDistanceLimit =              50; % if a cell has too many neighbors, it will be deleted;
-        HighDensityNumberLimit =                9; % this is possibly noise, or if they are cells they would be difficult to track anyway;
+        NumberOfFrames =                            NaN;
         
+        AnalyzedFrames =                            NaN;
+
+        RadiusMinimumRange =                        [5,9];
+        RadiusMaximumRange =                        [5,10];
+        
+        SensitivityMinimum=                         0.92;
+        SensitivityMaximum=                         0.95;
+        
+        EdgeThresholdMinimum =                      0.09;
+        EdgeThresholdMaximum =                      0.09;
+        
+        RadiusRange =                               [];
+
+        Sensitivity =                               []% higher values make it more sensitive (more circles are detected (use between 0.85 and 0.95;
+
+        EdgeThreshold =                             []; % higher values require higher contrast;
+                                            
+        HighDensityDistanceLimit =                  50; % if a cell has too many neighbors, it will be deleted;
+        HighDensityNumberLimit =                    9; % this is possibly noise, or if they are cells they would be difficult to track anyway;
         
         ImageSequence
-
-
-        DistanceLimitForPlaneMerging =          10;
+        DistanceLimitForPlaneMerging =              10;
         
-        DetectedCoordinates =                   cell(0,1);
-        
-        
+        DetectedCoordinates =                       cell(0,1);
 
     end
     
     methods
+        
+        
         function obj = PMAutoCellRecognition(myImageSequence,Channel)
             %PMAUTOCELLRECOGNITION Construct an instance of this class
             %   Detailed explanation goes here
             
-            assert(size(myImageSequence,1)>=1, 'ImageSequence must contain at least one frame');
-            
-            obj.ImageSequence =             myImageSequence;
-            obj.Channel =                   Channel;
-            obj.NumberOfFrames =            size(myImageSequence,1);
-            myAnalyzedFrames =              find(cellfun(@(x) ~isempty(x), myImageSequence));
-            obj.NumberOfPlanes =            size(myImageSequence{myAnalyzedFrames(1)},3);
-            obj.AnalyzedFrames =            myAnalyzedFrames;
-            obj =                           obj.performAutoDetection;
-            
-            
-            
+                assert(size(myImageSequence,1)>=1, 'ImageSequence must contain at least one frame');
+
+                obj.ImageSequence =                 myImageSequence;
+                obj.ActiveChannel =                 Channel;
+                obj.NumberOfFrames =                size(myImageSequence,1);
+                myAnalyzedFrames =                  find(cellfun(@(x) ~isempty(x), myImageSequence));
+                obj.NumberOfPlanes =                size(myImageSequence{myAnalyzedFrames(1)},3);
+                obj.AnalyzedFrames =                myAnalyzedFrames;
+
+                obj.RadiusRange(:,1) =              round(linspace( obj.RadiusMinimumRange(1), obj.RadiusMaximumRange(1), obj.NumberOfPlanes));
+                obj.RadiusRange(:,2) =              round(linspace( obj.RadiusMinimumRange(2), obj.RadiusMaximumRange(2), obj.NumberOfPlanes));
+                obj.Sensitivity(:,1) =              linspace( obj.SensitivityMinimum, obj.SensitivityMaximum, obj.NumberOfPlanes);
+                obj.EdgeThreshold(:,1) =            linspace( obj.EdgeThresholdMinimum, obj.EdgeThresholdMaximum, obj.NumberOfPlanes);
+
+
         end
         
         function obj = performAutoDetection(obj)
@@ -92,7 +95,7 @@ classdef PMAutoCellRecognition
             
              inShowViewsForControl =                obj.ShowViewsForControl;
             
-             MyChannel =                            obj.Channel;
+             MyChannel =                            obj.ActiveChannel;
              
              inNumberOfFrames =                     obj.NumberOfFrames;
              inNumberOfPlanes =                     obj.NumberOfPlanes;

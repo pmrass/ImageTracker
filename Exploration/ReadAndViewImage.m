@@ -22,7 +22,7 @@ function [myMovieController] = ReadAndViewImage
         %% user can select channels; (make sure they are not out of range
         ChannelNumberIWantToSee =                                               1;
         FrameNumberIWantToSee =                                                 1;
-
+        NumberOfExtraFramesIWantToLoad =                                             0; % set number ot >=duration of movie if you want to load all frames; 0 will load only the current frame
         
         %% do not change settings below (unless you want to experiment);
 
@@ -46,7 +46,8 @@ function [myMovieController] = ReadAndViewImage
         
         % with movie object and movie viewer, create movie controller;
         myMovieController =                                                         PMMovieController(myMovieViewer, myFavoriteMovieObect);
-    
+        myMovieController =                                                         myMovieController.resetNumberOfExtraLoadedFrames(NumberOfExtraFramesIWantToLoad);
+        
         % adjust plane views (in this case get maximum projection);
         myMovieController.LoadedMovie.CollapseAllPlanes   =                         true;    
      
@@ -57,8 +58,6 @@ function [myMovieController] = ReadAndViewImage
         % update frame number you want to view:
         myMovieController  =                                                        myMovieController.resetFrame( FrameNumberIWantToSee);
 
-        % use the controller to show updated image;
-        myMovieController.updateImageView;
-
+       
        
 end

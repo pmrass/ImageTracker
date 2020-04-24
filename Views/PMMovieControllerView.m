@@ -291,7 +291,7 @@ classdef PMMovieControllerView
             SelectedChannelHandleTitle.Units=                    'Normalized';
             SelectedChannelHandleTitle.Position=                 [FirstColumn PositionRow0 WidthOfFirstColumnInside ViewHeightInside];
             SelectedChannelHandleTitle.String=                   'Selected channel:';
-            SelectedChannelHandleTitle.HorizontalAlignment=          'left';
+            SelectedChannelHandleTitle.HorizontalAlignment=                     'left';
             
            
 
@@ -374,6 +374,23 @@ classdef PMMovieControllerView
             OnOff.Units=                                            'Normalized';
             OnOff.Position=                                         [SecondColumn PositionRow5 WidthOfSecondColumnInside ViewHeightInside];
             
+            
+            ChannelReconstructionTitle=                                              uicontrol('Style', 'Text');
+            ChannelReconstructionTitle.Tag=                                        'ChannelReconstructionTitle';
+            ChannelReconstructionTitle.Units=                                     'Normalized';
+            ChannelReconstructionTitle.Position=                                  [FirstColumn PositionRow6 WidthOfFirstColumnInside ViewHeightInside];
+            ChannelReconstructionTitle.String=                                    'Image reconstruction type:';
+            ChannelReconstructionTitle.HorizontalAlignment=                       'left';
+
+
+            
+              ChannelReconstructionHandle=                                                  uicontrol('Style', 'Popup');
+            ChannelReconstructionHandle.Tag=                                              'ChannelReconstruction';
+            ChannelReconstructionHandle.Units=                                            'Normalized';
+            ChannelReconstructionHandle.Position=                                         [SecondColumn PositionRow6 WidthOfSecondColumnInside ViewHeightInside];
+            ChannelReconstructionHandle.String=                                           {'Raw','Median filter', 'Complex filter'};
+           
+            
 
             obj.Channels.MinimumIntensityTitle =                    MinimumIntensityTitle;
             obj.Channels.MinimumIntensity =                         MinimumIntensity;
@@ -392,6 +409,8 @@ classdef PMMovieControllerView
             
             obj.Channels.SelectedChannelTitle =                     SelectedChannelHandleTitle;
             obj.Channels.SelectedChannel =                          SelectedChannelHandle;
+            
+            obj.Channels.ChannelReconstruction =                          ChannelReconstructionHandle;
      
             
            
