@@ -15,7 +15,18 @@ classdef PMMovieControllerView
         
         MovieView
          
+        ListOfTrackViews =          cell(0,1)
         
+        BackgroundColor =           [0 0.1 0.2];
+        ForegroundColor =           'c';
+        
+        EditingType 
+        
+    end
+    
+    properties (Constant, Access = private)
+        ChannelFilterTypes = {'Raw','Median filter', 'Complex filter'};
+        ChannelFilterTypes_MovieTracking =  {'Raw', 'Median', 'Complex'};
     end
     
     methods
@@ -33,113 +44,409 @@ classdef PMMovieControllerView
                 
             else % if input is the project view: create more views and put them in relation to the whole project window;
             
-                obj =                   obj.createMovieMenu(Input);
+            
                 obj =                   obj.CreateNavigationViews(Input);
                 obj =                   obj.CreateChannelViews(Input);
                 obj =                   obj.CreateAnnotationViews(Input);
                 obj =                   obj.createMovieView(Input);
+               
             
             end
       
         end
         
      
-        function obj = createMovieMenu(obj, ProjectViews)
+        function ChannelReconstructionType = getFilterTypeOfSelectedChannel(obj)
+            ChannelReconstructionType =                 obj.ChannelFilterTypes_MovieTracking{obj.Channels.ChannelReconstruction.Value};
             
-            MainMovieMenu=                                                      uimenu(ProjectViews.Figure);
-            MainMovieMenu.Label=                                                'Movie';
-
-            obj.Menu.Keyword=                                                   uimenu(MainMovieMenu);
-            obj.Menu.Keyword.Label=                                             'Change keyword';
-            obj.Menu.Keyword.Tag=                                               'Movies_EditKeyword';
-            obj.Menu.Keyword.Enable=                                            'on';
-
-            obj.Menu.Nickname=                                                   uimenu(MainMovieMenu);
-            obj.Menu.Nickname.Label=                                             'Change nickname';
-            obj.Menu.Nickname.Tag=                                               'Movies_EditNickname';
-            obj.Menu.Nickname.Enable=                                            'on';
-            
-            
-            obj.Menu.RenameLinkedMovies=                                                   uimenu(MainMovieMenu);
-            obj.Menu.RenameLinkedMovies.Label=                                             'Rename linke movie files';
-            obj.Menu.RenameLinkedMovies.Tag=                                               'Movies_RenameLinkedMovies';
-            obj.Menu.RenameLinkedMovies.Enable=                                            'on';
-            
-            
-            
-            obj.Menu.LinkedMovies=                                                   uimenu(MainMovieMenu);
-            obj.Menu.LinkedMovies.Label=                                             'Relink movies';
-            obj.Menu.LinkedMovies.Tag=                                               'Movies_LinkMovies';
-            obj.Menu.LinkedMovies.Enable=                                            'on';
-            
-            obj.Menu.ReapplySourceFiles=                                        uimenu(MainMovieMenu);
-            obj.Menu.ReapplySourceFiles.Label=                                  'Reapply source files';
-            obj.Menu.ReapplySourceFiles.Tag=                                    'ReapplySourceFiles';
-            obj.Menu.ReapplySourceFiles.Separator=                              'on';
-            obj.Menu.ReapplySourceFiles.Enable=                                 'on';
-
-            obj.Menu.DeleteImageCache=                                          uimenu(MainMovieMenu);
-            obj.Menu.DeleteImageCache.Label=                                    'Delete image cache';
-            obj.Menu.DeleteImageCache.Tag=                                      'DeleteImageCache';
-            obj.Menu.DeleteImageCache.Separator=                                'off';
-            obj.Menu.DeleteImageCache.Enable=                                   'on';
-            
-            obj.Menu.ApplyManualDriftCorrection=                                uimenu(MainMovieMenu);
-            obj.Menu.ApplyManualDriftCorrection.Label=                          'Apply manual drift correction';
-            obj.Menu.ApplyManualDriftCorrection.Tag=                            'Export_ManualTracking';
-            obj.Menu.ApplyManualDriftCorrection.Separator=                      'on';
-            obj.Menu.ApplyManualDriftCorrection.Enable=                         'on';
-
-            obj.Menu.EraseAllDriftCorrections=                                  uimenu(MainMovieMenu);
-            obj.Menu.EraseAllDriftCorrections.Label=                            'Erase all drift corrections';
-            obj.Menu.EraseAllDriftCorrections.Tag=                              'Export_ResetDriftCorrection';
-            obj.Menu.EraseAllDriftCorrections.Enable=                           'on';
-
-            % access movie file
-            
-         
-            
-            obj.Menu.ShowMetaData=                                              uimenu(MainMovieMenu);
-            obj.Menu.ShowMetaData.Label=                                        'Show meta-data';
-            obj.Menu.ShowMetaData.Tag=                                          'Movies_MovieInfo';
-            obj.Menu.ShowMetaData.Separator=                                    'off';
-            obj.Menu.ShowMetaData.Enable=                                       'on';
-
-            %
-            obj.Menu.ShowAttachedFiles=                                         uimenu(MainMovieMenu);
-            obj.Menu.ShowAttachedFiles.Label=                                   'Show attached files';
-            obj.Menu.ShowAttachedFiles.Tag=                                     'Movies_ShowFiles';
-            obj.Menu.ShowAttachedFiles.Enable=                                  'on';
-            
-            
-            %%
-            
-         
-            obj.Menu.ExportMovie =                                                  uimenu(MainMovieMenu);
-            obj.Menu.ExportMovie.Label=                                             'Export active movie into mp4 file';
-            obj.Menu.ExportMovie.Tag=                                               'Movies_ExportMovie';
-            obj.Menu.ExportMovie.Enable=                                             'on';
-             obj.Menu.ExportMovie.Separator=                                        'on';
-             
+        end
+        
+        function    obj =   resetChannelViewsByMovieTracking(obj, MovieTracking)
+            if isempty(obj.Channels) || isempty(MovieTracking.Channels)
+            else
+                
               
-            obj.Menu.ExportTrackCoordinates=                                   uimenu(MainMovieMenu);
-            obj.Menu.ExportTrackCoordinates.Label=                             'Export track coodinates into csv file';
-            obj.Menu.ExportTrackCoordinates.Separator=                         'off';
-            obj.Menu.ExportTrackCoordinates.Enable=                            'on';
+                
+                obj.Channels.SelectedChannel.String =                        1 : MovieTracking.getMaxChannel;
+                obj.Channels.SelectedChannel.Value =                  MovieTracking.getIndexOfActiveChannel;
+                obj.Channels.MinimumIntensity.String =                MovieTracking.getIntensityLowOfActiveChannel;
+                obj.Channels.MaximumIntensity.String =                MovieTracking.getIntensityHighOfActiveChannel;
+                obj.Channels.Color.Value =                            find(strcmp(MovieTracking.getColorStringOfActiveChannel, obj.Channels.Color.String));
+                obj.Channels.Comment.String =                         MovieTracking.getCommentOfActiveChannel;
+                obj.Channels.OnOff.Value =                            MovieTracking.getVisibleOfActiveChannel;
+                
+                obj.Channels.ChannelReconstruction.Value =         obj.getActiveChannelReconstructionIndexFromMovieTracking(MovieTracking);
+                
+               
+            end
+        
+                
+        end
+        
+    
+        
+        function Index = getActiveChannelReconstructionIndexFromMovieTracking(obj, MovieTracking)
+            Index = find(strcmp(MovieTracking.getReconstructionTypeOfActiveChannel, obj.ChannelFilterTypes_MovieTracking));
+            if isempty(Index)
+               Index = 1; 
+            end
+        end
+        
+        
+      
+        
+        function obj = resetNavigationFontSize(obj, FontSize)
+               obj.MovieView.ScalebarText.FontSize = FontSize;
+               obj.MovieView.TimeStampText.FontSize = FontSize;
+               obj.MovieView.ZStampText.FontSize = FontSize;
+                
+        end
+    
+        
+        
+     
+        
+        
+        function obj = blackOutMovieView(obj)
             
-                obj.Menu.ShowCompleteMetaData=                                              uimenu(MainMovieMenu);
-            obj.Menu.ShowCompleteMetaData.Label=                                        'Export complete meta-data into txt file';
-            obj.Menu.ShowCompleteMetaData.Tag=                                          'ShowCompleteMetaData';
-            obj.Menu.ShowCompleteMetaData.Separator=                                    'off';
-            obj.Menu.ShowCompleteMetaData.Enable=                                       'on';
-
+            obj.MovieView.MainImage.CData(:) =                      0;
+            obj.MovieView.ZStampText.String =                       '';
             
+            obj.MovieView.TimeStampText.String =                    '';
+            obj.MovieView.ScalebarText.String =                     '';
+            obj.MovieView.ScaleBarLine.Visible =                    'off';
+            
+            obj.MovieView.CentroidLine.Visible =                    'off';
+            obj.MovieView.CentroidLine_SelectedTrack.Visible =      'off';
+            obj.MovieView.Rectangle.Visible =                       'off';
+            obj.MovieView.ManualDriftCorrectionLine.Visible =       'off';
+            
+            
+        end
+        
+        function obj = setMaxTime(obj, Value)
+                obj.Navigation.CurrentTimePoint.String =          1 : Value; 
+                if obj.Navigation.CurrentTimePoint.Value<1 || obj.Navigation.CurrentTimePoint.Value>length(obj.Navigation.CurrentTimePoint.String)
+                    obj.Navigation.CurrentTimePoint.Value = 1;
+                end
 
+
+                Range = obj.Navigation.TimeSlider.Max -   obj.Navigation.TimeSlider.Min;
+                if Range == 0
+                obj.Navigation.TimeSlider.Visible = 'off';
+                else
+                  Step =     1/ (Range);
+                  obj.Navigation.TimeSlider.Visible = 'on';
+                  obj.Navigation.TimeSlider.SliderStep = [Step Step];
+                end
+
+                obj.Navigation.TimeSlider.Min =                 1;
+                obj.Navigation.TimeSlider.Max =                 Value;  
+            
+        end
+        
+        function obj = setEditingTypeToIndex(obj, Value)
+            
+             obj.Navigation.EditingOptions.Value =          Value;
+                switch Value
+                    case 1 % 'Visualize'
+                        obj.MovieView.ManualDriftCorrectionLine.Visible = 'off';
+                    case 2
+                        obj.MovieView.ManualDriftCorrectionLine.Visible = 'on';
+                    case 3 %  'Tracking: draw mask'
+                        obj.MovieView.ManualDriftCorrectionLine.Visible = 'off';
+                end
+            
+        end
+        
+          function obj = setScaleBarVisibility(obj, ScaleBarVisible)
+             switch ScaleBarVisible
+                  case 1
+                      obj.MovieView.ScaleBarLine.Visible = 'on';
+                      obj.MovieView.ScalebarText.Visible =        'on';
+                 otherwise
+                      obj.MovieView.ScalebarText.Visible = 'off';
+                      obj.MovieView.ScaleBarLine.Visible = 'off';   
+             end 
+          end
+        
+          
+          function obj = setScaleBarSize(obj, VoxelSizeXuM)
+              
+
+            obj.MovieView.ScalebarText.Units =          'centimeters';
+                     
+
+            obj.MovieView.ViewMovieAxes.Units =         'centimeters';
+            AxesWidthCentimeter =                             obj.MovieView.ViewMovieAxes.Position(3);
+            AxesHeightCentimeter =                            obj.MovieView.ViewMovieAxes.Position(4);
+            obj.MovieView.ViewMovieAxes.Units =         'pixels';
+
+            WantedLeftPosition =                              obj.MovieView.ScalebarText.Position(1);
+            WantedCentimeters =                               0.9;
+
+            RelativeLeftPosition =            WantedLeftPosition / AxesWidthCentimeter;
+            AxesWidthPixels =                 diff(obj.MovieView.ViewMovieAxes.XLim);
+            XLimWidth =                       AxesWidthPixels * RelativeLeftPosition;
+            XLimStart =                       obj.MovieView.ViewMovieAxes.XLim(1);
+            XLimMiddleBar =                    XLimStart + XLimWidth;
+
+            AxesHeightPixels =            diff(obj.MovieView.ViewMovieAxes.YLim);
+
+
+            if AxesWidthPixels>AxesHeightPixels
+            RealAxesHeightCentimeter = AxesHeightCentimeter * AxesHeightPixels/ AxesWidthPixels;
+
+            else
+            RealAxesHeightCentimeter = AxesHeightCentimeter;
+            end
+
+
+            PixelsPerCentimeter =              AxesHeightPixels / RealAxesHeightCentimeter;
+            PixelsForWantedCentimeters =      PixelsPerCentimeter * WantedCentimeters;
+            YLimStart =                       obj.MovieView.ViewMovieAxes.YLim(2) - PixelsForWantedCentimeters;
+
+            if isfield(obj.Annotation, 'SizeOfScaleBar') && isfield(obj.Annotation.SizeOfScaleBar, 'Value')
+                LengthInMicrometer = obj.Annotation.SizeOfScaleBar.Value;
+            else
+                LengthInMicrometer = 50;
+            end
+
+
+
+
+            LengthInPixels =      LengthInMicrometer / VoxelSizeXuM;
+
+            obj.MovieView.ScaleBarLine.Marker = 'none';
+            obj.MovieView.ScaleBarLine.XData = [(XLimMiddleBar - LengthInPixels/2), (XLimMiddleBar +  LengthInPixels/2) ];
+            obj.MovieView.ScaleBarLine.YData = [ YLimStart, YLimStart];
+
+
+
+                      
+                      
+            obj.MovieView.ScalebarText.String =         strcat(num2str(VoxelSizeXuM), ' µm');
+              
+              
+              
+              
+              
+          end
+          
+          
+        %% still need to adjust after moving from controller
+        
+     
+            
+          
+           
+          function [obj] =        addMissingTrackLineViews(obj, allTrackIdsInModel)
+                 
+   
+                function TrackLine = setTagOfTrackLines(TrackLine, TrackLineNumber)
+                    TrackLine.Tag = num2str(TrackLineNumber);
+                 end
+                
+                rowsOfMissingTrackIDs = ~ismember(allTrackIdsInModel, obj.getIdsFromTrackHandles( obj.ListOfTrackViews));
+                missingTrackIds =       allTrackIdsInModel(rowsOfMissingTrackIDs);
+
+                if isempty(missingTrackIds)
+                else
+                    CellWithNewLineHandles =    (arrayfun(@(x) line(obj.MovieView.ViewMovieAxes), 1:length(missingTrackIds), 'UniformOutput', false))';
+                    CellWithNewLineHandles =    cellfun(@(x,y) setTagOfTrackLines(x,y), CellWithNewLineHandles, num2cell(missingTrackIds), 'UniformOutput', false);
+                    obj.ListOfTrackViews =      [obj.ListOfTrackViews; CellWithNewLineHandles];   
+                end
+                
+              
+          end
+          
+           function [obj] =       deleteNonMatchingTrackLineViews(obj, TrackNumbers)
+                if isempty(TrackNumbers)
+                    obj =           obj.deleteAllTrackLineViews;
+                else                    
+                    rowsThatMustBeDeleted =       ~ismember(obj.getTrackIdsOfTrackHandles, TrackNumbers);
+                    cellfun(@(x) delete(x), obj.ListOfTrackViews(rowsThatMustBeDeleted))
+                    obj.ListOfTrackViews(rowsThatMustBeDeleted,:) = [];
+                end
+                    
+           end
+           
+          
+           
+        function TrackHandles =          getHandlesForTrackIDs(obj, TrackID)
+            if isempty(TrackID)
+                TrackHandles = cell(0,1);
+            else
+                TrackHandles =      obj.ListOfTrackViews(ismember(obj.getTrackIdsOfTrackHandles,  TrackID), :);
+            end    
+        end
+        
+        function ListWithTrackIDsThatHaveAHandle =     getTrackIdsOfTrackHandles(obj)
+             ListWithTrackIDsThatHaveAHandle =           cellfun(@(x) str2double(x.Tag), obj.ListOfTrackViews); 
+        end
+        
+         function ListWithTrackIDsThatAlreadyHaveAHandle   =        getIdsFromTrackHandles(~, ListWithWithCurrentTrackHandles)
+              ListWithTrackIDsThatAlreadyHaveAHandle =               cellfun(@(x) str2double(x.Tag), ListWithWithCurrentTrackHandles);
+         end
+        
+          function                                    updateTrackLineCoordinatesForHandle(~, HandleForCurrentTrack, Coordinates)
+            if isempty(Coordinates)
+                Coordinates = [0, 0, 0];
+            else
+                    Coordinates=      cell2mat(Coordinates);
+            end
+                HandleForCurrentTrack.XData=            Coordinates(:, 1);    
+                HandleForCurrentTrack.YData=            Coordinates(:, 2);  
+                HandleForCurrentTrack.ZData=            Coordinates(:, 3);  
+                HandleForCurrentTrack.Color=            'w';  
+          end
+          
+          
+          
+          
+         
+        function [obj] =                            deleteAllTrackLineViews(obj)
+            
+            fprintf('PMMovieController:@deleteAllTrackLineViews: find all currently existing track lines and deleted them.\n')
+            AllLines =           findobj(obj.MovieView.ViewMovieAxes, 'Type', 'Line');
+            TrackLineRows  =     arrayfun(@(x) ~isnan(str2double(x.Tag)), AllLines);
+            TrackLines=          AllLines(TrackLineRows,:);
+            if ~isempty(TrackLines)
+                arrayfun(@(x) delete(x),  TrackLines);
+            end
+            obj.ListOfTrackViews =  cell(0,1);
             
         end
         
         
-        function obj = CreateNavigationViews(obj, ProjectViews)
+          function obj = changeAppearance(obj)
+            fprintf('PMMovieController:@changeAppearance: change foreground and background of view ')
+            
+            [ListWithAllViews] =               obj.getListWithAllViews;
+            NumberOfViews = size(ListWithAllViews,1);
+            for CurrentIndex=1:NumberOfViews
+                fprintf('%i of % %i ', CurrentIndex, NumberOfViews)
+                if strcmp(ListWithAllViews{CurrentIndex,1}.Style, 'popupmenu')
+                    ListWithAllViews{CurrentIndex,1}.ForegroundColor = 'r';
+                else
+                    ListWithAllViews{CurrentIndex,1}.ForegroundColor =      obj.ForegroundColor;
+                end
+                ListWithAllViews{CurrentIndex,1}.BackgroundColor =       obj.BackgroundColor;
+            end
+            fprintf('\n')
+            
+        end
+        
+        function obj = disableViews(obj)
+            
+             [ListWithAllViews] =               obj.getListWithAllViews;
+            NumberOfViews = size(ListWithAllViews,1);
+            for CurrentIndex=1:NumberOfViews
+                if ~isempty(ListWithAllViews{CurrentIndex,1}.Callback)
+                    ListWithAllViews{CurrentIndex,1}.Enable = 'off';
+                end
+               
+            end
+
+        end
+        
+        
+        
+        
+        function obj = disableAllViews(obj)
+            
+            fprintf('PMMovieController:@disableAllViews ')
+            [ListWithAllViews] =               obj.getListWithAllViews;
+            NumberOfViews = size(ListWithAllViews,1);
+            for CurrentIndex=1:NumberOfViews
+                
+                fprintf('%i of %i ', CurrentIndex, NumberOfViews)
+                CurrentView =   ListWithAllViews{CurrentIndex,1};
+                CurrentView.Enable = 'off';
+                
+            end
+            fprintf('\n')
+            
+        end
+        
+        function obj = enableAllViews(obj)
+            
+            [ListWithAllViews] =               obj.getListWithAllViews;
+            NumberOfViews = size(ListWithAllViews,1);
+            for CurrentIndex=1:NumberOfViews
+                CurrentView =   ListWithAllViews{CurrentIndex,1};
+                CurrentView.Enable = 'on';
+                
+            end
+            
+            
+        end
+        
+%         
+        
+         function obj = enableViews(obj)
+             [ListWithAllViews] =               obj.getListWithAllViews;
+            NumberOfViews = size(ListWithAllViews,1);
+            for CurrentIndex=1:NumberOfViews
+                CurrentView =   ListWithAllViews{CurrentIndex,1};
+                if ~isempty(CurrentView.Callback)
+                    CurrentView.Enable = 'on';
+                end
+               
+            end
+
+         end
+         
+         
+         
+          function [ListWithAllViews] =                                       getListWithAllViews(obj)
+
+
+                if isempty(obj.Navigation)
+                    ListWithAllViews =       cell(0,1);
+                    return
+                elseif isempty(obj.Channels)
+                    ListWithAllViews =       cell(0,1);
+                    return
+                end
+
+                FieldNames =                fieldnames(obj.Navigation);
+                NavigationViews =           cellfun(@(x) obj.Navigation.(x), FieldNames, 'UniformOutput', false);
+
+                FieldNames =                fieldnames(obj.Channels);
+                ChannelViews =              cellfun(@(x) obj.Channels.(x), FieldNames, 'UniformOutput', false);
+
+                FieldNames =                fieldnames(obj.Annotation);
+                AnnotationViews =           cellfun(@(x) obj.Annotation.(x), FieldNames, 'UniformOutput', false);
+
+               
+                ListWithAllViews =          [NavigationViews; ChannelViews;AnnotationViews];
+
+          end
+        
+         
+        function string = getEditingType(obj)
+              input =                        obj.Navigation.EditingOptions.String{obj.Navigation.EditingOptions.Value};
+                 switch input
+                    case 'Viewing only' % 'Visualize'
+                        string =                                   'No editing';
+                    case 'Edit manual drift correction'
+                        string =                                   'Manual drift correction';
+                    case 'Edit tracks' %  'Tracking: draw mask'
+                        string =                                'Tracking';
+                end
+        
+            
+        end
+          
+        
+        
+
+    end
+    
+    methods (Access = private)
+        
+          function obj = CreateNavigationViews(obj, ProjectViews)
             
            
             %% set positions
@@ -388,7 +695,7 @@ classdef PMMovieControllerView
             ChannelReconstructionHandle.Tag=                                              'ChannelReconstruction';
             ChannelReconstructionHandle.Units=                                            'Normalized';
             ChannelReconstructionHandle.Position=                                         [SecondColumn PositionRow6 WidthOfSecondColumnInside ViewHeightInside];
-            ChannelReconstructionHandle.String=                                           {'Raw','Median filter', 'Complex filter'};
+            ChannelReconstructionHandle.String=                                           obj.ChannelFilterTypes;
            
             
 
@@ -639,9 +946,7 @@ classdef PMMovieControllerView
             ShowScaleBarHandle.Position=                                    [FirstColumn PositionRow3 WidthOfFirstColumnInside ViewHeightInside];
             ShowScaleBarHandle.String=                                      { 'Scale bar'};
 
-            
 
-          
             SizeOfScaleBarHandle= uicontrol;
             SizeOfScaleBarHandle.Tag=                                  'SizeOfScaleBar';
             SizeOfScaleBarHandle.Style=                                     'PopupMenu';
@@ -659,49 +964,6 @@ classdef PMMovieControllerView
             
         end
         
-        
-        function obj = resetNavigationFontSize(obj, FontSize)
-            
-            
-               obj.MovieView.ScalebarText.FontSize = FontSize;
-               obj.MovieView.TimeStampText.FontSize = FontSize;
-               obj.MovieView.ZStampText.FontSize = FontSize;
-               
-               
-  
-
-      
-            
-            
-            
-            
-        end
-    
-        
-        
-     
-        
-        
-        function obj = blackOutMovieView(obj)
-            
-            obj.MovieView.MainImage.CData(:) =                      0;
-            obj.MovieView.ZStampText.String =                       '';
-            
-            obj.MovieView.TimeStampText.String =                    '';
-            obj.MovieView.ScalebarText.String =                     '';
-            obj.MovieView.ScaleBarLine.Visible =                    'off';
-            
-            obj.MovieView.CentroidLine.Visible =                    'off';
-            obj.MovieView.CentroidLine_SelectedTrack.Visible =      'off';
-            obj.MovieView.Rectangle.Visible =                       'off';
-            obj.MovieView.ManualDriftCorrectionLine.Visible =       'off';
-            
-            
-        end
-        
-        
-        
-
     end
     
 end

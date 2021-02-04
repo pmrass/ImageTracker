@@ -27,6 +27,24 @@ classdef PMTrackInfo
             obj.Finalized = false;
          end
         
+         function status = getFinishedStatus(obj)
+             switch obj.Finalized
+                 
+                 case false
+                     status = 'Unfinished';
+                 case true
+                     status = 'Finished';
+                     
+             end
+             
+         end
+         
+         
+         function TrackID = getTrackID(obj)
+             TrackID = obj.TrackID;
+             
+         end
+        
          
     end
 end

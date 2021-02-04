@@ -3,41 +3,40 @@ classdef PMMovieLibrary
     %   Detailed explanation goes here
     
     properties
-      
         
-       
+        PathForExport
+    
+        
+        Version =                                           4;
+        FileName =                                          '';
          
+        
     end
     
     properties (Access = private)
-        
-        % files/folders:
-        FileName =                                          '';
-        PathForImageAnalysis
-        PathOfMovieFolder
-        PathForExport
-         
-        
-        % other
-        SelectedNickname =                                  ''
+            SelectedNickname =                                  ''
 
-        ListWithMovieObjectSummary =                        cell(0,1); % summary of movie objects; this is stored in library file, and needed for example to filter files by movie vs. Z-stack etc;
+            ListWithMovieObjectSummary =                        cell(0,1); % summary of movie objects; this is stored in library file, and needed for example to filter files by movie vs. Z-stack etc;
+
+
         FilterList =                                        true
-
+       
         ListWithFilteredNicknames
-
+        
         FilterSelectionIndex =                              1;
         FilterSelectionString =                             ''
-
+        
         KeywordFilterSelectionIndex =                       1;
         KeywordFilterSelectionString =                      'Ignore keywords';
-
+        
         SortIndex =                                         1;
-
+        
+        PathForImageAnalysis
+        
         ListhWithMovieObjects =                             cell(0,1); % list with complete information; this is stored in memory, not in library file; files are created for individual movie analyses
         ListWithLoadedImageData =                           cell(0,1);
-        
-        Version =                                           4;
+        PathOfMovieFolder
+
     end
     
     methods
@@ -87,20 +86,6 @@ classdef PMMovieLibrary
         end
         
         %% accessors:
-        function obj = setExportFolder(obj, Value)
-           obj.PathForExport = Value; 
-        end
-        
-         function obj = set.PathForExport(obj, Value)
-             assert(ischar(Value), 'Wrong input.')
-           obj.PathForExport = Value; 
-         end
-        
-         function path = getExportFolder(obj)
-              path = obj.PathForExport;
-             
-         end
-        
         function list = getMovieObjectSummaries(obj)
             list = obj.ListWithMovieObjectSummary;
             
@@ -177,10 +162,6 @@ classdef PMMovieLibrary
             assert(ischar(Value), 'Wrong argument type.')
             obj.FileName = Value;
          end
-         
-         function value = getFileName(obj)
-             value = obj.FileName;
-         end
         
         %% change nickname:
         function obj = setNickName(obj, varargin)
@@ -205,8 +186,14 @@ classdef PMMovieLibrary
                 otherwise
                     error('Wrong input.')
                 
-            end   
+                
+                
+            end
+            
+            
         end
+        
+        
         
         function rowInLibrary = getIndexOfSelectedMovie(obj)
             rowInLibrary =     obj.getRowForNickName(obj.SelectedNickname);
@@ -217,7 +204,9 @@ classdef PMMovieLibrary
                 SelectedRow =                           strcmp(obj.getAllNicknames, NickNameString);
                 assert(sum(SelectedRow) == 1, 'Non-unique nickname chosen.')
           end
-         
+        
+        
+        
         function obj = setNewNickname(obj, Value)
             obj.SelectedNickname =      Value;
         end
@@ -247,16 +236,15 @@ classdef PMMovieLibrary
             end
         end
         
+        
+      
+        
       function [NickNames] =          getAllNicknames(obj)
          NickNames =       cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);      
       end
         
-      function    listWithAllWantedNickNames =       getAllFilteredNicknames(obj)
-            listWithAllNicknames =              obj.getAllNicknames;
-            listWithAllWantedNickNames =        listWithAllNicknames(obj.getFilterList,:); 
-      end
-      
-      
+       
+        
         %% addNewEntryIntoLibrary:
           function obj = addNewEntryIntoLibrary(obj, NickName, AttachedFilenames)
                  obj = obj.addNewEntryIntoLibraryInternal(NickName, AttachedFilenames);
@@ -337,7 +325,16 @@ classdef PMMovieLibrary
            
         end
         
-
+      
+         
+     
+         
+           
+           
+           
+     
+         
+           
           
         %% delete all entries:          
         function obj = deleteAllEntriesFromLibrary(obj)
@@ -516,12 +513,12 @@ classdef PMMovieLibrary
                        obj.FilterList =       cellfun(@(x) strcmp(x.getDataType, 'Snapshot'), obj.ListWithMovieObjectSummary);
                  case 'Show all tracked movies'
                      FilterMovies =           cellfun(@(x) strcmp(x.getDataType, 'Movie'), obj.ListWithMovieObjectSummary);
-                     FilterTracking =         cellfun(@(x) x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
+                     FilterTracking =         cellfun(@(x) x.TrackingWasPerformed, obj.ListWithMovieObjectSummary);
                      obj.FilterList =         min([FilterMovies FilterTracking], [], 2); 
     
                   case 'Show all untracked movies'
                      FilterMovies =        cellfun(@(x) strcmp(x.getDataType, 'Movie'), obj.ListWithMovieObjectSummary);
-                     FilterTracking =      cellfun(@(x) ~x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
+                     FilterTracking =      cellfun(@(x) ~x.TrackingWasPerformed, obj.ListWithMovieObjectSummary);
                      obj.FilterList =      min([FilterMovies FilterTracking], [], 2); 
                      
                  case 'Show all movies with drift correction'   
@@ -738,21 +735,6 @@ classdef PMMovieLibrary
 
             end
           
-            %% setMovieFolders
-               function obj = setMovieFolders(obj, Value)
-           obj.PathOfMovieFolder =  Value;
-           obj =                    obj.setMovieFolderInMovieObjectSummaries; 
-        end
-        
-        function obj = addMovieFolder(obj, Value)
-            
-            assert(ischar(Value), 'Wrong input.')
-            OldFolders =       obj.getNamesOfAllMovieFolders;
-            NewFolders =    [OldFolders; Value];
-            obj.PathOfMovieFolder = NewFolders;
-            obj =                    obj.setMovieFolderInMovieObjectSummaries; 
-        end
-        
            
     end
     
@@ -815,7 +797,12 @@ classdef PMMovieLibrary
         end
           
         
-     
+        function obj = setMovieFolders(obj, Value)
+           obj.PathOfMovieFolder =  Value;
+           obj =                    obj.setMovieFolderInMovieObjectSummaries; 
+        end
+        
+      
             
        
 

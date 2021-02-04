@@ -34,106 +34,31 @@ classdef PMTrackingView
             Tracks_Main.Label=                                  'Tracking';
             Tracks_Main.Tag=                                    'Tracks_Main';
 
-
             Tracks_AutoCellRecognition=                            uimenu(Tracks_Main);
-            Tracks_AutoCellRecognition.Label=                     'Auto detection of cells';
+            Tracks_AutoCellRecognition.Label=                     'Autodetection of cells';
             Tracks_AutoCellRecognition.Tag=                       'Tracks_AutoCellRecognition';
             Tracks_AutoCellRecognition.Enable=                   'on';
+            Tracks_AutoCellRecognition.Separator=                               'off';
+             
+            Tracks_TrackingSettings=                            uimenu(Tracks_Main);
+            Tracks_TrackingSettings.Label=                     'Autotracking';
+            Tracks_TrackingSettings.Tag=                       'Tracks_TrackingSettings';
+            Tracks_TrackingSettings.Enable=                   'on';
             
 
-            Tracks_Remove=                                      uimenu(Tracks_Main);
-            Tracks_Remove.Label=                                'Delete active track';
-            Tracks_Remove.Tag=                                  'Tracks_Remove';
-            Tracks_Remove.Enable=                               'on';
-            Tracks_Remove.Separator=                               'on';
-            
-             Tracks_RemoveShortTracks=                                      uimenu(Tracks_Main);
-            Tracks_RemoveShortTracks.Label=                                'Delete tracks equal or less than x frame';
-            Tracks_RemoveShortTracks.Tag=                                  'Tracks_RemoveShortTracks';
-            Tracks_RemoveShortTracks.Enable=                               'on';
-            
-             Tracks_RemoveAll=                                      uimenu(Tracks_Main);
-            Tracks_RemoveAll.Label=                                'Delete all tracks';
-            Tracks_RemoveAll.Tag=                                  'Tracks_RemoveAll';
-            Tracks_RemoveAll.Enable=                               'on';
-            
-            Tracks_Merge=                                       uimenu(Tracks_Main);
-            Tracks_Merge.Label=                                 'Merge selected tracks';
-            Tracks_Merge.Tag=                                   'Tracks_Merge';
-            Tracks_Merge.Separator=                              'off';
-            Tracks_Merge.Enable=                               'on';
-
-            Tracks_Split=                                       uimenu(Tracks_Main);
-            Tracks_Split.Label=                                 'Split selected tracks';
-            Tracks_Split.Tag=                                   'Tracks_Split';
-            Tracks_Split.Enable=                               'on';
-
-            
-            Tracks_Update=                                      uimenu(Tracks_Main);
-            Tracks_Update.Label=                                'Update tracks (u)';
-            Tracks_Update.Tag=                                  'Tracks_Update';
-            Tracks_Update.Separator=                            'off';
-            Tracks_Update.Enable=                               'on';
-            
-          
-            
-            Masks_Remove=                                       uimenu(Tracks_Main);
-            Masks_Remove.Label=                                 'Delete active mask';
-            Masks_Remove.Tag=                                   'Masks_Remove';
-            Masks_Remove.Separator=                              'on';
-            Masks_Remove.Enable=                                'on';
-
-                 
-            obj.Menu.DeleteAllTracks =                          Tracks_RemoveAll;
-            obj.Menu.RemoveShortTracks =                          Tracks_RemoveShortTracks;
-            
-            
-            obj.Menu.AutoCellRecognition =           Tracks_AutoCellRecognition;
-             obj.Menu.DeleteTrack =                          Tracks_Remove;
-             obj.Menu.MergeTracks =                          Tracks_Merge;
-             obj.Menu.SpitTracks =                          Tracks_Split;
-            obj.Menu.UpdateTracks =                         Tracks_Update;
-            
-            obj.Menu.DeleteMask =                           Masks_Remove;
-            
-            
-            
-            
-            
-            Tracks_Link=                                        uimenu(Tracks_Main);
-            Tracks_Link.Label=                                  'Link';
-            Tracks_Link.Tag=                                    'Tracks_Link';
-
-             Tracks_Link.Enable=                                'off';
-
-          
-
-
-            Tracks_LabelComplete=                               uimenu(Tracks_Main);
-            Tracks_LabelComplete.Label=                         'Label complete';
-            Tracks_LabelComplete.Tag=                           'Tracks_LabelComplete';
-
-            Tracks_LabelComplete.Separator=                     'on';
-            Tracks_LabelComplete.Enable=                       'off';
-
-            Tracks_LabelIncomplete=                             uimenu(Tracks_Main);
-            Tracks_LabelIncomplete.Label=                       'Label incomplete';
-            Tracks_LabelIncomplete.Tag=                         'Tracks_LabelIncomplete';
-
-            Tracks_LabelIncomplete.Enable=                       'off';
-
-            Tracks_LabelUndefined=                              uimenu(Tracks_Main);
-            Tracks_LabelUndefined.Label=                        'Label undefined';
-            Tracks_LabelUndefined.Tag=                          'Tracks_LabelUndefined';
-
-            Tracks_LabelUndefined.Enable=                       'off';
+             Tracks_EditAndView=                            uimenu(Tracks_Main);
+            Tracks_EditAndView.Label=                     'View and edit tracks';
+            Tracks_EditAndView.Tag=                       'Tracks_EditAndView';
+            Tracks_EditAndView.Enable=                   'on';
+           
 
          
-
-                        Tracks_Link.Callback=                               'ModifyTracks(''Link'')';
-                        Tracks_LabelComplete.Callback=                      'ModifyTracks(''Label complete'')';
-              Tracks_LabelIncomplete.Callback=                    'ModifyTracks(''Label incomplete'')';
-                        Tracks_LabelUndefined.Callback=                     'ModifyTracks(''Label undefined'')';
+            
+            obj.Menu.AutoCellRecognition =                  Tracks_AutoCellRecognition;
+            obj.Menu.AutoTracking =                         Tracks_TrackingSettings;
+            obj.Menu.EditAndView =                          Tracks_EditAndView;
+            
+          
 %             Masks_AutomatedCentroidConversion.Callback=         'CallbackForAutomatedMaskDetection';
 %             Export_T_Tiff.Callback=                             'ExportData(''Time-series TIFF'')'; 
 %             Export_Z_Tiff.Callback=                             'ExportData(''Z-stack TIFF'')';
@@ -281,25 +206,7 @@ classdef PMTrackingView
                 
  
                 
-                ListWithFilteredTracksTitle=                            uicontrol;
-                ListWithFilteredTracksTitle.Style=                      'Text';
-                ListWithFilteredTracksTitle.Tag =                       'ListWithFilteredTracksTitle';
-                TitleOfTrackColumns=                                    sprintf('%5s %5s %5s %5s %5s %5s %5s', '#', 'ID', 'Start', 'End','fr#', 'Miss', 'Link');
-                ListWithFilteredTracksTitle.String=                     TitleOfTrackColumns;
-                ListWithFilteredTracksTitle.HorizontalAlignment =       'left';
-                ListWithFilteredTracksTitle.FontName=                   'Courier';
-                ListWithFilteredTracksTitle.Units=                      'normalized';
-                ListWithFilteredTracksTitle.Position=                   [FirstColumn FifthRow WholeColumn Height];
-
-                
-                ListWithFilteredTracks=                                 uicontrol;
-                ListWithFilteredTracks.Style=                           'Listbox';
-                ListWithFilteredTracks.Tag=                             'ListWithFilteredTracks';
-                ListWithFilteredTracks.FontName=                        'Courier';
-                ListWithFilteredTracks.Max=                             2;
-                ListWithFilteredTracks.Units=                           'normalized';
-                ListWithFilteredTracks.Position=                         [FirstColumn FifthRow-HeightForList WholeColumn HeightForList];
-
+            
                 
                 
                 %% for changing visibility of tracks:
@@ -312,9 +219,7 @@ classdef PMTrackingView
                 Tracking.ShowMaximumProjection=                         ShowMaximumProjection;
                 
                 Tracking.ActiveTrack=                                   ActiveTrack;
-                Tracking.ListWithFilteredTracksTitle=                   ListWithFilteredTracksTitle;
-                Tracking.ListWithFilteredTracks=                        ListWithFilteredTracks;
-
+              
 
                 
                 obj.ControlPanels =                                 Tracking;

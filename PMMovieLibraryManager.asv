@@ -109,15 +109,12 @@ classdef PMMovieLibraryManager < handle
                 'NumFiles', 1, 'Output', 'char');
                 if isempty(NewPath) || ~ischar(NewPath)
                 else
-                    obj = obj.addMovieFolder(NewPath);
+                    obj = obj.addMovieFolder({NewPath});
                 end
         end
         
-        function obj = addMovieFolder(obj, Value)
-              obj.MovieLibrary =              obj.MovieLibrary.addMovieFolder(Value);
-            obj =                           obj.saveLibrary;
-            obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-            obj =                           obj.setInfoTextView;
+        function obj = setMovieFolders(obj, Value)
+            
         end
         
         function obj = setMovieFolders(obj, Value)
