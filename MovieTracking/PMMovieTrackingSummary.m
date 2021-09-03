@@ -6,15 +6,18 @@ classdef PMMovieTrackingSummary
         
         % core data: unique identifier plus connected movies;
         
-        Folder =                        '' % movie-folder 
-        AttachedFiles =                 ''
-        Keywords =                      cell(0,1);
+        
         
       
          
     end
     
     properties (Access = private)
+        Folder =                        '' % movie-folder 
+        AttachedFiles =                 ''
+        Keywords =                      cell(0,1);
+        
+        
         % data are stored but are typically derived and reset from outside;
         % however resets can be time-consuming, therefore they are also stored in this object;
         NickName =                      ''
@@ -38,31 +41,23 @@ classdef PMMovieTrackingSummary
                 case 1
                         
                     movieTrackingObject = varargin{1};
-
-
                     fprintf('Create @PMMovieTrackingSummary for')
                     if isempty(movieTrackingObject)
                     else
                         fprintf('PMMovieTracking object "%s".\n', movieTrackingObject.getNickName)     
-                        obj.NickName =               movieTrackingObject.getNickName;
-                        obj.AttachedFiles =          movieTrackingObject.getLinkedMovieFileNames;
-                        obj.Folder =                 movieTrackingObject.getMovieFolder;
-                        obj.DataType =               movieTrackingObject.getDataType;
-                        obj.Keywords =               movieTrackingObject.getKeywords;
+                        obj.NickName =                          movieTrackingObject.getNickName;
+                        obj.AttachedFiles =                     movieTrackingObject.getLinkedMovieFileNames;
+                        obj.Folder =                            movieTrackingObject.getMovieFolder;
+                        obj.DataType =                          movieTrackingObject.getDataType;
+                        obj.Keywords =                          movieTrackingObject.getKeywords;
 
-                        if isempty(movieTrackingObject.getDriftCorrection)
-                             obj.DriftCorrectionWasPerformed =       false;
-                        else
-                             obj.DriftCorrectionWasPerformed =       movieTrackingObject.testForExistenceOfDriftCorrection;
-                        end
+                        obj.DriftCorrectionWasPerformed =       movieTrackingObject.testForExistenceOfDriftCorrection;
+                        obj.TrackingWasPerformed =              movieTrackingObject.testForExistenceOfTracking;
 
-                       if isempty(movieTrackingObject.Tracking) || isempty(movieTrackingObject.Tracking.getTrackModel)
-                           obj.TrackingWasPerformed =               false;
-                       else
-                            obj.TrackingWasPerformed =              movieTrackingObject.testForExistenceOfTracking;
-                       end
+                        
 
-                       end
+                        
+                   end
                 case 2
                 
 
@@ -90,6 +85,19 @@ classdef PMMovieTrackingSummary
                assert(iscellstr(Value), 'Invalid argument type.')
                obj.AttachedFiles = Value;
            end
+           
+           function [Value] =            getMovieFolder(obj)
+              Value = obj.Folder;
+           end
+           
+            function [Value] =            getAttachedFiles(obj)
+              Value = obj.AttachedFiles;
+            end
+           
+            function [Value] =            getKeywords(obj)
+              Value = obj.Keywords;
+           end
+           
            
             function String =            getNickName(obj)
                 String = obj.NickName;

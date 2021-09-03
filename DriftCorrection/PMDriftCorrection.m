@@ -104,12 +104,10 @@ classdef PMDriftCorrection
         
               
          function obj =                         update(obj) % it would be good to always use this internally when necessary so that it doesn't have to be called from the outside:;
-               obj =    obj.updateManualDriftCorrection;
-                if ~ obj.testForExistenceOfDetailedDriftCorrection
-                    obj =           obj.createDetailedDriftAnalysisFromManualAnalysis;
-
-                end
-
+            obj =    obj.updateManualDriftCorrection;
+            if ~ obj.testForExistenceOfDetailedDriftCorrection
+                obj =           obj.createDetailedDriftAnalysisFromManualAnalysis;
+            end
          end
          
          function Values = getManualDriftCorrectionValues(obj)
@@ -129,9 +127,15 @@ classdef PMDriftCorrection
         end
         
          function [obj] =               updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
-             obj.ManualDriftCorrectionValues(frame,2) = xEnd;
-             obj.ManualDriftCorrectionValues(frame,3) = yEnd;
-             obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
+             
+             ListWithFrames = frame(:);
+             
+             for frame = ListWithFrames'
+                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
+                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
+                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
+             end
+             
          end
 
         function manualOrDetailedExists = testForExistenceOfDriftCorrection(obj) 
@@ -218,7 +222,7 @@ classdef PMDriftCorrection
         
         %% update manual drift correction
         function obj = updateManualDriftCorrection(obj)
-             if ~obj.testForExistenceOfManualDriftCorrection
+             if isempty(obj.ManualDriftCorrectionValues)
                     obj =            obj.autoPopulateDefaultManualValues;
              end
         end

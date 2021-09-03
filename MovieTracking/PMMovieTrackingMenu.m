@@ -4,6 +4,12 @@ classdef PMMovieTrackingMenu
     
     properties
         
+        
+        
+    end
+    
+    properties (Access = private)
+        
         MainFigure
         
         MovieSettings
@@ -19,10 +25,11 @@ classdef PMMovieTrackingMenu
         ShowMetaData
         ShowAttachedFiles
         
+        ExportImage
         ExportMovie
         ExportTrackCoordinates
         ShowCompleteMetaData
-        
+        ShowMetaDataSummary
     end
     
     methods
@@ -34,13 +41,36 @@ classdef PMMovieTrackingMenu
             
         end
         
+              function obj = setCallbacks(obj, varargin)
+             
+                NumberOfArguments = length(varargin);
+             switch NumberOfArguments
+                 case 10
+                    obj.MovieSettings.MenuSelectedFcn =                  varargin{1};
+                    obj.RenameLinkedMovies.MenuSelectedFcn =             varargin{2};
+                    obj.RelinkMovies.MenuSelectedFcn =                    varargin{3};
+
+                    obj.MapSourceFiles.MenuSelectedFcn =                 varargin{4};
+                    obj.DeleteImageCache.MenuSelectedFcn =                varargin{5};
+
+                    obj.ExportImage.MenuSelectedFcn =                     varargin{6};
+                    obj.ExportMovie.MenuSelectedFcn =                     varargin{7};
+                    obj.ExportTrackCoordinates.MenuSelectedFcn =           varargin{8};
+                    obj.ShowCompleteMetaData.MenuSelectedFcn =             varargin{9};
+                    obj.ShowMetaDataSummary.MenuSelectedFcn =             varargin{10};
+                 otherwise
+                     error('Wrong input.')
+                 
+             end
+             
+         end
+        
         
         
     end
     
     methods (Access = private)
-       
-        
+
          function obj = createMovieMenu(obj)
             
             MainMovieMenu=                            uimenu(obj.MainFigure);
@@ -79,6 +109,11 @@ classdef PMMovieTrackingMenu
             obj.ExportMovie.Tag=                   'Movies_ExportMovie';
             obj.ExportMovie.Enable=                'on';
             obj.ExportMovie.Separator=             'on';
+            
+            obj.ExportImage =                      uimenu(MainMovieMenu);
+            obj.ExportImage.Label=                 'Export active image into jpg file';
+            obj.ExportImage.Enable=                'on';
+            obj.ExportImage.Separator=             'off';
              
             obj.ExportTrackCoordinates=            uimenu(MainMovieMenu);
             obj.ExportTrackCoordinates.Label=      'Export track coodinates into csv file';
@@ -86,15 +121,20 @@ classdef PMMovieTrackingMenu
             obj.ExportTrackCoordinates.Enable=     'on';
             
             obj.ShowCompleteMetaData=              uimenu(MainMovieMenu);
-            obj.ShowCompleteMetaData.Label=        'Save deteiled meta-data into txt file';
+            obj.ShowCompleteMetaData.Label=        'Export detailed meta-data into txt file';
             obj.ShowCompleteMetaData.Tag=          'ShowCompleteMetaData';
             obj.ShowCompleteMetaData.Separator=    'off';
             obj.ShowCompleteMetaData.Enable=       'on';
 
-            
-
-            
-        end
+              
+            obj.ShowMetaDataSummary=              uimenu(MainMovieMenu);
+            obj.ShowMetaDataSummary.Label=        'Show meta-data summary in info text box';
+            obj.ShowMetaDataSummary.Separator=    'off';
+            obj.ShowMetaDataSummary.Enable=       'on';
+              
+         end
+        
+   
         
     end
 end

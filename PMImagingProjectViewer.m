@@ -7,12 +7,6 @@ classdef PMImagingProjectViewer
         Figure
         ProjectAxes
         
-        FileMenu
-        ProjectMenu
-        MovieMenu
-        DriftMenu
-        HelpMenu
-       
         ProjectViews
         MovieControllerViews
         TrackingViews
@@ -21,10 +15,7 @@ classdef PMImagingProjectViewer
         
         TagForKeywordEditor =           'PMImagingProject_EditKeywordsViewer'
         
-         % positioning
-        WidthOfProjectViews =           0.2; 
-        LeftPositionOfProjectViews =    0.01;
-         
+       
         StartRowNavigation =            1;
         StartRowChannels =              0.77;
         StartRowAnnotation =            0.65;  
@@ -41,7 +32,27 @@ classdef PMImagingProjectViewer
         
     end
     
-    properties(Constant)
+    properties (Access = private)
+        
+        FileMenu
+        ProjectMenu
+        MovieMenu
+        DriftMenu
+        InteractionsMenu
+        HelpMenu
+        
+        
+        
+        
+    end
+    
+    properties(Constant, Access = private)
+        
+              % positioning
+        WidthOfProjectViews =           0.2; 
+        LeftPositionOfProjectViews =    0.01;
+     
+        
         ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content'; 'Show content with non-matching channel information'; 'Show all unmapped movies'}; 
     end
 
@@ -69,14 +80,23 @@ classdef PMImagingProjectViewer
                 
                 obj.TrackingViews =                     PMTrackingView(obj);
                   
+                obj.InteractionsMenu =                  PMInteractionsMenu(obj.Figure);
+                
                 obj =                                   obj.CreateHelpMenu;  
                    
                 
         end
           
+        function row = getStartRowNavigation(obj)
+            row = obj.StartRowNavigation;
+            
+        end
+        
         function type = getMousClickType(obj)
             type = obj.Figure.SelectionType;
         end
+        
+   
         
         function list = getSelectedNicknames(obj)
            list =             obj.ProjectViews.ListOfMoviesInProject.String(obj.ProjectViews.ListOfMoviesInProject.Value);  
@@ -123,6 +143,226 @@ classdef PMImagingProjectViewer
              end
              
          end
+         
+          %% setFileMenuCallbacks
+          function obj = setFileMenuCallbacks(obj, varargin)
+             NumberOfArguments = length(varargin);
+             switch NumberOfArguments
+                 case 3
+                    obj.FileMenu.New.MenuSelectedFcn =                       varargin{1};
+                    obj.FileMenu.Save.MenuSelectedFcn =                      varargin{2};
+                    obj.FileMenu.Load.MenuSelectedFcn =                      varargin{3};
+
+           
+                 otherwise
+                     error('Wrong input.')
+                     
+             end
+              
+          end
+          
+            %% setProjectMenuCallbacks
+             function obj = setProjectMenuCallbacks(obj, varargin)
+             NumberOfArguments = length(varargin);
+             switch NumberOfArguments
+                 case 15
+                      obj.ProjectMenu.ChangeImageAnalysisFolder.MenuSelectedFcn= varargin{1};
+                    obj.ProjectMenu.ChangeMovieFolder.MenuSelectedFcn=         varargin{2};
+                    obj.ProjectMenu.ChangeExportFolder.MenuSelectedFcn=        varargin{3};
+
+                    obj.ProjectMenu.AddCapture.MenuSelectedFcn=                varargin{4};
+                    obj.ProjectMenu.AddAllCaptures.MenuSelectedFcn =           varargin{5};
+                    obj.ProjectMenu.RemoveCapture.MenuSelectedFcn=             varargin{6};
+                    obj.ProjectMenu.DeleteAllEntries.MenuSelectedFcn=         varargin{7};
+
+                    obj.ProjectMenu.ShowMissingCaptures.MenuSelectedFcn =      varargin{8};
+
+                    obj.ProjectMenu.Mapping.MenuSelectedFcn=                   varargin{9};
+                    obj.ProjectMenu.UnMapping.MenuSelectedFcn=                varargin{10};
+                    obj.ProjectMenu.DerivativeFiles.MenuSelectedFcn=                varargin{11};
+                    
+
+                    obj.ProjectMenu.UpdateMovieSummary.MenuSelectedFcn=        varargin{12};
+                    obj.ProjectMenu.ReplaceKeywords.MenuSelectedFcn=           varargin{13};
+
+                    obj.ProjectMenu.Info.MenuSelectedFcn =                varargin{14};
+
+                    obj.ProjectMenu.BatchProcessingChannel.MenuSelectedFcn =     varargin{15};
+
+                 otherwise
+                     error('Wrong input.')
+                     
+             end
+                     
+                     
+             end
+             
+                function [KeywordManagerHandles]=       createKeywordEditorView(obj)
+
+            
+                FirstColumnFilter =                 0.1;
+                SecondColumnFilter =                0.5;
+
+                FirstRowFilter =                    0.9;
+                SecondRowFilter =                   0.8;
+                ThirdRowFilter =                    0.1;
+
+                FilterOptions =                     {'Keywords'};
+
+                FigureHandle=                          findobj('Tag', obj.TagForKeywordEditor);
+                if isempty(FigureHandle)
+                    FigureHandle=                                                               figure;
+                else
+                    clf(FigureHandle)
+                end
+
+                figure(FigureHandle)
+                FigureHandle.Units=                                                             'normalized';
+                FigureHandle.Position=                                                          [0.05 0.2  0.6 0.7];
+                FigureHandle.MenuBar=                                                           'none';
+                FigureHandle.Tag=                                                              obj.TagForKeywordEditor;
+
+                DoneField=                              uicontrol;
+                DoneField.Style=                        'checkbox';
+                DoneField.String=                       'Done';
+                DoneField.Value =                       0;
+                DoneField.Units=                        'normalized';
+                DoneField.Position=                     [0.8 0.85  0.1 0.15];
+
+                SelectFilterTypeSource=                                           uicontrol;
+                SelectFilterTypeSource.Style=                                    'popupmenu';
+                SelectFilterTypeSource.String=                                    FilterOptions;
+                SelectFilterTypeSource.Units=                                     'normalized';
+                SelectFilterTypeSource.HorizontalAlignment=                       'left';	
+
+
+              
+                SelectFilterTypeSource.Position=                                  [FirstColumnFilter  FirstRowFilter 0.15 0.05];
+
+
+
+                PreFilterSource=                                          uicontrol;
+                PreFilterSource.Style=                                  'edit';
+                PreFilterSource.String=                                  '';
+                PreFilterSource.Units=                                            'normalized';
+                PreFilterSource.HorizontalAlignment=                                  'left';	
+                PreFilterSource.Position=                                             [FirstColumnFilter  SecondRowFilter 0.29 0.05];
+
+
+                ListWithFilterWordsSource=                                           uicontrol;
+                ListWithFilterWordsSource.Style=                                     'listbox';
+                ListWithFilterWordsSource.String=                                    '';
+                ListWithFilterWordsSource.Units=                                     'normalized';
+                ListWithFilterWordsSource.Min=                                       0;
+                ListWithFilterWordsSource.Max=                                       1;
+                ListWithFilterWordsSource.HorizontalAlignment=                       'left';	
+                ListWithFilterWordsSource.Position=                                  [FirstColumnFilter  ThirdRowFilter 0.29 0.4];
+
+
+                SelectFilterTypeTarget=                                           uicontrol;
+                SelectFilterTypeTarget.Style=                                    'popupmenu';
+                SelectFilterTypeTarget.String=                                    ['Delete', FilterOptions];
+                SelectFilterTypeTarget.Units=                                     'normalized';
+                SelectFilterTypeTarget.HorizontalAlignment=                       'left';	
+
+                SelectFilterTypeTarget.Value = 2;
+               
+                SelectFilterTypeTarget.Position=                                  [SecondColumnFilter  FirstRowFilter 0.15 0.05];
+
+
+
+                PreFilterTarget=                                                    uicontrol;
+                PreFilterTarget.Style=                                                  'edit';
+                PreFilterTarget.String=                                                 '';
+                PreFilterTarget.Units=                                                  'normalized';
+                PreFilterTarget.HorizontalAlignment=                                    'left';	
+
+
+               
+                PreFilterTarget.Position=                                             [SecondColumnFilter  SecondRowFilter 0.29 0.05];
+
+
+                ListWithFilterWordsTarget=                                           uicontrol;
+                ListWithFilterWordsTarget.Style=                                     'listbox';
+                ListWithFilterWordsTarget.String=                                    '';
+                ListWithFilterWordsTarget.Units=                                     'normalized';
+                ListWithFilterWordsTarget.Min=                                       0;
+                ListWithFilterWordsTarget.Max=                                       1;
+                ListWithFilterWordsTarget.HorizontalAlignment=                       'left';	
+
+             
+                ListWithFilterWordsTarget.Position=                                  [SecondColumnFilter  ThirdRowFilter 0.29 0.4];
+
+
+                KeywordManagerHandles.FigureHandle =                                  FigureHandle;
+                KeywordManagerHandles.DoneField =                                    DoneField;
+
+                KeywordManagerHandles.SelectFilterTypeSource =                        SelectFilterTypeSource;
+                KeywordManagerHandles.PreFilterSource =                               PreFilterSource;
+                KeywordManagerHandles.ListWithFilterWordsSource =                     ListWithFilterWordsSource;
+
+                KeywordManagerHandles.SelectFilterTypeTarget =                                  SelectFilterTypeTarget;
+                KeywordManagerHandles.PreFilterTarget =                               PreFilterTarget;
+                KeywordManagerHandles.ListWithFilterWordsTarget =                     ListWithFilterWordsTarget;
+ 
+        end
+       
+                
+            
+            
+            %% setMovieMenuCallbacks
+         function obj = setMovieMenuCallbacks(obj, varargin)
+             
+             obj.MovieMenu =    obj.MovieMenu.setCallbacks(varargin{:});
+             
+          
+          
+            
+         end
+         
+         function obj =  setDriftMenuCallbacks(obj, varargin)
+             
+             NumberOfArguments = length(varargin);
+             switch NumberOfArguments
+                 case 2
+                        obj.DriftMenu.ApplyManualDriftCorrection.MenuSelectedFcn =                          varargin{1} ;
+                        obj.DriftMenu.EraseAllDriftCorrections.MenuSelectedFcn =                            varargin{2} ;
+                 otherwise
+                     error('Wrong input.')
+                     
+             end
+            
+             
+         end
+            
+            
+         
+         function obj = setInteractionsMenuCallbacks(obj, varargin)
+             
+             
+             obj.InteractionsMenu = obj.InteractionsMenu.setCallbacks(varargin{:});
+             
+         end
+         
+         
+         function obj = setHelpMenuCallbacks(obj, varargin)
+             NumberOfArguments = length(varargin);
+             switch NumberOfArguments
+                 case 2
+                     obj.HelpMenu.KeyboardShortcuts.MenuSelectedFcn  =                  varargin{1};
+                     obj.HelpMenu.TrackingKeyboardshortcuts.MenuSelectedFcn  =        varargin{2};
+                     
+                     
+                 otherwise
+                     error('Wrong input.')
+                 
+             end
+              
+
+             
+         end
+           
+            
           
     end
     
@@ -132,27 +372,22 @@ classdef PMImagingProjectViewer
             
             fprintf('PMImagingProjectViewer:@CreateProjectFigure.\n')
             
-            ProjectWindowHandle=                                                    findobj('Tag', 'MainProjectWindow_V2');
-            if ~isempty(ProjectWindowHandle)
-                close(ProjectWindowHandle)
 
-            end
+            ProjectWindowHandle=             figure;
+            ProjectWindowHandle.Name=        'MainProjectWindow_V2';
+            ProjectWindowHandle.Tag=         'MainProjectWindow_V2';
+            ProjectWindowHandle.Units=       'normalized';
+            ProjectWindowHandle.Position=    [0.01 0.01 0.95 0.9];
+            ProjectWindowHandle.MenuBar=     'none';
+            ProjectWindowHandle.Color =      'k';
 
-            ProjectWindowHandle=                                            figure;
-            ProjectWindowHandle.Name=                                       'MainProjectWindow_V2';
-            ProjectWindowHandle.Tag=                                        'MainProjectWindow_V2';
-            ProjectWindowHandle.Units=                                      'normalized';
-            ProjectWindowHandle.Position=                                   [0.01 0.01 0.95 0.9];
-            ProjectWindowHandle.MenuBar=                                    'none';
-            ProjectWindowHandle.Color =                                     'k';
-
-            obj.Figure=                                                     ProjectWindowHandle;
+            obj.Figure=                      ProjectWindowHandle;
             
-            obj.ProjectAxes =                                                   axes;
-            obj.ProjectAxes.Parent =                                            ProjectWindowHandle;
-            obj.ProjectAxes.Units =                                             'normalized';
-            obj.ProjectAxes.Position =                                          [0 0 1 1];
-            obj.ProjectAxes.Visible =                                           'off';
+            obj.ProjectAxes =                axes;
+            obj.ProjectAxes.Parent =         ProjectWindowHandle;
+            obj.ProjectAxes.Units =          'normalized';
+            obj.ProjectAxes.Position =       [0 0 1 1];
+            obj.ProjectAxes.Visible =        'off';
 
         end
         
@@ -160,28 +395,24 @@ classdef PMImagingProjectViewer
         
         function [obj] =                            CreateFileMenu(obj)
             
-            fprintf('PMImagingProjectViewer:@CreateFileMenu.\n')
-            
-                    FigureHandle=               obj.Figure;
+                FileMain=                                            uimenu(obj.Figure);
+                FileMain.Label=                                      'File';
+                FileMain.Tag=                                        'FileMenu';
 
-                    FileMain=                                            uimenu(FigureHandle);
-                    FileMain.Label=                                      'File';
-                    FileMain.Tag=                                        'FileMenu';
+                File.New=                                            uimenu(FileMain);
+                File.New.Label=                                      'New';
+                File.New.Tag=                                        'Project_New';
 
-                    File.New=                                            uimenu(FileMain);
-                    File.New.Label=                                      'New';
-                    File.New.Tag=                                        'Project_New';
-                    
-                    File.Load=                                         uimenu(FileMain);
-                    File.Load.Label=                                   'Load';
-                    File.Load.Tag=                                     'Project_Load';
+                File.Load=                                         uimenu(FileMain);
+                File.Load.Label=                                   'Load';
+                File.Load.Tag=                                     'Project_Load';
 
-                    File.Save=                                           uimenu(FileMain);
-                    File.Save.Label=                                     'Save';
-                    File.Save.Tag=                                       'Project_Save';
-                    File.Save.Enable=                                    'on';
-            
-                    obj.FileMenu =  File;
+                File.Save=                                           uimenu(FileMain);
+                File.Save.Label=                                     'Save';
+                File.Save.Tag=                                       'Project_Save';
+                File.Save.Enable=                                    'on';
+
+                obj.FileMenu =  File;
             
         end
         
@@ -237,6 +468,12 @@ classdef PMImagingProjectViewer
                     obj.ProjectMenu.UnMapping.Separator=      'off';
                     obj.ProjectMenu.UnMapping.Enable=         'on';
                     
+                       obj.ProjectMenu.DerivativeFiles=                uimenu(ProjectMenuInside);
+                    obj.ProjectMenu.DerivativeFiles.Label=          'Create derivative files';
+                    obj.ProjectMenu.DerivativeFiles.Separator=      'off';
+                    obj.ProjectMenu.DerivativeFiles.Enable=         'on';
+                    
+                    
                        obj.ProjectMenu.BatchProcessingChannel=                 uimenu(ProjectMenuInside);
                     obj.ProjectMenu.BatchProcessingChannel.Label=           'Set channels of selected movies by active movie';
                     obj.ProjectMenu.BatchProcessingChannel.Separator=       'off';
@@ -283,6 +520,9 @@ classdef PMImagingProjectViewer
                     obj.HelpMenu.KeyboardShortcuts.Tag=                              'KeyboardShortcuts';
                     obj.HelpMenu.KeyboardShortcuts.Enable=                           'on';
                     
+                    obj.HelpMenu.TrackingKeyboardshortcuts=                                  uimenu(HelpMenuInside);
+                    obj.HelpMenu.TrackingKeyboardshortcuts.Label=                            'Show keyboard shortcuts for tracking';
+                    obj.HelpMenu.TrackingKeyboardshortcuts.Enable=                           'on';
             
             
           end
@@ -634,116 +874,7 @@ classdef PMImagingProjectViewer
         end
         
         
-        function [KeywordManagerHandles]=       createKeywordEditorView(obj)
-
-            
-                FirstColumnFilter =                 0.1;
-                SecondColumnFilter =                0.5;
-
-                FirstRowFilter =                    0.9;
-                SecondRowFilter =                   0.8;
-                ThirdRowFilter =                    0.1;
-
-                FilterOptions =                     {'Keywords'};
-
-                FigureHandle=                          findobj('Tag', obj.TagForKeywordEditor);
-                if isempty(FigureHandle)
-                    FigureHandle=                                                               figure;
-                else
-                    clf(FigureHandle)
-                end
-
-                figure(FigureHandle)
-                FigureHandle.Units=                                                             'normalized';
-                FigureHandle.Position=                                                          [0.05 0.2  0.6 0.7];
-                FigureHandle.MenuBar=                                                           'none';
-                FigureHandle.Tag=                                                              obj.TagForKeywordEditor;
-
-                DoneField=                              uicontrol;
-                DoneField.Style=                        'checkbox';
-                DoneField.String=                       'Done';
-                DoneField.Value =                       0;
-                DoneField.Units=                        'normalized';
-                DoneField.Position=                     [0.8 0.85  0.1 0.15];
-
-                SelectFilterTypeSource=                                           uicontrol;
-                SelectFilterTypeSource.Style=                                    'popupmenu';
-                SelectFilterTypeSource.String=                                    FilterOptions;
-                SelectFilterTypeSource.Units=                                     'normalized';
-                SelectFilterTypeSource.HorizontalAlignment=                       'left';	
-
-
-              
-                SelectFilterTypeSource.Position=                                  [FirstColumnFilter  FirstRowFilter 0.15 0.05];
-
-
-
-                PreFilterSource=                                          uicontrol;
-                PreFilterSource.Style=                                  'edit';
-                PreFilterSource.String=                                  '';
-                PreFilterSource.Units=                                            'normalized';
-                PreFilterSource.HorizontalAlignment=                                  'left';	
-                PreFilterSource.Position=                                             [FirstColumnFilter  SecondRowFilter 0.29 0.05];
-
-
-                ListWithFilterWordsSource=                                           uicontrol;
-                ListWithFilterWordsSource.Style=                                     'listbox';
-                ListWithFilterWordsSource.String=                                    '';
-                ListWithFilterWordsSource.Units=                                     'normalized';
-                ListWithFilterWordsSource.Min=                                       0;
-                ListWithFilterWordsSource.Max=                                       1;
-                ListWithFilterWordsSource.HorizontalAlignment=                       'left';	
-                ListWithFilterWordsSource.Position=                                  [FirstColumnFilter  ThirdRowFilter 0.29 0.4];
-
-
-                SelectFilterTypeTarget=                                           uicontrol;
-                SelectFilterTypeTarget.Style=                                    'popupmenu';
-                SelectFilterTypeTarget.String=                                    ['Delete', FilterOptions];
-                SelectFilterTypeTarget.Units=                                     'normalized';
-                SelectFilterTypeTarget.HorizontalAlignment=                       'left';	
-
-                SelectFilterTypeTarget.Value = 2;
-               
-                SelectFilterTypeTarget.Position=                                  [SecondColumnFilter  FirstRowFilter 0.15 0.05];
-
-
-
-                PreFilterTarget=                                                    uicontrol;
-                PreFilterTarget.Style=                                                  'edit';
-                PreFilterTarget.String=                                                 '';
-                PreFilterTarget.Units=                                                  'normalized';
-                PreFilterTarget.HorizontalAlignment=                                    'left';	
-
-
-               
-                PreFilterTarget.Position=                                             [SecondColumnFilter  SecondRowFilter 0.29 0.05];
-
-
-                ListWithFilterWordsTarget=                                           uicontrol;
-                ListWithFilterWordsTarget.Style=                                     'listbox';
-                ListWithFilterWordsTarget.String=                                    '';
-                ListWithFilterWordsTarget.Units=                                     'normalized';
-                ListWithFilterWordsTarget.Min=                                       0;
-                ListWithFilterWordsTarget.Max=                                       1;
-                ListWithFilterWordsTarget.HorizontalAlignment=                       'left';	
-
-             
-                ListWithFilterWordsTarget.Position=                                  [SecondColumnFilter  ThirdRowFilter 0.29 0.4];
-
-
-                KeywordManagerHandles.FigureHandle =                                  FigureHandle;
-                KeywordManagerHandles.DoneField =                                    DoneField;
-
-                KeywordManagerHandles.SelectFilterTypeSource =                        SelectFilterTypeSource;
-                KeywordManagerHandles.PreFilterSource =                               PreFilterSource;
-                KeywordManagerHandles.ListWithFilterWordsSource =                     ListWithFilterWordsSource;
-
-                KeywordManagerHandles.SelectFilterTypeTarget =                                  SelectFilterTypeTarget;
-                KeywordManagerHandles.PreFilterTarget =                               PreFilterTarget;
-                KeywordManagerHandles.ListWithFilterWordsTarget =                     ListWithFilterWordsTarget;
- 
-        end
-        
+      
           function obj = setImageSourceTypeFilterView(obj, SelectedIndex)
                 obj.ProjectViews.FilterForKeywords.Enable=     'on';
                 obj.ProjectViews.FilterForKeywords.String=     obj.ProjectFilterList;

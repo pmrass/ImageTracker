@@ -56,7 +56,7 @@ function [myMovieController] = ReadAndViewImage
         myMovieController.LoadedMovie.SelectedChannels(ChannelNumberIWantToSee) =     true;
         
         % update frame number you want to view:
-        myMovieController  =                                                        myMovieController.resetFrame( FrameNumberIWantToSee);
+        myMovieController  =                                                        myMovieController.setFrame( FrameNumberIWantToSee);
 
        
        

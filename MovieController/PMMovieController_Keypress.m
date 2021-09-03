@@ -3,7 +3,10 @@ classdef PMMovieController_Keypress
     %   Detailed explanation goes here
     
     properties (Access= private)
+        PressedKey
+        Modifiers
         MovieController
+        
     end
     
     methods
@@ -16,189 +19,27 @@ classdef PMMovieController_Keypress
         end
         
         function MyMovieController = processKeyInput(obj, PressedKey, CurrentModifier)
+            obj.PressedKey =     PressedKey;
+            if ischar(CurrentModifier)
+               CurrentModifier = {CurrentModifier}; 
+            end
+            obj.Modifiers =      PMKeyModifiers(CurrentModifier).getNameOfModifier;
+            obj =                obj.processKeyPressAnyTime;
+               
+            switch obj.MovieController.getViews.getEditingType
             
-            switch double(PressedKey)
-                case 28 % left 
-                    obj.MovieController =       obj.MovieController.goOneFrameDown;
-                case 29 %right 
-                    obj.MovieController =       obj.MovieController.goOneFrameUp;
-                case 30 % up 
-                    obj.MovieController = obj.MovieController.goOnePlaneUp;
-                case 31 %down
-                      obj.MovieController = obj.MovieController.goOnePlaneDown;
-            end
-
-            switch PressedKey
-                    case {'x','X'}  %% navigation shortcuts: first frame, last/ first tracked frame:
-                         switch length(CurrentModifier)
-                             case 0
-                                obj.MovieController =      obj.MovieController.resetFrame(1);
-                             case 1
-                                 switch CurrentModifier{1,1}
-                                     case 'shift'
-                                         obj.MovieController =      obj.MovieController.goToLastFrame;
-                                 end
-                         end
-                                
-                    case {'d', 'D'} 
-                        if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                             switch length(CurrentModifier)
-                                 case 0 
-                                    obj.MovieController =       obj.MovieController.goToLastContiguouslyTrackedFrameInActiveTrack;
-                                case 2 
-                                     if max(strcmp(CurrentModifier,'shift')) && max(strcmp(CurrentModifier, 'command'))
-                                        obj.MovieController =      obj.MovieController.deleteActiveTrack;
-                                     end
-                             end
-                        end
+                case 'No editing'
+                    
+                case 'Manual drift correction'
                         
-                    case 'g'
-                        obj.MovieController =       obj.MovieController.gotToFirstTrackedFrameFromCurrentPoint;
-                        
-                    case 'm' 
-                         switch length(CurrentModifier)
-                             case 0
-                                obj.MovieController =   obj.MovieController.setImageMaximumProjection(~obj.MovieController.getViews.Navigation.ShowMaxVolume.Value);
-                             case 2
-                                 if max(strcmp(CurrentModifier,'shift')) && max(strcmp(CurrentModifier, 'command'))
-                                     obj.MovieController = obj.MovieController.mergeTracksByProximity;
-                                 end       
-                         end
-                        
-                    case 'o' % crop-toggle
-                        obj.MovieController =                  obj.MovieController.toggleCroppingOn;
-                        
-                    case {'1', '2', '3', '4', '5', '6', '7', '8', '9'} % channel toggle
-                            if obj.MovieController.getViews.Figure.CurrentObject == obj.MovieController.getViews.MovieView.MainImage % do this only when on image (otherwise this gets always activated)
-                                 obj.MovieController =   obj.MovieController.toggleVisibilityOfChannelIndex(str2double(PressedKey));    
-                            end
-
-                    case 'i'   
-                        obj.MovieController =               obj.MovieController.toggleTimeVisibility;
-
-                    case 'z'
-                        obj.MovieController =                  obj.MovieController.togglePlaneAnnotationVisibility; 
-
-                    case {'s','S'}
-                         switch length(CurrentModifier)
-                             case 0 
-                                 obj.MovieController =      obj.MovieController.toggleScaleBarVisibility;
-                                 
-                             case 1
-                                 switch CurrentModifier{1,1}
-                                     case 'shift'
-                                         if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                                                obj.MovieController =     obj.MovieController.splitTrackAtFrameAndDeleteFirst;  
-                                         end
-                                 end
-
-                             case 2
-                                  if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                                       if max(strcmp(CurrentModifier,'shift')) && max(strcmp(CurrentModifier, 'command'))
-                                           obj.MovieController =            obj.MovieController.splitSelectedTracksAndDeleteSecondPart;
-                                       end
-                                  end
-                         end
+                case 'Tracking'
+                    obj = obj.processKeypressDuringTracking;
                 
-
-                    case {'c','C'} %% toggle centroids, masks, tracks
-                         switch length(CurrentModifier)
-                             case 0
-                                 obj.MovieController = toggleCentroidVisibility(obj.MovieController);
-                                 
-                             case 1
-                                 switch CurrentModifier{1,1} 
-                                     case 'shift'
-                                         obj.MovieController =      obj.MovieController.removeMasksWithNoPixels;
-                                     case 'command'
-                                         obj.MovieController =      obj.MovieController.selectAllTracks; 
-                                 end
-                         end
-
-                    case 'a'
-                        obj.MovieController =       obj.MovieController.toggleMaskVisibility;
-                        
-                    case 't'
-                        obj.MovieController =       obj.MovieController.toggleTrackVisibility;
-
-                    case 'u' 
-                            switch length(CurrentModifier) 
-                                case 0
-                                    obj.MovieController =       obj.MovieController.resetAllTrackViews;
-                                    
-                                case 2
-                                     if max(strcmp(CurrentModifier,'shift')) && max(strcmp(CurrentModifier, 'command'))
-                                          obj.MovieController =  obj.MovieController.setFinishStatusOfTrackTo('Unfinished');
-                                     end
-                             end
-        
-                    case {'f','F'} %% tracking shortcuts
-                            if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                                 switch length(CurrentModifier)
-                                     case 0
-                                         % currently not recommended option;
-                                         % using brightest pixels to detect cells and then create 3D mask;
-                                         % problems: very slow, leads to a lot of double-tracking;
-                                          obj.MovieController =   obj.MovieController.autoDetectMasksOfCurrentFrame;
-                                    
-                                     case 1
-                                         switch CurrentModifier{1,1}
-                                             case 'shift' 
-                                                 obj.MovieController =   obj.MovieController.autoDetectMasksByCircleRecognition; % currently recommeneded approach;
-                                         end
-                                         
-                                     case 2
-                                         if max(strcmp(CurrentModifier,'shift')) && max(strcmp(CurrentModifier, 'command'))
-                                             obj.MovieController =  obj.MovieController.setFinishStatusOfTrackTo('Finished');
-                                         end
-                                 end
-                            end
-                        
-
-                    case 'l' 
-                        if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                            obj.MovieController =   obj.MovieController.autoTrackingWhenNoMaskInNextFrame;
-                        end
-
-                    case {'R','r'} 
-                        if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                             switch length(CurrentModifier)
-                                 case 0
-                                     % do both segmentation and tracking of current cell (consecutive) frames from scratch;
-                                     % this is now mostly replace by 
-                                     obj.MovieController =              obj.MovieController.autoForwardTrackingOfActiveTrack;
-                                 case 1
-                                     switch CurrentModifier{1,1}
-                                         case 'shift'
-                                             % for current track:
-                                             % if unhappy with the masks of the current track: create 'mini' masks;
-                                             % this will can be done for 're-creating' masks (re-creating masks ignores current masks that cannot be satisfactarily recreated;
-                                             obj.MovieController =     obj.MovieController.minimizeMasksOfCurrentTrack;
-                                             
-                                         case 'command'
-                                             % for current track, use current centroid as basis and recreate 3D mask by autothresholding surrounding area;
-                                             obj.MovieController =   obj.MovieController.recreateMasksOfCurrentTrack;
-
-                                     end
-
-                             end
-                        end
-
-                    case 'v' 
-                        if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                            obj.MovieController =              obj.MovieController.autoBackwardTrackingOfActiveTrack;
-                        end
-
-                    case 'b' 
-                         if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                            obj.MovieController =                                   obj.MovieController.addExtraPixelRowToCurrentMask;
-                         end
-
-                    case 'e' 
-                        if strcmp(obj.MovieController.getViews.getEditingType, 'Tracking')
-                            obj.MovieController =                                   obj.MovieController.removePixelRimFromCurrentMask;
-                        end
+                otherwise
+                    error('Editing type not supported.')
+                    
             end
+            
             MyMovieController = obj.MovieController;
         end
  
@@ -206,8 +47,251 @@ classdef PMMovieController_Keypress
     
     methods (Access = private)
         
+        function obj = processKeyPressAnyTime(obj)
+            
+             switch double(obj.PressedKey)
+                case 28 % left 
+                    obj.MovieController =       obj.MovieController.setFrame('previous');
+                    
+                case 29 %right 
+                    obj.MovieController =       obj.MovieController.setFrame('next');
+                    
+                case 30 % up 
+                    obj.MovieController =       obj.MovieController.goOnePlaneUp;
+                    
+                case 31 %down
+                      obj.MovieController =     obj.MovieController.goOnePlaneDown;
+                      
+             end
+            
+                switch obj.PressedKey
+               
+                    case 'a'
+                        obj.MovieController =       obj.MovieController.setViews('maskVisibility', 'toggle');
+
+                    case {'c','C'} %% toggle centroids, masks, tracks
+                         switch obj.Modifiers
+                             case 'Nil'
+                                    obj.MovieController = obj.MovieController.setViews('centroidVisibility', 'toggle');
+                             case 'command'
+                                    obj.MovieController =      obj.MovieController.performTrackingMethod('setSelectedTracks', 'all'); 
+                         end
+
+              
+                        
+                    case 'i'   
+                        obj.MovieController =         obj.MovieController.setViews('timeAnnotationVisibility', 'toggle');
+                        
+                    case 'm' 
+                         switch obj.Modifiers
+                             case 'Nil'
+                                obj.MovieController =   obj.MovieController.setImageMaximumProjection(~obj.MovieController.getViews.getShowMaximumProjection);
+                         end
+                        
+                    case 'o' % crop-toggle
+                        obj.MovieController =                  obj.MovieController.setViews('CroppingOn', 'toggle');
+                        
+                    case {'1', '2', '3', '4', '5', '6', '7', '8', '9'} % channel toggle
+                        switch obj.MovieController.getViews.getActiveView    
+                            case 'MovieImage'
+                                
+                                obj.MovieController =   obj.MovieController.setViews('channelVisibility', 'toggleByKeyPress');
+                                
+                                   
+                        end
+                               
+                    case 'z'
+                        obj.MovieController =         obj.MovieController.setViews('planeAnnotationVisibility', 'toggle'); 
+
+                    case {'s','S'}
+                        switch obj.Modifiers
+                            case 'Nil'
+                                 obj.MovieController =      obj.MovieController.setViews('scaleBarVisibility', 'toggle'); 
+                        end
+                        
+                    case 't'
+                        obj.MovieController =       obj.MovieController.setViews('trackVisibility', 'toggle');
+
+                    case {'u', 'U'} 
+                        switch obj.Modifiers
+                            case 'Nil'
+                                obj.MovieController =       obj.MovieController.setTrackViews;
+                        end
+                        
+                   case {'x','X'}  %% navigation shortcuts: first frame, last/ first tracked frame:
+                         switch obj.Modifiers
+                             case 'Nil'
+                                obj.MovieController =      obj.MovieController.setFrame('first');
+                                
+                                
+                                
+                             case 'shift'
+                                obj.MovieController =      obj.MovieController.setFrame('last');
+                         end 
         
-        
+                end
+            
+        end
+                 
+        function obj = processKeypressDuringTracking(obj)
+            
+            switch obj.PressedKey
+                
+                  case 'b' 
+                         obj.MovieController =           obj.MovieController.performTrackingMethod('addPixelRimToActiveMask');
+
+                  case {'d', 'D'}
+                       switch obj.Modifiers
+                            case 'Nil' 
+                                obj.MovieController =       obj.MovieController.setFrame('lastFrameOfCurrentTrackStretch');
+                           case 'shift'
+                               obj.MovieController =       obj.MovieController.setFrame('firstFrameOfActiveTrack');
+                            case 'ShiftAndCommand'
+                                  obj.MovieController =     obj.MovieController.performTrackingMethod('deleteActiveTrack');
+                       end       
+                         
+                case 'e' 
+                         obj.MovieController =          obj.MovieController.performTrackingMethod('removePixelRimFromActiveMask');
+                     
+                         
+                case {'f','F'} %% tracking shortcut
+                    
+                    switch obj.Modifiers
+                        case 'Nil' 
+                            % currently not recommended option;
+                            % using brightest pixels to detect cells and then create 3D mask;
+                            % problems: very slow, leads to a lot of double-tracking;
+                            obj.MovieController =   obj.MovieController.performTrackingMethod('autoTracking', 'newMasks', 'thresholdingInBrightAreas');
+                           
+                        case 'shift' 
+                            obj.MovieController =   obj.MovieController.performTrackingMethod('autoTracking', 'newMasks', 'circle'); % currently recommeneded approach;
+                                
+                        case 'ShiftAndCommand'
+                             obj.MovieController =  obj.MovieController.setFinishStatusOfTrackTo('Finished');  
+                    end
+                    
+                   
+                        
+                    
+              case {'g', 'G'}
+                 switch obj.Modifiers
+                     case 'Nil'
+                         obj.MovieController =    obj.MovieController.setActiveTrackTo('firstForwardGapInNextUnfinishedTrack');
+                     case 'shift'
+                         obj.MovieController =    obj.MovieController.trackGapsForAllTracks('Forward');
+                         obj.MovieController =    obj.MovieController.trackGapsForAllTracks('Backward');   
+                     case 'ShiftAndCommand'
+                         
+                         obj.MovieController =    obj.MovieController.setFrame('firstFrameOfCurrentTrackStretch');
+                 end
+                        
+                         
+                case {'i', 'I'}
+                     switch obj.Modifiers
+                         case 'shift'
+                             obj.MovieController =  obj.MovieController.setActiveTrackTo('firstForwardGapInNextTrack');
+                             
+                        case 'ShiftAndCommand'
+                            obj.MovieController =  obj.MovieController.setActiveTrackTo('firstForwardGapInNextUnfinishedTrack');
+                     end
+                    
+
+                case 'l' 
+                            obj.MovieController =  obj.MovieController.performTrackingMethod('autoTracking', 'allTracks', 'forwardFromActiveFrame');
+
+                case {'m', 'M'}
+                    switch obj.Modifiers
+                        case 'shift'
+                            try
+                                obj.MovieController =  obj.MovieController.performTrackingMethod('mergeSelectedTracks');
+                            catch ME
+                                throw(ME)
+                            end
+                        case 'ShiftAndCommand'
+                                 obj.MovieController =  obj.MovieController.mergeTracksByProximity;  
+                    end
+                          
+                case {'p', 'P'}
+                     switch obj.Modifiers
+                        case 'ShiftAndCommand'
+                            try 
+                                 obj.MovieController =  obj.MovieController.performTrackingMethod('fillGapsOfActiveTrack');  
+                            catch ME
+                                throw(ME)
+                            end
+                     end
+                    
+                    
+                    
+                case {'R','r'} 
+                    switch obj.Modifiers
+                         case 'Nil' 
+                             % do both segmentation and tracking of current cell (consecutive) frames from scratch;
+                             % this is now mostly replace by 
+                              obj.MovieController =              obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack', 'forwardInFirstGap');
+                             
+                         case 'shift' 
+                             % for current track:
+                             % if unhappy with the masks of the current track: create 'mini' masks;
+                             % this will can be done for 're-creating' masks (re-creating masks ignores current masks that cannot be satisfactarily recreated;
+                             obj.MovieController =     obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack',  'convertAllMasksToMiniMasks');
+
+                          case 'command'
+                             % for current track, use current centroid as basis and recreate 3D mask by autothresholding surrounding area;
+                             obj.MovieController =   obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack',  'convertAllMasksByCurrentSettings');
+
+                    end
+
+
+                    case {'s','S'}
+                         switch obj.Modifiers
+                             case 'shift'
+                                  obj.MovieController =     obj.MovieController.performTrackingMethod('splitTrackAtFrameAndDeleteFirstPart');  
+                             case 'ShiftAndCommand'
+                                  obj.MovieController =     obj.MovieController.performTrackingMethod('splitSelectedTracksAndDeleteSecondPart');
+                         end
+                         
+                   case {'t', 'T'}
+                     switch obj.Modifiers
+                        case 'ShiftAndCommand'
+                            try 
+                                 obj.MovieController =  obj.MovieController.truncateActiveTrackToFit;  
+                            catch ME
+                                throw(ME)
+                            end
+                     end
+                         
+                         
+                     case {'u','U'}
+                         switch obj.Modifiers 
+                             case 'ShiftAndCommand'
+                                obj.MovieController =  obj.MovieController.setFinishStatusOfTrackTo('Unfinished');
+                         end
+                          
+                    case {'v', 'V'} 
+                         switch obj.Modifiers 
+                             case 'Nil'
+                                  try 
+                                    obj.MovieController =              obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack', 'backwardInLastGap');
+                                     catch E
+                                       throw(E)
+                                    end
+
+                             case 'command'
+                                 obj.MovieController =    obj.MovieController.setActiveTrackTo('backWardGapInNextUnfinishedTrack');
+                                 
+                            
+                         end
+                         
+
+                    case 'w'
+                        switch obj.Modifiers 
+                           case 'command'
+                               obj.MovieController =            obj.MovieController.performTrackingMethod('splitTrackAfterActiveFrame');
+                        end  
+            end
+            
+        end
         
     end
 end

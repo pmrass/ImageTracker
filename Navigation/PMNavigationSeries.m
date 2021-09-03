@@ -23,15 +23,24 @@ classdef PMNavigationSeries < PMNavigation
             obj.Navigations =  Value;
         end
         
+      
+        
+        
         function maxRows = getMaxRow(obj)
             maxRows =         arrayfun(@(x) x.getMaxRow, obj.Navigations);
             maxRows =          unique(maxRows);
+            if isempty(maxRows)
+               maxRows = 1; 
+            end
             assert(length(maxRows) == 1, 'Max planes from different Navigation need to be identical.')
         end
         
         function maxColumn = getMaxColumn(obj)
             maxColumn =           arrayfun(@(x) x.getMaxColumn, obj.Navigations);
             maxColumn =             unique(maxColumn);
+             if isempty(maxColumn)
+               maxColumn = 1; 
+            end
             assert(length(maxColumn) == 1, 'Max planes from different Navigation need to be identical.')
         end
         
@@ -43,12 +52,18 @@ classdef PMNavigationSeries < PMNavigation
         function maxPlane = getMaxPlane(obj)
             maxPlane =         arrayfun(@(x) x.getMaxPlane, obj.Navigations);
             maxPlane =          unique(maxPlane);
+            if isempty(maxPlane)
+               maxPlane = 1; 
+            end
             assert(length(maxPlane) == 1, 'Max planes from different Navigation need to be identical.')
         end
         
         function maxChannel = getMaxChannel(obj)
             maxChannel =         arrayfun(@(x) x.getMaxChannel, obj.Navigations);
             maxChannel =          unique(maxChannel);
+            if isempty(maxChannel)
+               maxChannel = 1; 
+            end
             assert(length(maxChannel) == 1, 'Max planes from different Navigation need to be identical.')
         end
         

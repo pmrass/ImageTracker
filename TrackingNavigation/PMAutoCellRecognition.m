@@ -23,24 +23,21 @@ classdef PMAutoCellRecognition
         % set these values for each plane;
         % cells get to get smaller/dimmer in deeper planes therefore size of filter/ radisu and sensitivy should be increase; 
 
-        RadiusRange =              [];
-        Sensitivity =              []% higher values make it more sensitive (more circles are detected (use between 0.85 and 0.95;
-        EdgeThreshold =            []; % higher values require higher contrast;
+        RadiusRange =               [];
+        Sensitivity =               []% higher values make it more sensitive (more circles are detected (use between 0.85 and 0.95;
+        EdgeThreshold =             []; % higher values require higher contrast;
                   
-        EliminateHighDensityEvents = false;
-        HighDensityDistanceLimit =      50; % if a cell has too many neighbors, it will be deleted;
-        HighDensityNumberLimit =        9; % this is possibly noise, or if they are cells they would be difficult to track anyway;
+        EliminateHighDensityEvents =        false;
+        HighDensityDistanceLimit =          50; % if a cell has too many neighbors, it will be deleted;
+        HighDensityNumberLimit =            9; % this is possibly noise, or if they are cells they would be difficult to track anyway;
         
         DistanceLimitForPlaneMerging =       10;
         DetectedCoordinates =                cell(0,1);
-
-        
-       
-        
+  
     end
     
     properties (Access = private) % circle recogition
-         RadiusRangeFirstPlane =       [5, 9];
+        RadiusRangeFirstPlane =       [5, 9];
         RadiusRangeLastPlane =       [5, 10];
 
         SensitivityMinimum=        0.92;
@@ -75,10 +72,11 @@ classdef PMAutoCellRecognition
         function obj =       removeRedundantData(obj)
                     obj.ImageSequence = cell(size(obj.ImageSequence,1),1);
         end
-                    %% getters:
+
         function cells = getDetectedCoordinates(obj)
             cells = obj.DetectedCoordinates;
         end
+        
         function number = getNumberOfFrames(obj)
               number =                size(obj.ImageSequence,1);
         end
@@ -295,10 +293,10 @@ classdef PMAutoCellRecognition
             CollectionOfCellMasks_Planes =      cell(size(obj.ImageSequence{SetFrame,1},3),1);
             for  SetPlane= 1 : size(obj.ImageSequence{SetFrame,1},3)
                 
-                CurrentImage = obj.ImageSequence{SetFrame,1}(:,:,SetPlane,:,obj.ActiveChannel);
+                ImageOfCurrentPlane = obj.ImageSequence{SetFrame,1}(:,:,SetPlane,:,obj.ActiveChannel);
                 figure(100)
-                imagesc(CurrentImage)
-                    MyDetectedCoordinates =      imfindcircles( CurrentImage, obj.RadiusRange(SetPlane,:), 'Sensitivity' ,  obj.Sensitivity(SetPlane), 'EdgeThreshold', obj.EdgeThreshold(SetPlane));
+                imagesc(ImageOfCurrentPlane)
+                    MyDetectedCoordinates =      imfindcircles( ImageOfCurrentPlane, obj.RadiusRange(SetPlane,:), 'Sensitivity' ,  obj.Sensitivity(SetPlane), 'EdgeThreshold', obj.EdgeThreshold(SetPlane));
                     if isempty(MyDetectedCoordinates)
                     else
                         MyFilteredCoordinates = obj.removeHighDensityCoordinates(MyDetectedCoordinates, obj.ImageSequence{SetFrame,1}(:,:,SetPlane,:,obj.ActiveChannel));

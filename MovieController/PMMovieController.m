@@ -1,148 +1,834 @@
 classdef PMMovieController < handle
-    %PMMOVIETRACKINGSTATE Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIECONTROLLER manages visual representation of linked PMMovieTrackingData;
+    %   use key short-cuts to navigate and annotated active movie;
+    % has a cache of loaded images to facilitate rapid tracking to movie-sequences;
     
-    properties
+
+    properties (Access = private) % data-source and influences on model;
+        LoadedMovie
+        MaskLocalizationSize =                  5; % info for segmentation (this could potentially be expanded or moved to MovieTracking
+
+    end
+    
+    properties (Access = private) % filemanagement
+        InteractionsFolder
+        ExportFolder
         
+    end
+    
+    properties (Access = private) % data-cash
+        LoadedImageVolumes  
+        DefaultNumberOfLoadedFrames =           40
+    end
+    
+    properties (Access = private) % relevant for viewer
+        
+        Views 
+        TrackingAutoTrackingController =        PMTrackingNavigationAutoTrackController
+        TrackingNavigationEditViewController =  PMTrackingNavigationEditViewController
+        AutoCellRecognitionController
+        
+        MaskColor =                             [NaN NaN 150]; % some settings for how 
+        
+    end
+    
+    properties (Access = private) % user input
+        
+        MouseAction =                           'No action';
+        
+        PressedKeyValue 
+        MouseDownRow =                          NaN
+        MouseDownColumn =                       NaN
+        MouseUpRow =                            NaN
+        MouseUpColumn =                         NaN
         
     end
     
     properties (Access = private)
-        LoadedMovie
-        Views
-        
-        
-        
-        MouseAction =                        'No action';
-        
-        LoadedImageVolumes   =                          cell(0,1) % saving image information (saves actual images and settings for how many images should be loaded)
-        DefaultNumberOfLoadedFrames =                   40
-        PressedKeyValue 
-        MouseDownRow =                                  NaN
-        MouseDownColumn =                               NaN
-        MouseUpRow =                                    NaN
-        MouseUpColumn =                                 NaN
-        
-        MaskLocalizationSize =                          5; % info for segmentation (this could potentially be expanded or moved to MovieTracking
-      
-        TrackingViews
-        TrackingAutoTrackingController =                PMTrackingNavigationAutoTrackController
-        TrackingNavigationEditViewController =          PMTrackingNavigationEditViewController
-        AutoCellRecognitionController
-        
-        
-        MaskColor =                                     [NaN NaN 150]; % some settings for how 
-
+       % help for interaction analysis
+       InteractionImageVolume
         
     end
     
-    methods
-        
+    methods % initialziation
         
         function obj =          PMMovieController(varargin)
-            fprintf('@Create PMMovieController ')
-            if ~isempty(varargin) % input should be movie controller views
-                switch length(varargin)
-                    case 0 
+            % PMMOVIECONTROLLER allows construction of movie-controller with 1 and 2 arguments;
+            % 1 argument: 
+            %   option 1: PMImagingProjectViewer, no data, but setup all views;
+            %   option 2: PMMovieTracking
+            % 2 arguments: 
+            %    1: PMImagingProjectViewer;
+            %    2: PMMovieTracking;
+             switch length(varargin)
+
                     case 1 % only connected movies
-                        Input =     varargin{1};
-                        if strcmp(class(Input), 'PMImagingProjectViewer')
-                            fprintf('from PMImagingProjectViewer\n')
-                            obj.Views =                                                   Input.MovieControllerViews;
-                            obj.Views.Figure =                                            Input.Figure;   
-                            
-                            obj.TrackingViews =                                           Input.TrackingViews.ControlPanels;
-                            obj.Views.changeAppearance;
+                        
+                        assert(isscalar(varargin{1}), 'Wrong input.')
 
-                            obj.Views.disableAllViews;
-                            obj.Views =                                                         obj.Views.deleteAllTrackLineViews;
-
-                     
+                        switch class(varargin{1})
                             
-                        else
-                            ViewObject =                                                         Input;
-                            obj.Views =                                                     ViewObject;
-                            obj.Views.Figure =                                              ViewObject.Figure;  
+                            case 'PMImagingProjectViewer'
+                                obj = obj.setViewsByProjectView(varargin{1});
+                                
+                            case 'PMMovieControllerView'
+                                
+                                obj.Views =        varargin{1};
+                                obj.Views =        setFigure(obj.Views, varargin{1}.Figure);  
+                                
+                             case 'PMMovieTracking'
+                                 obj.LoadedMovie =                                           varargin{1};
+                                
+                                
+                                
+                            otherwise
+                                error('Input not supported.')
+                             
+                                
+
+
+                        end
+
+
+                       
+
+                    case 2 % connected views and movie
+                       
+                        assert(isscalar(varargin{1}) && isscalar(varargin{2}), 'Wrong input.')
+                        
+                        switch class(varargin{1})
+                            
+                             case 'PMImagingProjectViewer'
+                                obj = obj.setViewsByProjectView(varargin{1});
+                                
+                            
+                            case 'PMMovieControllerView'
+                                obj.Views =       varargin{1};
+                                obj.Views =       setFigure(obj.Views, varargin{1}.Figure); 
+                                
+                            otherwise
+                                error('Wrong input.')
+                                
+                                
                         end
                         
-                        obj =   obj.setCallbacks;
-                        
-                    case 2 % connected views and movie
-                         ViewObject =                                                         varargin{1};
-                         if isnumeric(ViewObject) || isempty(ViewObject) 
-                         else
-                            obj.Views =                                                     ViewObject;
-                            obj.Views.Figure =                                              ViewObject.Figure;  
-                            obj =   obj.setCallbacks;
+                         switch class(varargin{2})
+                             
+                             case 'PMMovieTracking'
+                                 obj.LoadedMovie =                                           varargin{2};
+                             otherwise
+                                 error('Wrong input.')
                          end
-                        obj.LoadedMovie =                                           varargin{2};
-                end
+                             
+                       
+             end
                 
-                if ~isempty(obj.LoadedMovie)
-                    obj    =                obj.emptyOutLoadedImageVolumes; 
-                    obj.LoadedMovie =       obj.LoadedMovie.setImageMapDependentProperties;
+              obj =   obj.setCallbacks;
+              
+
+                if ~isempty(obj.LoadedMovie) % this will slow down changes between movies: check if this is necessary or introduce some check to avoid it if not needed;
+                   % obj    =                obj.emptyOutLoadedImageVolumes; 
+                   % obj.LoadedMovie =       obj.LoadedMovie.setImageMapDependentProperties;
                 end
-                
-            end
+
+
+
+        end
+
+        function set.LoadedMovie(obj, Value)
+            assert(isa(Value, 'PMMovieTracking') && isscalar(Value), 'Wrong argument type.')
+            obj.LoadedMovie = Value;
+        end
+
+        function set.Views(obj, Value)
+            assert(isa(Value, 'PMMovieControllerView') && isscalar(Value), 'Wrong input.')
+            obj.Views = Value;
+        end
+
+        function set.ExportFolder(obj, Value)
+            assert(ischar(Value), 'Wrong input.')
+            obj.ExportFolder = Value;
+
+        end
+
+        function set.InteractionsFolder(obj, Value)
+            assert(ischar(Value), 'Wrong input.')
+            obj.InteractionsFolder = Value;
+
         end
         
-        %% updateWith
-        function obj = updateWith(obj, Value)
+        function set.LoadedImageVolumes(obj, Value)
+            assert(iscell(Value) && isvector(Value), 'Wrong input.')
             if isempty(obj.LoadedMovie)
-                warning('Could not update LoadedMovie because the property was not set yet.')
+                assert(isempty(Value), 'Wrong input.')
+                
             else
-                 Type = class(Value);
-                switch Type
-                    case 'PMMovieLibrary'
-                        obj.LoadedMovie = obj.LoadedMovie.setImageAnalysisFolder(Value.getPathForImageAnalysis);
-                    otherwise
-                        error('Cannot parse input.')
+                assert(length(Value) == obj.LoadedMovie.getMaxFrame, 'Wrong input.')
+                
+                
+            end
 
-                end
+            obj.LoadedImageVolumes = Value;
+            
+        end
+        
+        
+        
+
+    end
+    
+    methods (Access = private) % intialization
+        
+        function obj = setViewsByProjectView(obj, Value)
+              obj.Views =         Value.MovieControllerViews;
+                                obj.Views =         setFigure(obj.Views, Value.Figure);   
+
+                                obj.Views =        setTrackingViews(obj.Views, Value.TrackingViews.ControlPanels);
+                                obj.Views.changeAppearance;
+                                obj.Views.disableAllViews;
+
+                                obj.Views =        deleteAllTrackLineViews(obj.Views);
+
+            
+        end
+        
+        
+    end
+    
+    methods % summary
+        
+        function obj = showSummary(obj)
+            
+            fprintf('\n*** This PMMovieController object mediates graphical display of movie data (original and annotated).\n')
+            fprintf('\nThe following user inputs are currently registered:\n')
+            fprintf('Mouse action = "%s".\n', obj.MouseAction)
+            fprintf('Pressed key value = "%s".\n', obj.PressedKeyValue)
+            fprintf('Mouse down row = "%6.2f".\n', obj.MouseDownRow)
+            fprintf('Mouse down colun = "%6.2f".\n', obj.MouseDownColumn)
+            fprintf('Mouse up row = "%6.2f".\n', obj.MouseUpRow)
+            fprintf('Mouse up column = "%6.2f".\n', obj.MouseUpColumn)
+            
+            fprintf('\nDefault number frames to load is "%i". (This number of frames +/- current frame are loaded when the forward-press button initiated the interaction.\n', obj.DefaultNumberOfLoadedFrames)
+
+            fprintf('\nThe following movie-tracking is the data-source for the MovieController:\n')
+            obj.LoadedMovie = obj.LoadedMovie.showSummary;
+            
+        end
+        
+        function obj = exportCurrentFrameAsImage(obj)
+                Image =         frame2im(getframe(obj.getViews.getMovieAxes));
+                obj =           exportImageToExportFolder(obj, Image);
+            
+        end
+        
+        function [Folder, File] = exportImageToExportFolder(obj, Image, varargin)
+             
+            switch length(varargin)
+               
+                case 0
+                    Pre = '';
+                case 1
+                    Pre = ['No_', num2str(varargin{1}), '_'];
+                  
                 
             end
             
-           
-            
-            
-        end
-        
-        %% accessors:
-        function Value = getNickName(obj)
-            Value = obj.LoadedMovie.getNickName;
-        end
-        
-        
-        function obj = setNickName(obj, Value)
-            obj.LoadedMovie =       obj.LoadedMovie.setNickName(Value);
-            obj =                   obj.updateSaveStatusView;  
-        end
-        
-        function view = getViews(obj)
-           view = obj.Views; 
-        end
-        
-         function obj = setKeywords(obj, Value)
-             obj.LoadedMovie = obj.LoadedMovie.setKeywords(Value); 
-          end
+            Folder = obj.ExportFolder;
+            File =  [Pre, obj.getNickName, '_', PMTime().getCurrentTimeString, '.jpg'];
+                FileName =      [Folder, '/', File];
 
-          function obj = setChannels(obj, Value)
-              obj.LoadedMovie = obj.LoadedMovie.setChannels(Value);
+                imwrite(Image, FileName)
+            
+        end
+        
+    end
+    
+    methods % setter tracking
+        
+        function obj = setSpaceAndTimeLimits(obj, Space, TimeMax, TimeMin)
+            obj.LoadedMovie = obj.LoadedMovie.setSpaceAndTimeLimits(Space, TimeMax, TimeMin);
+        end
+        
+        function obj = toggelListWithTrackIDs(obj, TrackIdsToToggle, Gaps, ForwardBackward)
+
+            [SelectedTrackId , Row]=   obj.selectTrackIdForTogglingFromList(TrackIdsToToggle);
+
+            assert(~isempty(SelectedTrackId), 'Could not find target track Id.')
+
+            obj =              obj.setActiveTrackTo(SelectedTrackId); 
+            if ~isempty(Gaps)
+
+                switch ForwardBackward
+                    case 'Forward'
+                        Position = min(Gaps{Row}) - 1;
+                        
+                    case 'Backward'
+                        Position = max(Gaps{Row}) + 1;
+                        
+                end
+
+                obj =      obj.focusOnActiveTrackAtFrame(Position);
+
+            end
+
+            drawnow 
+          
+
+        end
+        
+        function obj = trackGapsForAllTracks(obj, Value)
+            [Gaps, TrackIds]=     obj.(['getLimitsOfUnfinished', Value, 'Gaps']);
+            for TrackIndex = 1 : length(TrackIds)
+                [StartFrames, EndFrames]=   obj.(['get', Value, 'TrackingFramesFromGapLimits'])(Gaps{TrackIndex});
+                if ~isnan(StartFrames)
+                    obj =     obj.setActiveTrackTo(TrackIds(TrackIndex)); 
+                    obj =     obj.focusOnActiveTrackAtFrame(StartFrames(1));
+                    obj =     obj.autoTrackCurrentCellForFrames(StartFrames, EndFrames);
+                end
+            end
+            obj =           obj.saveMovie;
+        end
+        
+        function obj =  setActiveTrackTo(obj, Input)  
+          
+            Type = class(Input);
+            switch Type
+             case 'double'
+                 SelectedTrackIDs = Input;
+                 
+             case 'char'
+                 switch Input
+                     case 'byMousePositition'
+                         SelectedTrackIDs = obj.getTrackIDFromMousePosition;
+                     case 'firstForwardGapInNextTrack'
+                          obj = obj.toggleTrackForwardGapsIgnoreComplete;
+                     case 'firstForwardGapInNextUnfinishedTrack'
+                         obj = obj.toggleTrackForwardGaps;
+                     case 'backWardGapInNextUnfinishedTrack'
+                         obj = obj.toggleTrackBackwardGaps;
+                     case 'nextUnfinishedTrack'
+                          obj = obj.toggleUnfinishedTracks(Value);
+                     otherwise
+                        error('Wrong input.')
+                 end
+
+             otherwise
+                 error('Wrong input.')
+            end
+
+            assert(isnumeric(SelectedTrackIDs) && isscalar(SelectedTrackIDs), 'Wrong input.')
+
+            obj.LoadedMovie =       obj.LoadedMovie.setActiveTrackWith(SelectedTrackIDs);
+            
+            obj =                   obj.updateAllViewsThatDependOnActiveTrack;
+            
+
+            obj.TrackingNavigationEditViewController =     obj.TrackingNavigationEditViewController.resetForActiveTrackWith(obj.LoadedMovie.getTracking);
+
+
+        end
+
+    end
+    
+    methods (Access = private) % track line views
+        
+              function [obj] =                   tracking_updateActiveMaskByButtonClick(obj)
+                  % UPDATEACTIVEMASKBYBUTTONCLICK: create mask of active track based on mouse click;
+                  % mouse click selecs pixel that serves as threshold for detecting mask;
+                  % mask is stored in PMMovieTracking and views are updated;
+                   obj.LoadedMovie =  obj.LoadedMovie.setPreventDoubleTracking(false, [0.5 0.5 1]);
+
+                    [rowPos, columnPos, planePos, ~] =   obj.getCoordinatesOfCurrentMousePosition;
+                    if ~isnan(rowPos)
+
+                        obj =                       obj.highlightMousePositionInImage;
+                        mySegmentationObject =      PMSegmentationCapture(obj, [rowPos, columnPos, planePos, obj.LoadedMovie.getActiveChannelIndex]);
+
+                        try 
+                            mySegmentationObject =      mySegmentationObject.generateMaskByClickingThreshold;
+                        catch E
+                            throw(E) 
+                        end
+
+
+                        if mySegmentationObject.getActiveShape.testShapeValidity
+                            obj.LoadedMovie =   obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);  
+                                obj =                               obj.setTrackViews;
+                            obj =               obj.updateAllViewsThatDependOnActiveTrack;
+
+                        else
+                            fprintf('Button click did not lead to recognition of valid cell. No action taken.')
+                        end
+
+
+                    end
+
+                    figure(obj.Views.getFigure)
+                
+              end
+              
+              
+            function obj = tracking_setSelectedTracks(obj, Value)
+                Type = class(Value);
+                switch Type
+                    case 'char'
+                        switch Value
+                            case 'byMousePosition' 
+                                    obj =         obj.resetSelectedTracksWithTrackIDs(obj.getTrackIDFromMousePosition);
+                                    
+                            case 'all'
+                                    obj.LoadedMovie =         obj.LoadedMovie.selectAllTracks;
+                                    obj =                    obj.updateAllViewsThatDependOnSelectedTracks;
+                                         obj =                               obj.setTrackViews;
+                            otherwise
+                                error('Input not supported.')
+                        end
+                        
+                    case 'double'
+                        
+                    otherwise
+                        
+                        error('Wrong input.')
+                
+                end
+                
+                
+            end
+            
+          function obj =      resetSelectedTracksWithTrackIDs(obj, TrackIds)
+                obj.LoadedMovie =  obj.LoadedMovie.setSelectedTrackIdsTo(TrackIds);
+                obj =                       obj.updateAllViewsThatDependOnActiveTrack;
+          end
+             
+          
+            
+            function obj = tracking_addSelectedTracks(obj, Value)
+                Type = class(Value);
+                switch Type
+                    case 'char'
+                        switch Value
+                            case 'byMousePosition' 
+                                    obj =         obj.addToSelectedTracksTrackIDs(obj.getTrackIDFromMousePosition);
+                            
+                            otherwise
+                                error('Input not supported.')
+                        end
+                        
+                       
+                    otherwise
+                        
+                        error('Wrong input.')
+                
+                end
+                
+                
+            end
+            
+             
+             
+        
+        
+    end
+    
+    methods (Access = private) % tracking
+          
+          function [obj] =                   tracking_removeHighlightedPixelsFromActiveMask(obj)             
+                [UserSelectedY, UserSelectedX] =    obj.findUserEnteredCoordinatesFromImage;
+                pixelListWithoutSelected =          obj.LoadedMovie.getPixelsFromActiveMaskAfterRemovalOf([UserSelectedY, UserSelectedX]);
+                obj.LoadedMovie =                   obj.LoadedMovie.resetActivePixelListWith(PMSegmentationCapture(pixelListWithoutSelected, 'Manual'));
+                obj =                               obj.updateAllViewsThatDependOnActiveTrack;
+          end
+          
+          function obj =                    tracking_removePixelRimFromActiveMask(obj)
+                mySegmentationObject =     PMSegmentationCapture(obj);
+                mySegmentationObject =     mySegmentationObject.removeRimFromActiveMask;
+                obj.LoadedMovie =          obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
+                obj =                      obj.updateAllViewsThatDependOnActiveTrack;
+          end
+          
+            function obj = tracking_deleteSelectedTracks(obj)
+                obj.LoadedMovie =          obj.LoadedMovie.deleteSelectedTracks;
+                obj =                      obj.updateAllViewsThatDependOnActiveTrack;
+            end
+             
+            function obj =              tracking_deleteActiveTrack(obj)
+                obj.LoadedMovie =     obj.LoadedMovie.deleteActiveTrack;
+                obj =                 obj.updateAllViewsThatDependOnActiveTrack;
+
+            end
+            
+            function [obj] =            tracking_deleteAllTracks(obj)
+                obj.LoadedMovie =     obj.LoadedMovie.deleteAllTracks;
+                obj =                 obj.setActiveTrackTo(NaN)   ; 
+                obj =                 obj.updateAllViewsThatDependOnActiveTrack;
+                
+            end
+          
+            function obj =              tracking_deleteActiveMask(obj)
+                obj.LoadedMovie =       obj.LoadedMovie.performTrackingMethod('deleteActiveMask');
+                obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+            end
+        
+            function obj = tracking_splitSelectedTrack(obj)
+                obj.LoadedMovie =       obj.LoadedMovie.performTrackingMethod('splitSelectedTrackAtActiveFrame');
+                obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+            end
+            
+            function obj = tracking_mergeSelectedTracks(obj)
+                try
+                    obj.LoadedMovie =       obj.LoadedMovie.performTrackingMethod('mergeSelectedTracks');
+                    obj =                   obj.updateAllViewsThatDependOnActiveTrack;
+                catch ME
+                    throw(ME)
+                end  
+
+            end
+               
+            function obj = tracking_fillGapsOfActiveTrack(obj)
+                try
+                    obj.LoadedMovie =       obj.LoadedMovie.performTrackingMethod('fillGapsOfActiveTrack');
+                    obj =                   obj.updateAllViewsThatDependOnActiveTrack;
+                catch ME
+                    throw(ME)
+                end
+            end
+
+          function obj = tracking_addButtonClickMaskToNewTrack(obj)
+                obj.LoadedMovie =     obj.LoadedMovie.setActiveTrackToNewTrack;
+                obj =                 obj.tracking_updateActiveMaskByButtonClick;
+          end
+          
+       
+            function obj =                     tracking_addHighlightedPixelsFromMask(obj)
+                [ ~, ~,  z, ~ ] =    obj.getCoordinatesOfCurrentMousePosition;
+                [y, x] =             obj.findUserEnteredCoordinatesFromImage;
+                obj.LoadedMovie =     obj.LoadedMovie.updateMaskOfActiveTrackByAdding(y, x, z);
+                obj =                 obj.updateAllViewsThatDependOnActiveTrack;
+
+            end
+            
+
+            function [y, x] = findUserEnteredCoordinatesFromImage(obj)
+                Coordinates =     obj.getCoordinateListByMousePositions;
+
+                RectangleImage(min(Coordinates(:, 2)): max(Coordinates(:, 2)), min(Coordinates(:, 1)): max(Coordinates(:, 1))) = 1;
+                [y, x] = find(RectangleImage);
+
+
+            end
+
+         
+      
+            function obj =                     tracking_usePressedCentroidAsMask(obj)
+
+                [rowFinal, columnFinal, planeFinal, ~] =   obj.getCoordinatesOfCurrentMousePosition;
+                if ~isnan(rowFinal)
+                      mySegmentationObject =    PMSegmentationCapture(obj, [rowFinal, columnFinal, planeFinal]);
+                      mySegmentationObject =    mySegmentationObject.setSegmentationType('MouseClick');
+                      obj.LoadedMovie =         obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
+                      obj =                     obj.updateAllViewsThatDependOnActiveTrack;
+                end
+
+            end
+            
+            function obj =                     tracking_addPixelRimToActiveMask(obj)
+                mySegmentationObject =     PMSegmentationCapture(obj).addRimToActiveMask;
+                obj.LoadedMovie =          obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
+                obj =                      obj.updateAllViewsThatDependOnActiveTrack;    
+            end
+            
+            
+            function obj = tracking_autoTracking(obj, varargin)
+                
+                if length(varargin) == 2
+                    obj = obj.performAutoTracking(varargin{1}, varargin{2});
+                    
+                else
+                    error('Input not supported')
+                    
+                end
+                
+                
+                
+            end
+            
+              
+        function obj = tracking_splitTrackAfterActiveFrame(obj)
+            obj.LoadedMovie =       obj.LoadedMovie.splitTrackAfterActiveFrame;
+             obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+        end
+         
+        
+        function [obj] =       tracking_splitTrackAtFrameAndDeleteFirstPart(obj)
+                obj.LoadedMovie =       obj.LoadedMovie.deleteActiveTrackBeforeActiveFrame;
+                 obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+        end
+        
+       
+        function [obj] =       tracking_splitSelectedTracksAndDeleteSecondPart(obj) 
+            obj.LoadedMovie =   obj.LoadedMovie.deleteActiveTrackAfterActiveFrame;
+             obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+        end
+
+        
+        
+        
+        
+    end
+    
+    methods % setter tracking frames
+        
+        function obj = setFrame(obj, Value)
+            % setFrame; sets model and view with new active frame;
+            % one argument accepted:
+            % argument can be either a string: 'first', 'last', 'next', 'previous';
+            % or a number: if number is out of range it is ignored;
+            Type = class(Value);
+            switch Type
+                case 'char'
+                    obj = setFrameByString(obj, Value);
+                case 'double'
+                    obj = setFrameByNumber(obj, Value);
+                otherwise
+                    error('Wrong input.')
+                    
+                    
+            end
+            
+            
+            
+        end
+        
+        function obj = focusOnActiveTrackAtFrame(obj, newFrame)
+            % FOCUSONACTIVETRACKATFRAME sets movie to chosen frame and changes PMMovieTracking and vies so that focus is on active track;
+            obj.LoadedMovie =   obj.LoadedMovie.setFrameTo(newFrame); 
+            obj.LoadedMovie =   obj.LoadedMovie.setFocusOnActiveTrack; 
+            obj =               obj.setActiveCropOfMovieView;
+            obj =               obj.updateMovieView;
+            obj =               obj.setNavigationControls;
+        end  
+        
+    end
+    
+    methods (Access = private) % set tracking frames
+        
+        function obj = setFrameByNumber(obj, newFrame)
+
+                if isnan(newFrame) || newFrame<1 || newFrame>obj.LoadedMovie.getMaxFrame
+                else
+                    
+                    
+                    if isempty(obj.Views) ||  ~isvalid(obj.Views.getFigure)
+                         obj.LoadedMovie =           obj.LoadedMovie.setFrameTo(newFrame);
+                        
+                    else 
+                        
+                        switch obj.Views.getModifier
+                            case 'shift'
+                                obj = obj.focusOnActiveTrackAtFrame(newFrame);
+
+                            otherwise
+                                obj.LoadedMovie =   obj.LoadedMovie.setFrameTo(newFrame);  
+                                obj =               obj.updateMovieView;
+                                obj =               obj.setNavigationControls;
+                                
+                        end
+
+
+                        
+                    end
+                   
+                end
+            
           end
         
-        %% saveMovie
-        function obj = saveMovie(obj)
-               if ~isempty(obj.LoadedMovie)  && strcmp(class(obj.LoadedMovie), 'PMMovieTracking')
-                    obj.LoadedMovie =           obj.LoadedMovie.saveMovieDataWithOutCondition;
-                    obj =                       obj.updateSaveStatusView;  
+        function obj = setFrameByString(obj, Value)
+            
+            switch Value
+                case 'first'
+                        obj =      obj.setFrameByNumber(1);
+                        obj =      obj.focusOnActiveTrackAtFrame(1);
+                case 'last'
+                        obj =        obj.setFrameByNumber(obj.LoadedMovie.getMaxFrame);
+                case 'next'
+                    if obj.LoadedMovie.getActiveFrames < obj.LoadedMovie.getMaxFrame
+                        obj =      obj.setFrameByNumber(obj.LoadedMovie.getActiveFrames + 1);
+                    else
+                        obj =      obj.setFrameByNumber( 1);
+                    end
+                case 'previous'
+                     if obj.LoadedMovie.getActiveFrames > 1
+                        obj =     obj.setFrameByNumber(obj.LoadedMovie.getActiveFrames - 1);
+                    else
+                        obj =     obj.setFrameByNumber(obj.LoadedMovie.getMaxFrame);
+                     end
+                case 'firstFrameOfActiveTrack'
+                    obj = obj.goToFirstFrameOfActiveTrack;
                     
+                case 'firstFrameOfCurrentTrackStretch'
+                    obj =   gotToFirstTrackedFrameFromCurrentPoint(obj);
+                case 'lastFrameOfCurrentTrackStretch'
+                    obj = goToLastContiguouslyTrackedFrameInActiveTrack(obj);
+                otherwise
+                    error('Wrong input.')
+                    
+            end
+            
+            
+        end
+        
+        function obj =   gotToFirstTrackedFrameFromCurrentPoint(obj)
+                  obj =              obj.setFrameByNumber(obj.LoadedMovie.getLastTrackedFrame('down'));
+        end
+        
+        function obj = goToLastContiguouslyTrackedFrameInActiveTrack(obj)
+            LastTrackedFrame = obj.LoadedMovie.getLastTrackedFrame('up');
+            if isnan(LastTrackedFrame)
+                warning('Could not find gap. Therefore no action taken.')
+            else
+                obj =      obj.setFrameByNumber(LastTrackedFrame);
+            end
+            
+        end
+        
+        function obj = goToFirstFrameOfActiveTrack(obj)
+            Frames = min(obj.LoadedMovie.getTracking.getFramesOfActiveTrack);
+             obj =      obj.setFrameByNumber(Frames);
+        end
+            
+    end
+    
+    methods % setter image view
+        
+        function obj = setImageMaximumProjection(obj, Value)
+            % SETIMAGEMAXIMUMPROJECTION shows all image planes (true) or only the currently selected one (false);
+            obj.LoadedMovie =  obj.LoadedMovie.setCollapseAllPlanes(Value);
+            obj =               obj.setViewsAfterChangeOfMaximumProjection(Value);
+            
+
+        end
+        
+       
+        
+         function obj = setCollapseTracking(obj, Value)
+                obj.LoadedMovie =   obj.LoadedMovie.setCollapseAllTrackingTo(Value);
+                obj =               obj.setViewsAfterChangeOfMaximumProjection(Value);
+              
+
+            
+         end
+            
+         function obj = setCroppingGate(obj, Rectangle)
+                obj.LoadedMovie =   obj.LoadedMovie.setCroppingGateWithRectange(Rectangle);
+                  obj =               obj.setCroppingRectangle;
+        end
+        
+        
+        
+    end
+    
+    methods (Access = private) % track manipulation
+        
+        function obj =         connectSelectedTrackToActiveTrack(obj)
+            % not sure if this is helpful:
+            IDOfTrackToMerge =  obj.getTrackIDFromMousePosition;
+            obj.LoadedMovie =   obj.LoadedMovie.mergeActiveTrackWithTrack(IDOfTrackToMerge);
+            obj =               obj.updateMovieView;
+        end
+          
+        
+        function obj = toggleTrackForwardGaps(obj)
+            [Gaps, TrackIdsToToggle] =       obj.getLimitsOfUnfinishedForwardGaps;
+            obj =                               obj.toggelListWithTrackIDs(TrackIdsToToggle, Gaps, 'Forward');
+        end
+        
+        function [Gaps, TrackIdsToToggle] = getLimitsOfUnfinishedBackwardGaps(obj)
+            [Gaps, TrackIdsToToggle] =            obj.LoadedMovie.getLimitsOfFirstBackwardGapOfAllTracks;
+            Indices =                           obj.LoadedMovie.getIndicesOfFinishedTracksFromList(TrackIdsToToggle);
+            TrackIdsToToggle(Indices, :) =      [];  
+            Gaps(Indices, :) = [];
+        end
+
+        function [Gaps, TrackIdsToToggle] = getLimitsOfUnfinishedForwardGaps(obj)
+            [Gaps, TrackIdsToToggle] =        obj.LoadedMovie.getLimitsOfFirstForwardGapOfAllTracks;
+            Indices =                         obj.LoadedMovie.getIndicesOfFinishedTracksFromList(TrackIdsToToggle);
+            TrackIdsToToggle(Indices, :) =    [];  
+            Gaps(Indices, :) =               [];
+
+        end
+
+        function [Gaps, TrackIDs] = getLimitsOfUnfinishedTracks(obj)
+            TrackIDs =             obj.LoadedMovie.getUnfinishedTrackIDs;
+
+        end
+        
+        function obj = toggleTrackForwardGapsIgnoreComplete(obj)
+            [Gaps, TrackIdsToToggle] =        obj.LoadedMovie.getLimitsOfSurroundedFirstForwardGapOfAllTracks;
+            obj =                               obj.toggelListWithTrackIDs(TrackIdsToToggle, Gaps, 'Forward');
+        end
+
+        function obj = toggleTrackBackwardGaps(obj)
+            [Gaps, TrackIdsToToggle] =       obj.getLimitsOfUnfinishedBackwardGaps;
+            obj =                           obj.toggelListWithTrackIDs(TrackIdsToToggle, Gaps, 'Backward');
+
+        end
+
+        function obj = toggleUnfinishedTracks(obj, Value)
+            TrackIDs =       obj.LoadedMovie.getUnfinishedTrackIDs;
+            obj =          obj.toggelListWithTrackIDs(TrackIDs, '', Value); 
+        end
+
+      
+
+        
+      
+        
+        
+        
+    end
+    
+    methods %  filemanagement
+        
+        function obj = setExportFolder(obj, Value)
+           obj.ExportFolder = Value; 
+        end
+        
+        function obj = setInteractionsFolder(obj, Value)
+           obj.InteractionsFolder = Value; 
+        end
+       
+         
+          
+    end
+    
+    methods % file management loaded movie
+       
+         
+         function obj = createDerivativeFiles(obj)
+            obj.LoadedMovie = obj.LoadedMovie.saveDerivativeData;
+          
+         end
+         
+          function obj = saveMovie(obj)
+            % SAVEMOVIE: saves attached PMMovieTracking into file and updates save-status view;
+               if ~isempty(obj.LoadedMovie)  && isa(obj.LoadedMovie, 'PMMovieTracking')
+                    obj.LoadedMovie =   obj.LoadedMovie.save;
+                    obj =           obj.updateSaveStatusView;
+
                else
-                    fprintf('No valid LoadedMovie available: therefore no action taken.\n')
+                    warning('No valid LoadedMovie available: therefore no action taken.\n')
+
                end
    
         end
         
-        %% exportTrackCoordinates
+        
+         
+          function [obj] =            setNamesOfMovieFiles(obj, Value)
+                obj.LoadedMovie =       obj.LoadedMovie.setNamesOfMovieFiles(Value);
+          end
+        
+         
         function obj = exportTrackCoordinates(obj)
              [file,path] =                   uiputfile([obj.LoadedMovie.getNickName, '.csv']);
             TrackingAnalysisCopy =         obj.LoadedMovie.getTrackingAnalysis;
@@ -150,777 +836,303 @@ classdef PMMovieController < handle
             TrackingAnalysisCopy =         TrackingAnalysisCopy.convertTimeUnitsIntoSeconds;
             TrackingAnalysisCopy.exportTracksIntoCSVFile([path, file], obj.LoadedMovie.getNickName)
             
-            
         end
         
-        %% changeLinkedMoviesClicked
-          function [obj] =            setNamesOfMovieFiles(obj, Value)
-              obj.LoadedMovie =       obj.LoadedMovie.setNamesOfMovieFiles(Value);
-           end
         
-        function movie = getLoadedMovie(obj)
-            movie = obj.LoadedMovie;
-        end
-      
-        %% goOneFrameDown
-        function obj = goOneFrameDown(obj)
-            if obj.LoadedMovie.getActiveFrames > 1
-                obj =             obj.resetFrame(obj.LoadedMovie.getActiveFrames - 1);
-            end
-        end
-                    
         
-       %% goOneFrameUp
-       function obj = goOneFrameUp(obj)
-            if obj.LoadedMovie.getActiveFrames < obj.LoadedMovie.getMaxFrame
-                obj =                       obj.resetFrame(obj.LoadedMovie.getActiveFrames + 1);
-            else
-                obj =                       obj.resetFrame( 1);
-            end
-
-       end
-       
-        function [obj]  =                       resetFrame(obj, newFrame)
-                if isnan(newFrame) || newFrame<1 || newFrame>obj.LoadedMovie.getMaxFrame
-                else
-                    PlaneAndCropShouldBeReset =                length( obj.Views.Figure.CurrentModifier)== 1 && strcmp(obj.Views.Figure.CurrentModifier{1}, 'shift');
-                    if PlaneAndCropShouldBeReset
-                        obj.LoadedMovie =        obj.LoadedMovie.setFrameAndAdjustPlaneAndCropByTrack(newFrame); 
-                        obj =                    obj.updateCroppingLimitView;
-                        obj =                    obj.resetLimitsOfImageAxesWithAppliedCroppingGate;
-                    else
-                        obj.LoadedMovie =        obj.LoadedMovie.setFrameTo(newFrame);       
-                    end
-
-                    obj =      obj.updateImageView; 
-                    obj =      obj.updateNavigationViews;    
-                end
+        
+    end
+    
+    methods % loaded movie
+        
+        function obj = setLoadedMovie(obj, Value)
+           obj.LoadedMovie = Value; 
         end
-            
-        %%  setManualDriftCorrectionByTimeSpaceCoordinates  
-         function [obj]  =                setManualDriftCorrectionByTimeSpaceCoordinates(obj, coordinates)
-                NewDriftCorrection =        obj.LoadedMovie.getDriftCorrection.updateManualDriftCorrectionByValues(coordinates(2), coordinates(3), coordinates(4), coordinates(1));
-                obj.LoadedMovie =           obj.LoadedMovie.setDriftCorrection(NewDriftCorrection);
-                obj  =                      obj.updateManualDriftCorrectionView;
+        
+         function obj =        setMovieTracking(obj, Value)
+             % this is not good; this should be just done at the beginning when initiaing the object, later this should be left in piece;
+             error('Do not use this. Include the movie tracking when initializing the object.')   
+             obj.LoadedMovie = Value;
          end
-        
-         %% setDefaultCroppingGate
-         function obj = setDefaultCroppingGate(obj)
-                obj.LoadedMovie =         obj.LoadedMovie.resetCroppingGate;
-                obj =                     obj.updateCroppingLimitView;
-                                            
-         end
-            
-        %%    setCroppingGateByMouseDrag
-        function obj = setCroppingGateByMouseDrag(obj)
-                obj.LoadedMovie =       obj.LoadedMovie.setCroppingGateWithRectange(obj.getRectangleFromMouseDrag);
-                obj =                   obj.updateCroppingLimitView;
-        end
-                                        
-         
-         %% other:
-          function obj =        setMovieTracking(obj, Value)
-                assert(isa(Value, 'PMMovieTracking') && isscalar(Value), 'Wrong argument type.')
-                obj.LoadedMovie = Value;
-          end
-
-          function obj =        setLoadedImageVolumes(obj, Value)
-              if isempty(Value)
-                  
-              else
-                   assert(iscell(Value) && size(Value, 1) == obj.LoadedMovie.getMaxFrame && size(Value, 2) == 1, 'Invalid argument type.')
-                  obj.LoadedImageVolumes =      Value; 
-              end
-          end
-             
-          %% various
-          function action = getMouseAction(obj)
-             action = obj.MouseAction;
-          end
-          
-          function obj = setMouseAction(obj, Value)
-             obj.MouseAction = Value;
-          end
-          
-          function obj = setMouseDownRow(obj, Value)
-             obj.MouseDownRow = Value;
-          end
-          
-          function Value = getMouseDownRow(obj)
-             Value = obj.MouseDownRow;
-          end
-          
-          function Value = getMouseDownColumn(obj)
-             Value = obj.MouseDownColumn;
-          end
-          
-          function obj = setMouseDownColumn(obj, Value)
-             obj.MouseDownColumn = Value;
-          end
-          
-          function obj = setMouseUpRow(obj, Value)
-             obj.MouseUpRow = Value;
-          end
-          
-          function obj = setMouseUpColumn(obj, Value)
-             obj.MouseUpColumn = Value;
-          end
-          
-          function Value = getMouseUpColumn(obj)
-             Value = obj.MouseUpColumn;
-          end
-          
-           function Value = getMouseUpRow(obj)
-             Value = obj.MouseUpRow;
-          end
-          
-               
-          %% finalizeMovieController:
-            function [obj] =      finalizeMovieController(obj)
-                obj =           obj.initializeNavigationViews;
-                obj =           obj.updateChannelSettingView; % changes the display of settings of selected channel;
-                obj =           obj.updateAllTrackingViews;
-                obj =           obj.updateSaveStatusView;
-          end
-        
-            function obj =        initializeNavigationViews(obj)
-                if isempty( obj.Views.Navigation)
-                    return 
-                end
-                obj = obj.initializeTimeNavigation;
-                obj = obj.initializePlaneNavigation;
-                obj = obj.intializeChannelNavigation;
-          end
-          
-            function obj =        initializeTimeNavigation(obj)
-                obj.Views = obj.Views.setMaxTime(obj.LoadedMovie.getMaxFrame);
-          end
-          
-            function obj =       initializePlaneNavigation(obj)
-                [~, ~, planes ] =                                       obj.LoadedMovie.getImageDimensionsWithAppliedDriftCorrection;
-                obj.Views.Navigation.CurrentPlane.String =              1:planes;
-                if obj.Views.Navigation.CurrentPlane.Value<1 || obj.Views.Navigation.CurrentPlane.Value>length(obj.Views.Navigation.CurrentPlane.String)
-                    obj.Views.Navigation.CurrentPlane.Value = 1;
-                end
-           end
-          
-            function obj =          updateChannelSettingView(obj)
-              obj.Views =     obj.Views.resetChannelViewsByMovieTracking(obj.LoadedMovie);
-            
-       
-            end
-        
-            function obj =        intializeChannelNavigation(obj)
-                obj.Views.Channels.SelectedChannel.String =            1:obj.LoadedMovie.getMaxChannel;
-                if obj.Views.Channels.SelectedChannel.Value<1 || obj.Views.Channels.SelectedChannel.Value>length(obj.Views.Channels.SelectedChannel.String)
-                    obj.Views.Channels.SelectedChannel.Value = 1;
-                end
-          end
-          
-            function obj =      updateAllTrackingViews(obj)
-                fprintf('\nEnter PMMovieController:@updateAllTrackingViews:\n')
-                obj.TrackingViews.ShowMaximumProjection.Value =    obj.LoadedMovie.getCollapseAllTracking;
-                obj =         obj.updateCentroidVisibility;
-                obj =         obj.updateMaskVisibility;
-                obj =         obj.updateTrackVisibility;
-                obj =         obj.updateHighlightingOfActiveTrack;
-                obj =         obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-                fprintf('Exit PMMovieController:@updateAllTrackingViews.\n\n')
-
-            end
-            
-             %% other:
-            function obj =      updateHighlightingOfActiveTrack(obj)
-                ActiveTrackShouldBeHighlighted =                                      obj.LoadedMovie.getActiveTrackIsHighlighted;
-                obj.TrackingViews.ActiveTrack.Value =                                ActiveTrackShouldBeHighlighted;
-                if isnan(obj.LoadedMovie.getIdOfActiveTrack)
-                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible =         false;
-                else
-                   obj.Views.MovieView.CentroidLine_SelectedTrack.Visible =         ActiveTrackShouldBeHighlighted;
-
-                end
-            end
-            
-            %% setTrackLineViews
-            function obj =       setTrackLineViews(obj, TrackNumbersInModel)
-                obj.Views =     obj.Views.addMissingTrackLineViews(TrackNumbersInModel);
-                obj.Views =     obj.Views.deleteNonMatchingTrackLineViews(TrackNumbersInModel);
-                obj =           obj.setTrackLines(obj.Views.getHandlesForTrackIDs(obj.LoadedMovie.getIdOfActiveTrack), 3);
-                obj =           obj.setTrackLines(obj.Views.getHandlesForTrackIDs(obj.LoadedMovie.getTracking.getIdsOfRestingTracks), 0.5);
-                obj =           obj.setTrackLines(obj.Views.getHandlesForTrackIDs(obj.LoadedMovie.getSelectedTrackIDs), 1);
-            end
-
-            function obj =      setTrackLines(obj, TrackHandles, Width)
-                cellfun(@(x) obj.setLineWidthTo(x, Width), TrackHandles)
-                CoordinatesSelected =               arrayfun(@(x) obj.getCoordinatesForTrack(x), obj.Views.getIdsFromTrackHandles(TrackHandles), 'UniformOutput', false);
-                if ~isempty(CoordinatesSelected)
-                    cellfun(@(handles, coordinates) obj.Views.updateTrackLineCoordinatesForHandle(handles, coordinates), TrackHandles, CoordinatesSelected);
-                end
-            end
-
-            function            setLineWidthTo(obj,Handle,Width)
-                Handle.LineWidth =          Width; 
-            end
-            
-            function coordinates =           getCoordinatesForTrack(obj,TrackID)  
-                coordinates = obj.LoadedMovie.getCoordinatesForTrack(TrackID);
-            end
-          
-            
-            function obj =           resetAllTrackViews(obj)  
-                obj =      obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs); % this should not be necessary anymore because the updates are made right away;
-            end
-            
-            
-            %% updateSaveStatusView
-             function obj =                  updateSaveStatusView(obj)
-            
-                 fprintf('PMMovieController:@updateSaveStatusView: ')
-                 if isempty(obj.LoadedMovie)
-                     fprintf('No active movie detected: no action taken.\n')
-                     
-                 else
-                    switch obj.LoadedMovie.getUnsavedDataExist
-                        case true
-                            fprintf('Unsaved data exist: Set color to red.\n')
-                            obj.TrackingViews.TrackingTitle.ForegroundColor = 'red';
-
-                        otherwise
-                            fprintf('All relevant data are already saved: Set color to green.\n')
-                            obj.TrackingViews.TrackingTitle.ForegroundColor = 'green';
-
-                    end
-                 end
-             end
-             
-             
-             %% toggleCroppingOn
-             function obj = toggleCroppingOn(obj)
-                obj.LoadedMovie =       obj.LoadedMovie.setCroppingStateTo(~obj.Views.Navigation.CropImageHandle.Value);
-                obj =                   obj.resetViewsForCurrentCroppingState;
-             end
-             
-               function obj =       resetViewsForCurrentCroppingState(obj)
-                obj =          obj.resetLimitsOfImageAxesWithAppliedCroppingGate; % reset applied cropping limit (dependent on drift correction)
-                obj =          obj.updateCroppingLimitView; % crop position may change
-                obj =          obj.updateAnnotationViews;  % adjust position of annotation within views
-                obj =          obj.updateImageHelperViewsMore;
-
-             end
-
-             function obj =       resetLimitsOfImageAxesWithAppliedCroppingGate(obj)
-                    obj.Views.MovieView.ViewMovieAxes.XLim =    PMRectangle(obj.LoadedMovie.getAppliedCroppingRectangle).getXLimits;
-                    obj.Views.MovieView.ViewMovieAxes.YLim =     PMRectangle(obj.LoadedMovie.getAppliedCroppingRectangle).getYLimits;
-
-             end
-
-             function [obj] =      updateCroppingLimitView(obj)
-                MyRectangleView =           obj.Views.MovieView.Rectangle;
-                MyRectangleView.Visible =   'on';
-                MyRectangleView.YData=      obj.LoadedMovie.getYPointsForCroppingRectangleView;
-                MyRectangleView.XData=      obj.LoadedMovie.getXPointsForCroppingRectangleView;
-                MyRectangleView.Color =     'w';
-             end
-
-        
-            %%   togglePlaneAnnotationVisibility
-             function obj = togglePlaneAnnotationVisibility(obj)
-                    obj.LoadedMovie =      obj.LoadedMovie.setPlaneVisibility( ~obj.LoadedMovie.getPlaneVisibility);
-                    obj =                  obj.updateAnnotationViews;            
-             end
-                 
-             %% toggleTimeVisibility
-             function obj = toggleTimeVisibility(obj)
-                        obj.LoadedMovie =   obj.LoadedMovie.setTimeVisibility(~obj.LoadedMovie.getTimeVisibility);
-                        obj =               obj.updateAnnotationViews; 
-             end
-
-            %% toggleCentroidVisibility
-            function obj = toggleCentroidVisibility(obj)
-                obj.LoadedMovie =   obj.LoadedMovie.toggleCentroidVisibility;
-                obj =               obj.updateCentroidVisibility;  
-                
-            end
-                                    
-            
-            function obj =      updateCentroidVisibility(obj)
-                fprintf('PMMovieController:@updateCentroidVisibility.\n')
-                obj.TrackingViews.ShowCentroids.Value =        obj.LoadedMovie.getCentroidVisibility;
-                obj.Views.MovieView.CentroidLine.Visible =      obj.LoadedMovie.getCentroidVisibility;
-
-            end
-          
-            %% toggleMaskVisibility
-            function obj = toggleMaskVisibility(obj)
-                obj.LoadedMovie =      obj.LoadedMovie.toggleMaskVisibility  ; 
-                obj =                  obj.updateMaskVisibility;
-                
-            end
-
-            function obj =      updateMaskVisibility(obj)
-                obj.TrackingViews.ShowMasks.Value =                 obj.LoadedMovie.getMaskVisibility;
-                obj =                                               obj.updateImageView; 
-            end
-            
-            %% toggleTrackVisibility
-            function obj =    toggleTrackVisibility(obj)
-                obj.LoadedMovie =          obj.LoadedMovie.toggleTrackVisibility;
-                obj =                      obj.updateTrackVisibility;
-                
-            end
-
-            function obj =      updateTrackVisibility(obj)
-                function track = changeTrackVisibility(track, state)
-                    track.Visible = state;
-                end
-                obj.TrackingViews.ShowTracks.Value =        obj.LoadedMovie.getTrackVisibility;
-                cellfun(@(x) changeTrackVisibility(x, obj.LoadedMovie.getTrackVisibility), obj.Views.ListOfTrackViews);
-            end
-            
-           
-           
-        %% callbacks:
-
-        function obj = setCentroidVisibility(obj, Value)
-            assert(islogical(Value), 'Wrong input type')
-            obj.LoadedMovie = obj.LoadedMovie.setCentroidVisibility(Value);
-            obj =             obj.updateCentroidVisibility;
-        end
-
-        function obj = setCallbacks(obj)
-
-            obj = obj.setChannelCallbacks;
-
-            obj.Views.Navigation.CurrentPlane.Callback =             @obj.planeViewClicked;
-            obj.Views.Navigation.CurrentTimePoint.Callback =         @obj.frameViewClicked;
-            obj.Views.Navigation.ShowMaxVolume.Callback =            @obj.maximumProjectionClicked;
-            obj.Views.Navigation.CropImageHandle.Callback =          @obj.croppingOnOffClicked;
-            obj.Views.Navigation.ApplyDriftCorrection.Callback =     @obj.driftCorrectionOnOffClicked;
-
-
-            obj.Views.Annotation.ShowScaleBar.Callback =             @obj.annotationScaleBarOnOffClicked;
-            obj.Views.Annotation.SizeOfScaleBar.Callback =           @obj.annotationScaleBarSizeClicked;
-
-
-            obj.TrackingViews.ActiveTrackTitle.Callback =            @obj.trackingActiveTrackButtonClicked;
-            obj.TrackingViews.ShowCentroids.Callback =               @obj.trackingCentroidButtonClicked;
-            obj.TrackingViews.ShowMasks.Callback =                   @obj.trackingShowMaskButtonClicked;
-            obj.TrackingViews.ShowTracks.Callback =                  @obj.trackingShowTracksButtonClicked;
-            obj.TrackingViews.ShowMaximumProjection.Callback =       @obj.trackingShowMaximumProjectionButtonClicked;
-            obj.TrackingViews.ListWithFilteredTracks.Callback =      @obj.trackingTrackListClicked;  
-
-
-        end
-
-        %% planeViewClicked
-        function [obj] =           planeViewClicked(obj,~,~)
-            newPlane =      obj.Views.Navigation.CurrentPlane.Value;
-            obj  =          obj.resetPlane(newPlane);
-        end
-        
-         function [obj]  =                       resetPlane(obj, newPlane)
-            obj.LoadedMovie =      obj.LoadedMovie.setSelectedPlaneTo(newPlane);
-            obj =                   obj.updateImageView;  
-            obj =                   obj.updateNavigationViews;
-        end
-        
-         
-         function obj =                  updateNavigationViews(obj)
-
-           if isempty(obj.Views.Navigation) % only set when this actually an object (the controller can be used without these views);
-           else
-                obj.Views.Navigation.CurrentPlane.Value =           obj.LoadedMovie.getActivePlanes;
-                obj.Views.Navigation.CurrentTimePoint.Value =       obj.LoadedMovie.getActiveFrames;  
-           end     
-         end
-
-        
-         %% frameViewClicked
-          function [obj] =           frameViewClicked(obj,~,~)
-             newFrame =            obj.Views.Navigation.CurrentTimePoint.Value;
-             obj  =                obj.resetFrame(newFrame);
-          end
-          
-           
-
-         
-          function [obj] =          maximumProjectionClicked(obj,~,~)
-              obj.LoadedMovie =     obj.LoadedMovie.setCollapseAllPlanes(logical(obj.Views.Navigation.ShowMaxVolume.Value));
-              obj =                                   obj.updateImageView;
   
-          end
-          
-          %% croppingOnOffClicked:
-         function [obj] =    croppingOnOffClicked(obj,~,~)
-                NewCroppingState =              obj.Views.Navigation.CropImageHandle.Value;
-                obj.LoadedMovie =               obj.LoadedMovie.setCroppingStateTo(NewCroppingState);
-                obj =                           obj.resetViewsForCurrentCroppingState;
-          end
-
+         function movie = getLoadedMovie(obj)
+            movie = obj.LoadedMovie;
+         end
+        
        
+       
+
+
+          
+          
         
-        %% driftCorrectionOnOffClicked
-           function [obj] =          driftCorrectionOnOffClicked(obj,~,~)
-               OnOrOffValue =       obj.Views.Navigation.ApplyDriftCorrection.Value;
-               obj =                obj.setDriftCorrectionTo(OnOrOffValue);  
-           end
-          
-             function [obj] =       trackingActiveTrackButtonClicked(obj,~,~)
-              obj.LoadedMovie =     obj.LoadedMovie.setActiveTrackIsHighlighted(logical(obj.TrackingViews.ActiveTrackTitle.Value));
-              obj =       obj.updateHighlightingOfActiveTrack;
-              obj =       obj.updateImageView;
-          end
-          
-          function [obj] =      trackingCentroidButtonClicked(obj,~,~)
-              obj =     obj.setCentroidVisibility(logical(obj.TrackingViews.ShowCentroids.Value));
-          end
-          
-          function [obj] =      trackingShowMaskButtonClicked(obj,~,~)
-              obj.LoadedMovie =       obj.LoadedMovie.setMaskVisibility(logical(obj.TrackingViews.ShowMasks.Value));
-              obj =                                           obj.updateMaskVisibility;
-          end
-
-          function [obj] =      trackingShowTracksButtonClicked(obj,~,~)
-              obj.LoadedMovie =      obj.LoadedMovie.setTrackVisibility(logical(obj.TrackingViews.ShowTracks.Value));
-              obj =                                   obj.updateTrackVisibility;
-          end
-          
-          function [obj] =      trackingShowMaximumProjectionButtonClicked(obj,~,~)
-              obj = obj.resetPlaneTrackingByMenu;   
-          end
-
-          function [obj] =      trackingTrackListClicked(obj,~,~)
-              obj =                           obj.changActiveTrackByTableView;
-          end
-
-          %% toggleScaleBarVisibility
-          function obj =  toggleScaleBarVisibility(obj)
-                obj.LoadedMovie =      obj.LoadedMovie.toggleScaleBarVisibility;
-                obj =                  obj.updateAnnotationViews; 
-                obj =                  obj.updateImageHelperViewsMore;
-              
-          end
-                              
-          %% annotationScaleBarOnOffClicked
-          function [obj] =         annotationScaleBarOnOffClicked(obj,~,~)
-              obj.Views =       obj.Views.setScaleBarVisibility(obj.Views.Annotation.ShowScaleBar.Value);
-              obj =             obj.updateAnnotationViews;  
-              
-          end
-          
-          %% annotationScaleBarSizeClicked
-          function [obj] =         annotationScaleBarSizeClicked(obj,~,~)
-              
-              obj.LoadedMovie =                         obj.LoadedMovie.setScaleBarSize(obj.Views.Annotation.SizeOfScaleBar.Value);
-              obj.LoadedMovie =                         obj.LoadedMovie.updateScaleBarString;
-              obj.Views.MovieView.ScalebarText.String =              obj.LoadedMovie.ScalebarStamp;
-              obj =                                                   obj.updateAnnotationViews;  
-              
-          end
-          
+        
+        
+        
+    end
       
-        
-        %% channelViewClicked:
-          function [obj] =           channelViewClicked(obj,~,~)
-               obj.LoadedMovie =        obj.LoadedMovie.setActiveChannel(obj.Views.Channels.SelectedChannel.Value);
-               obj =                   obj.updateChannelSettingView;
-          end
-         
-          function obj = toggleVisibilityOfChannelIndex(obj, Index)
-              
-              if Index <= obj.LoadedMovie.getMaxChannel
-                    obj.LoadedMovie =        obj.LoadedMovie.setVisibleOfChannelIndex(Index,   ~obj.LoadedMovie.getVisibleOfChannelIndex(Index));    
-                    obj.LoadedMovie =        obj.LoadedMovie.setActiveChannel(Index);
-                    obj =                    obj.updateChannelSettingView;
-                    obj =                    obj.updateImageView;  
-               end
-
-              
-          end
-          
-          
-          %% channels:
-         function [obj] =           channelLowIntensityClicked(obj,~,~)
-            Value =                 str2double(obj.Views.Channels.MinimumIntensity.String);
-            obj.LoadedMovie =       obj.LoadedMovie.resetChannelSettings(Value, 'ChannelTransformsLowIn');
-            obj =                   obj.updateImageView;
-            obj =                   obj.updateChannelSettingView;
-         end
-         
-          function [obj] =           channelHighIntensityClicked(obj,~,~)
-             Value =             str2double(obj.Views.Channels.MaximumIntensity.String);
-             obj.LoadedMovie  =               obj.LoadedMovie.resetChannelSettings(Value, 'ChannelTransformsHighIn');
-             obj =          obj.updateImageView;
-            obj =          obj.updateChannelSettingView;
-         end
-         
-          function [obj] =          channelColorClicked(obj,~,~)
-              Value =               obj.Views.Channels.Color.String{obj.Views.Channels.Color.Value};
-             obj.LoadedMovie  =               obj.LoadedMovie.resetChannelSettings(Value, 'ChannelColors');
-             obj =          obj.updateImageView;
-            obj =          obj.updateChannelSettingView;
-          end
-          
-          function [obj] =          channelCommentClicked(obj,~,~)
-                obj.LoadedMovie  =          obj.LoadedMovie.resetChannelSettings(obj.Views.Channels.Comment.String, 'ChannelComments');
-                obj =          obj.updateImageView;
-                obj =          obj.updateChannelSettingView;
-          end
-          
-          function [obj] =          channelOnOffClicked(obj,~,~)
-                Value =             logical(obj.Views.Channels.OnOff.Value);
-                obj.LoadedMovie  =  obj.LoadedMovie.resetChannelSettings(Value, 'SelectedChannels');   
-                obj =               obj.updateImageView;
-                obj =               obj.updateChannelSettingView;
-          end
-          
-          function [obj] =              channelReconstructionClicked(obj,~,~)
-                
-                 
-                
-                obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(obj.Views.getFilterTypeOfSelectedChannel, 'ChannelReconstruction');
-                obj =                   obj.emptyOutLoadedImageVolumes;
-                obj =                   obj.updateRgbImage;
-                
-                obj =                   obj.updateImageView;
-                obj =                   obj.updateChannelSettingView;
-                            
-          end
-          
-          
-        %% image volumes
+    methods % getters image volumes
+       
         function volumes = getLoadedImageVolumes(obj)
+            % GETLOADEDIMAGEVOLUMES get access to all image-volumes that are current stored in cash;
+            % this is used by PMMovieLibrary which keeps track of all movies so that the movie does not have to be reloaded as soon as the user changes the movie;
            volumes =  obj.LoadedImageVolumes;
         end
         
         function Volume = getActiveImageVolumeForChannel(obj, ChannelIndex)
-            activeVolume =    obj.LoadedImageVolumes{obj.LoadedMovie.getActiveFrames,1};
-             Volume =         activeVolume(:, :, :, 1, ChannelIndex);
+            activeVolume =  obj.getActiveImageVolume;
+            Volume =         activeVolume(:, :, :, 1, ChannelIndex);
+        end
+        
+         function activeVolume = getActiveImageVolume(obj)
+             obj =             obj.updateLoadedImageVolumes;
+             activeVolume =     obj.LoadedImageVolumes{obj.LoadedMovie.getActiveFrames, 1};
+         end
+
+    end
+    
+    methods % get processed images:
+        
+        function croppedRgbImage = getCroppedRgbImage(obj)
+
+            RgbImage =          obj.getRbgImage;
+
+            Rectangle =         obj.LoadedMovie.getCroppingRectangle;
+
+            croppedRgbImage =   RgbImage(Rectangle(2): Rectangle(2) + Rectangle(4)-1,Rectangle(1): Rectangle(1) + Rectangle(3) - 1, :);
+
+            figure(100)
+            imshow(croppedRgbImage)
 
         end
-          
-          function rgbImage = highlightPixelsInRgbImage(~, rgbImage, CoordinateList, Channel, Intensity)
-                NumberOfPixels =                        size(CoordinateList,1);
-                if ~isnan(Intensity)
-                    for CurrentPixel =  1:NumberOfPixels
-                        rgbImage(CoordinateList(CurrentPixel, 1), CoordinateList(CurrentPixel, 2), Channel)= Intensity;
-                    end
-                end
+
+        function rgbImage = getRbgImage(obj)
+
+            rgbImage =       obj.LoadedMovie.convertImageVolumeIntoRgbImage(obj.getActiveImageVolume); 
+
+            ThresholdedImage = obj.getInteractionImage;
+            if isempty(ThresholdedImage)
+
+            else
+                rgbImage = PMRGBImage().addImageWithColor(rgbImage, ThresholdedImage, 'Red');
+            end
+
+            if obj.LoadedMovie.getMaskVisibility 
+                rgbImage =            obj.addMasksToImage(rgbImage);
+            end
+
+        end
+        
+          function image = getInteractionImage(obj)
+                  ThresholdedImage =  obj.InteractionImageVolume * 150;
               
+                  if isempty(ThresholdedImage)
+                      image = ThresholdedImage;
+                      
+                  else
+                        filtered =      obj.LoadedMovie.filterImageVolumeByActivePlanes(ThresholdedImage);
+                        image =         max(filtered, [], 3);
+                  end
+                 
           end
-
-        function obj =                              resetAxesCenter(obj, xShift, yShift)
-             obj.Views.MovieView.ViewMovieAxes.XLim = obj.Views.MovieView.ViewMovieAxes.XLim - xShift;
-             obj.Views.MovieView.ViewMovieAxes.YLim = obj.Views.MovieView.ViewMovieAxes.YLim - yShift;
-             
-             
-        end
-        
-        
-        function [obj] =                            resetWidthOfMovieAxesToMatchAspectRatio(obj)
-            XLength =                                           obj.Views.MovieView.ViewMovieAxes.XLim(2)- obj.Views.MovieView.ViewMovieAxes.XLim(1);
-            YLength =                                           obj.Views.MovieView.ViewMovieAxes.YLim(2)- obj.Views.MovieView.ViewMovieAxes.YLim(1);
-            LengthenFactorForX =                                XLength/  YLength;
-            obj.Views.MovieView.ViewMovieAxes.Position(3) =     obj.Views.MovieView.ViewMovieAxes.Position(4) * LengthenFactorForX;
-        end
-        
-   
-        %% update drift marker view:
-          function obj =                  updateImageHelperViewsMore(obj)
-                obj =                                               obj.updateNavigationViews;
-                obj.Views.Navigation.ShowMaxVolume.Value =          obj.LoadedMovie.getCollapseAllPlanes ;
-                obj.Views.Navigation.ApplyDriftCorrection.Value =   obj.LoadedMovie.getDriftCorrectionStatus;
-                obj.Views.Navigation.CropImageHandle.Value =        obj.LoadedMovie.getCroppingOn;
-                obj.Views.Annotation.ShowScaleBar.Value =           obj.LoadedMovie.getScaleBarVisibility;
-       
-          end
-        
-         
-    
-           %% Trackline Views:
-         
-          
-           function setLineColorTo(~,Handle,Color)
-               Handle.Color =          Color;
-               
-           end
-    
             
-         
-          
+
        
-   
-       %% set model and view:
+
+
+    end
+    
+    methods % getters
+        
+        function Value = getNickName(obj)
+            Value = obj.LoadedMovie.getNickName;
+        end
+        
+         function view = getViews(obj)
+           view = obj.Views; 
+         end
+        
+         function action = getMouseAction(obj)
+             action = obj.MouseAction;
+         end
+         
+         function verifiedStatus =                     verifyActiveMovieStatus(obj)
+              verifiedStatus = ~isempty(obj)  && ~isempty(obj.LoadedMovie) ;
+         end
+          
+    end
+    
+    methods % setters
+        
+          function obj = updateWith(obj, Value)
+            % UPDATEWITH update state of PMMovieController
+            % this function will be ignored if currently no PMMovieTracking is attached;
+            % takes 1 argument:
+            % option 1: PMMovieLibrary: this will set the image-analysis folder of PMMovieTracking;
+            % option 2: PMInteractionsManager: this will update the attached PMMovieTracking;
+            if isempty(obj.LoadedMovie)
+                warning('Could not update LoadedMovie because the property was not set yet.')
+            else
+                
+                 Type = class(Value);
+                switch Type
+                    case 'PMMovieLibrary'
+                        obj.LoadedMovie = obj.LoadedMovie.setImageAnalysisFolder(Value.getPathForImageAnalysis);
+                        obj.LoadedMovie = obj.LoadedMovie.setMovieFolder(Value.getMovieFolder);
+                        
+                    case 'PMInteractionsManager'
+                        obj =   obj.updateControlElements;
+                   
+                        
+                    otherwise
+                        error('Cannot parse input.')
+                end
+            end
+    
+        end
+        
+        function obj = setNickName(obj, Value)
+            obj.LoadedMovie =   obj.LoadedMovie.setNickName(Value);
+            obj =           obj.updateSaveStatusView;
+        end
+        
+        function obj = setKeywords(obj, Value)
+            obj.LoadedMovie = obj.LoadedMovie.setKeywords(Value); 
+        end
+
+        function obj  = setInteractionImageVolume(obj, Value)
+            obj.InteractionImageVolume =        Value; 
+            obj =           obj.updateMovieView;
+        end
+        
+          function obj = setMouseAction(obj, Value)
+             obj.MouseAction = Value;
+          end
+          
        function obj =           resetNumberOfExtraLoadedFrames(obj,Number)
             obj.DefaultNumberOfLoadedFrames =                   Number;    
        end
-       
-      
-       %% unMapMovie:
-       function obj =           unMapMovie(obj)
-            obj    =            obj.emptyOutLoadedImageVolumes;
-            obj.LoadedMovie =   obj.LoadedMovie.unmap;
-            obj.Views=          obj.Views.blackOutMovieView;
-       end
-       
-          function obj    =        emptyOutLoadedImageVolumes(obj)
-            if isempty(obj.LoadedMovie) 
-                obj.LoadedImageVolumes =                           cell(0,1);
-            else
-                obj.LoadedImageVolumes =                            cell(obj.LoadedMovie.getMaxFrame,1);
-            end     
-          end
-         
-       %% manageResettingOfImageMap
-       function obj =           manageResettingOfImageMap(obj)
-           
-           assert(~isempty(obj.LoadedMovie), 'Loaded movie not set')
-             obj.LoadedMovie =        obj.LoadedMovie.setImageMapFromFiles;
-             obj    =                 obj.emptyOutLoadedImageVolumes;
-             obj =                    obj.updateRgbImage;
-       end
-       
 
-        % navigation
-      
-
-        
+    end
     
-      
-        function obj =  turnOffAllChannels(obj)
-            obj.LoadedMovie =   obj.LoadedMovie.turnOffAllChannels; 
-            obj =               obj.updateChannelSettingView;
-            obj =               obj.updateImageView;  
-        end
+    methods % setters image-volumes
         
         
-      
-        
-        
-        %% set drift correction:
-        function obj  =        setDriftCorrectionTo(obj, state)
-            obj.LoadedMovie =               obj.LoadedMovie.setDriftCorrectionTo(state); % the next function should be incoroporated into this function
-            obj =                           obj.resetDriftDependentParameters;
-        end
-        
-        function obj =         resetDriftCorrectionByManualClicks(obj)
-            obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.setByManualDriftCorrection);
-            obj =                  obj.resetDriftDependentParameters;
-        end
-        
-        function obj =         resetDriftCorrectionToNoDrift(obj)
-            obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.eraseDriftCorrection);
-            obj =                                 obj.resetDriftDependentParameters;
+        function obj =                  updateLoadedImageVolumes(obj)
             
+            if isempty(obj.getFramesThatNeedToBeLoaded)
+
+            else
+              obj.LoadedImageVolumes(obj.getFramesThatNeedToBeLoaded,1 ) = obj.LoadedMovie.loadImageVolumesForFrames(obj.getFramesThatNeedToBeLoaded);
+            end
+
+            obj = obj.activateViews;
+
         end
         
-        function obj =         resetDriftDependentParameters(obj)
-            obj.LoadedMovie =              obj.LoadedMovie.setDriftDependentParameters;
-            obj =                          obj.resetViewsForCurrentDriftCorrection;
-            
+        function requiredFrames =     getFramesThatNeedToBeLoaded(obj)
+            obj =                                       obj.resetLoadedImageVolumesIfInvalid;
+            requiredFrames =                            obj.getFrameNumbersThatMustBeInMemory;
+            alreadyLoadedFrames =                       obj.getFramesThatAreAlreadyInMemory;
+
+            requiredFrames(alreadyLoadedFrames,1) =     false;
+            requiredFrames = find(requiredFrames);
+
+        end
+        
+          function obj =                  resetLoadedImageVolumesIfInvalid(obj)
+              % RESETLOADEDIMAGEVOLUMESIFINVALID sets LoadedImageVolumes to
+              % the rigth format, if invalid;
+              % this should not be necessary if the setters work correctly
+            if ~iscell(obj.LoadedImageVolumes) || length(obj.LoadedImageVolumes) ~= obj.LoadedMovie.getMaxFrame
+               obj.LoadedImageVolumes =                            cell(obj.LoadedMovie.getMaxFrame,1);
+            end
+          end
           
-        end  
+             
+        function requiredFrames =       getFrameNumbersThatMustBeInMemory(obj)
+            requiredFrames(1: obj.LoadedMovie.getMaxFrame, 1) = false;
+            range =                 obj.LoadedMovie.getActiveFrames - obj.getLimitForLoadingFrames : obj.LoadedMovie.getActiveFrames + obj.getLimitForLoadingFrames;
+            range(range<=0) =       [];
+            range(range > obj.LoadedMovie.getMaxFrame) =       [];
+            requiredFrames(range,1) =                                     true;
+        end
         
-        function obj =         resetViewsForCurrentDriftCorrection(obj)
-            
-                obj =                       obj.resetLimitsOfImageAxesWithAppliedCroppingGate; % reset applied cropping limit (dependent on drift correction)
-                obj =                       obj.shiftImageByDriftCorrection; % reset image shift (dependent on drift correction)
-                obj =                       obj.initializeNavigationViews; % plane number may change
-                obj =                       obj.updateCroppingLimitView; % crop position may change
-
-                obj =                       obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);% change drift correction of tracks
-                obj =                       obj.updateNavigationViews; % plane number may change
-                obj =                       obj.updateImageHelperViewsMore; % drift setting may change
-                obj =                       obj.updateAnnotationViews;  % adjust position of annotation within views
-
-             end
-         
-            
-       
-        %% tracks:
-         function obj =                         setFinishStatusOfTrackTo(obj, Input)
-             obj.LoadedMovie =                              obj.LoadedMovie.setFinishStatusOfTrackTo(Input); 
-             obj.TrackingNavigationEditViewController =     obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking);
-         end
-
-         function [obj] =                        resetPlaneTrackingByMenu(obj) % maximum projection for tracking
-                MaximumProjOfTracking =     obj.TrackingViews.ShowMaximumProjection.Value;
-                obj = obj.setCollapseAllTrackingTo(MaximumProjOfTracking);
-         end
-
-         function obj = setCollapseAllTrackingTo(obj, Value)
-            obj.LoadedMovie =           obj.LoadedMovie.setCollapseAllTrackingTo(Value);
-            obj =                       obj.updateImageView;  
-            obj =                       obj.updateNavigationViews;
-            obj.TrackingViews.ShowMaximumProjection.Value = Value;
-         end
-
-        function [obj] =                        mergeSelectedTracks(obj)
-               obj.LoadedMovie.Tracking =   obj.LoadedMovie.Tracking.mergeSelectedTracks;
-              obj =                         obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
+        function frames =               getLimitForLoadingFrames(obj)  
+            PressedKeyAsciiCode=                    double(obj.PressedKeyValue);
+            if PressedKeyAsciiCode == 29 % if the user goes forward load multiple frames
+                frames =        obj.DefaultNumberOfLoadedFrames;
+            else % otherwise just one frame is loaded:
+                frames =        0;
+            end
         end
 
-        %% splitSelectedTrack
-        function obj = splitSelectedTrack(obj)
-            obj.LoadedMovie.Tracking  =               obj.LoadedMovie.Tracking.splitSelectedTrackAtActiveFrame;
-            obj =                                     obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-        end
-                     
+      
         
+        
+      function framesThatHaveTheMovieAlreadyLoaded = getFramesThatAreAlreadyInMemory(obj)
+        framesThatHaveTheMovieAlreadyLoaded =         cellfun(@(x)  ~isempty(x),     obj.LoadedImageVolumes);   
+      end
+        
+
+        
+
+        
+        
+        
+          function obj =        setLoadedImageVolumes(obj, Value)
+              % SETLOADEDIMAGEVOLUMES sets LoadedImageVolumes (which contains stored images of source files so that they don't have to be loaded from file each time);
+              if isempty(Value)
+                  
+              else
+               %    assert(iscell(Value) && size(Value, 1) == obj.LoadedMovie.getMaxFrame && size(Value, 2) == 1, 'Invalid argument type.')
+                  obj.LoadedImageVolumes =      Value; 
+              end
+          end
+          
+        function obj    =        emptyOutLoadedImageVolumes(obj)
+            if isempty(obj.LoadedMovie) 
+                obj.LoadedImageVolumes =        cell(0,1);
+            else
+                obj.LoadedImageVolumes =        cell(obj.LoadedMovie.getMaxFrame,1);
+            end     
+        end
+        
+      
+        
+          
+        
+        
+        
+    end
+    
+    methods % setters mouse positions
+        
+           function obj = setCurrentDownPositions(obj)
+                obj =       obj.setMouseDownRow(obj.getViews.getMovieAxes.CurrentPoint(1,2));
+                obj =       obj.setMouseDownColumn(obj.getViews.getMovieAxes.CurrentPoint(1,1)); 
+          end
      
-         
-        %% deleteActiveMask               
-        function obj =              deleteActiveMask(obj)
-            obj.LoadedMovie.Tracking =      obj.LoadedMovie.Tracking.deleteActiveMask;
-            obj =                           obj.setTrackLineViews;
-        end
+          function obj =      blackOutMousePositions(obj)
+                obj =       obj.blackOutStartMousePosition;
+                obj =       obj.setMouseUpRow(NaN);
+                obj =       obj.setMouseUpColumn(NaN); 
+          end
+          
+          function obj = blackOutStartMousePosition(obj)
+                obj =     obj.setMouseDownRow(NaN);
+                obj =     obj.setMouseDownColumn(NaN);
+          end
+                        
+     
+       
+          
         
-                         
-
-         
-         %% splitTrackAtFrameAndDeleteFirst
-        function [obj] =         splitTrackAtFrameAndDeleteFirst(obj)
-                obj.LoadedMovie.Tracking =   obj.LoadedMovie.Tracking.splitTrackAtFrameAndDeleteFirst(obj.LoadedMovie.getActiveFrames, obj.LoadedMovie.getSelectedTrackIDs);
-                obj =                        obj.Views.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-        end
-        
-
-        %% splitSelectedTracksAndDeleteSecondPart     
-        function [obj] =             splitSelectedTracksAndDeleteSecondPart(obj)   
-            obj.LoadedMovie.Tracking =     obj.LoadedMovie.Tracking.splitTrackAtFrameAndDeleteSecond(obj.LoadedMovie.getActiveFrames, obj.LoadedMovie.getSelectedTrackIDs);
-            obj =                          obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-        end
-
-        %% connectSelectedTrackToActiveTrack
-        function obj =                              connectSelectedTrackToActiveTrack(obj)
-            IDOfTrackToMerge =  obj.getTrackIDFromMousePosition;
-            obj.LoadedMovie =   obj.LoadedMovie.mergeActiveTrackWithTrack(IDOfTrackToMerge);
-            obj =               obj.updateImageView;
-        end
-            
-        function SelectedTrackID =   getTrackIDFromMousePosition(obj)
-           frame =                                          obj.LoadedMovie.getActiveFrames;
-            [ClickedColumn, ClickedRow, ClickedPlane] =            obj.LoadedMovie.removeDriftCorrection(obj.MouseUpColumn, obj.MouseUpRow, obj.LoadedMovie.getActivePlanes);
-            [ClickedRow, ClickedColumn, ClickedPlane, ~] =     obj.roundCoordinates(ClickedRow, ClickedColumn, ClickedPlane, frame);
-            SelectedTrackID= obj.LoadedMovie.getIdOfTrackThatIsClosestToPoint([ClickedRow, ClickedColumn, ClickedPlane]);
-        end
-        
-        %% gotToFirstTrackedFrameFromCurrentPoint
-        function obj =   gotToFirstTrackedFrameFromCurrentPoint(obj)
-                         obj =              obj.resetFrame(obj.LoadedMovie.getLastTrackedFrame('down'));
-        end
-        
-        function obj = goToLastContiguouslyTrackedFrameInActiveTrack(obj)
-            obj =      obj.resetFrame(obj.LoadedMovie.getLastTrackedFrame('up'));
-        end
-        
-        %% goToLastFrame
-        function obj = goToLastFrame(obj)
-                 obj =        obj.resetFrame(obj.LoadedMovie.getMaxFrame);
-        end
-        
-        %% goOnePlaneDown
-        function obj = goOnePlaneDown(obj)
+    end
+    
+    methods % setters navigation
+       
+          function obj = goOnePlaneDown(obj)
             CurrentPlane =        obj.LoadedMovie.getActivePlanes;
             [~, ~, MaximumPlane]=  obj.LoadedMovie.getImageDimensionsWithAppliedDriftCorrection;
             if CurrentPlane < MaximumPlane  
@@ -934,22 +1146,612 @@ classdef PMMovieController < handle
                 obj  = obj.resetPlane(CurrentPlane - 1);
             end
         end
-                    
-                    
-     %% get rectnagle from mouse drag
+        
+             function obj  =     resetPlane(obj, newPlane)
+                obj.LoadedMovie =       obj.LoadedMovie.setSelectedPlaneTo(newPlane);
+                obj =                   obj.updateMovieView;
+                obj =                   obj.setNavigationControls;
+                obj =                               obj.setTrackViews;
 
-        function [Rectangle] =                 getRectangleFromMouseDrag(obj)
+        end
+        
+    end
+    
+    methods % setters channels
+
+        function obj = setChannels(obj, Value)
+            Type = class(Value);
+            switch Type
+                case 'PMMovieTracking'
+                    obj.LoadedMovie = obj.LoadedMovie.setChannels(Value);
+
+                case 'char'
+                    switch  Value
+                        case 'off'
+                            obj =  turnOffAllChannels(obj);
+                        otherwise
+                            error('Wrong input.')
+                    end
+                otherwise
+                    error('Wrong input.')
+
+            end
+
+        end
+        
+        function obj = setActiveChannel(obj, Value)
+            obj.LoadedMovie =        obj.LoadedMovie.setActiveChannel(Value);
+            
+        end
+        
+        function obj = resetChannelSettings(obj, Value, Type)
+             obj.LoadedMovie =       obj.LoadedMovie.resetChannelSettings(Value, Type);
+            
+        end
+        
+          function obj = setVisibilityOfChannels(obj, Value)
+
+            assert(islogical(Value) && isvector(Value) && length(Value) == obj.LoadedMovie.getMaxChannel, 'Wrong input')
+            for index = 1 : length(Value)
+                obj.LoadedMovie =        obj.LoadedMovie.setVisibleOfChannelIndex(index, Value(index));    
+            end
+
+        end
+
+
+        function obj = toggleVisibilityOfChannelIndex(obj, Index)
+              if Index <= obj.LoadedMovie.getMaxChannel
+                    obj.LoadedMovie =        obj.LoadedMovie.setVisibleOfChannelIndex(Index,   ~obj.LoadedMovie.getVisibleOfChannelIndex(Index));    
+                    obj.LoadedMovie =        obj.LoadedMovie.setActiveChannel(Index);
+                    obj =           obj.updateControlElements;
+                    obj =           obj.updateMovieView;
+
+               end
+
+        end
+
+      
+
+         function obj =  turnOffAllChannels(obj)
+            obj.LoadedMovie =   obj.LoadedMovie.turnOffAllChannels; 
+            obj =               obj.updateControlElements;
+            obj =               obj.updateMovieView;
+         end
+
+
+    end
+    
+    
+    methods (Access = private) % channel-callbacks
+
+        function obj = setChannelCallbacks(obj)
+                   obj.Views  =    setChannelCallbacks(obj.Views, ...
+                                 @obj.channelViewClicked, ...
+                                 @obj.channelLowIntensityClicked, ...
+                                 @obj.channelHighIntensityClicked, ...
+                                 @obj.channelColorClicked, ...
+                                 @obj.channelCommentClicked, ...
+                                 @obj.channelOnOffClicked, ...
+                                @obj.channelReconstructionClicked ...
+                );
+        end
+
+        function [obj] =           channelViewClicked(obj,~,~)
+           obj.LoadedMovie =    obj.LoadedMovie.setActiveChannel(getSelectedChannel(obj.Views));
+           obj =                obj.updateControlElements;
+        end
+
+        function [obj] =           channelLowIntensityClicked(obj,~,~)
+                obj.LoadedMovie =       obj.LoadedMovie.resetChannelSettings(getMinimumIntensityOfSelectedChannel(obj.Views), 'ChannelTransformsLowIn');
+                obj =                   obj.updateMovieView;
+                obj =                   obj.updateControlElements;
+        end
+
+        function [obj] =           channelHighIntensityClicked(obj,~,~)
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getMaximumIntensityOfSelectedChannel(obj.Views), 'ChannelTransformsHighIn');
+            obj =                   obj.updateMovieView;
+            obj =                   obj.updateControlElements;
+        end
+
+        function [obj] =          channelColorClicked(obj,~,~)
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getColorOfSelectedChannel(obj.Views), 'ChannelColors');
+            obj =           obj.updateMovieView;
+            obj =           obj.updateControlElements;
+        end
+
+        function [obj] =          channelCommentClicked(obj,~,~)
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getCommentOfSelectedChannel(obj.Views), 'ChannelComments');
+            obj =           obj.updateMovieView;
+            obj =           obj.updateControlElements;
+        end
+
+        function [obj] =          channelOnOffClicked(obj,~,~)
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getVisibilityOfSelectedChannel(obj.Views), 'SelectedChannels');   
+            obj =           obj.updateMovieView;
+            obj =           obj.updateControlElements;
+
+        end
+
+        function [obj] =         channelReconstructionClicked(obj,~,~)
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getFilterTypeOfSelectedChannel(obj.Views), 'ChannelReconstruction');
+            obj =                   obj.emptyOutLoadedImageVolumes;
+            obj =           obj.updateMovieViewImage;
+            obj =           obj.updateMovieView;
+
+            obj =           obj.updateControlElements;    
+        end
+
+
+
+
+
+    end
+    
+
+    methods % image map
+        
+       function obj =           unMapMovie(obj)
+            obj    =            obj.emptyOutLoadedImageVolumes;
+            obj.LoadedMovie =   obj.LoadedMovie.unmap;
+            obj =               obj.blackOutViews;
+       end
+       
+     
+
+       function obj =           manageResettingOfImageMap(obj)
+            assert(~isempty(obj.LoadedMovie), 'Loaded movie not set')
+            obj.LoadedMovie =        obj.LoadedMovie.setImageMapFromFiles;
+            obj    =                 obj.emptyOutLoadedImageVolumes;
+            obj =           obj.updateMovieViewImage;
+       end
+
+
+       
+        
+    end
+    
+    methods % set drift -correction
+        
+        
+        function obj = setDriftCorrection(obj, Value, varargin)
+            
+            Type = class(Value);
+            switch Type
+                case 'char'
+                    switch Value
+                        case 'Manual'
+                            obj = obj.setManualDriftCorrection(varargin{1});
+                        case 'remove'
+                            obj = obj.resetDriftCorrectionToNoDrift;
+                        case 'byManualEntries'
+                            obj = obj.resetDriftCorrectionByManualClicks;
+                       
+                        otherwise
+                            error('Wrong input.')
+                    end
+                    
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+            
+            
+        end
+        
+ 
+   
+
+        
+    end
+    
+    methods % setters tracking
+       
+         function obj =                         setFinishStatusOfTrackTo(obj, Input)
+             obj.LoadedMovie =                              obj.LoadedMovie.setFinishStatusOfTrackTo(Input); 
+             obj.TrackingNavigationEditViewController =     obj.TrackingNavigationEditViewController.resetForFinishedTracksWith(obj.LoadedMovie.getTracking);
+             
+             switch Input
+                 case 'Finished'
+                       obj = obj.toggleUnfinishedTracks('Forward');
+                 case 'Unfinished'
+                      obj = obj.toggleUnfinishedTracks('Backward');
+                 otherwise
+                     error('Wrong input.')
+             end
+         
+              fprintf('toggleUnfinishedTracks: %6.2f seconds.\n', toc)
+             
+         end
+
+     
+
+         
+    
+         function obj = performTrackingMethod(obj, Value, varargin)
+             % performTrackingMethod
+            assert(ischar(Value), 'Wrong input')
+          NameOfTrackingFunction =    ['tracking_', Value];
+            if length(varargin) >= 2
+                obj =                      obj.(NameOfTrackingFunction)(varargin{1}, varargin{2});
+            elseif length(varargin) >= 1
+                obj =                      obj.(NameOfTrackingFunction)(varargin{1});
+            elseif isempty(varargin)
+                obj =                      obj.(NameOfTrackingFunction);
+            else
+                error('Wrong input')
+            end
+         end
+         
+
+      
+        function obj = truncateActiveTrackToFit(obj)
+            try
+                obj.LoadedMovie =       obj.LoadedMovie.performTrackingMethod('truncateActiveTrackToFit');
+                obj =                   obj.updateAllViewsThatDependOnActiveTrack;
+            catch ME
+                throw(ME)
+            end
+            
+        end
+        
+        
+        
+    end
+ 
+    methods
+            
+        function obj = setTrackingNavigationEditViewController(obj, varargin)
+            %    obj.LoadedMovie = obj.LoadedMovie.generalCleanup;
+            NumberOfArguments = length(varargin);
+            switch NumberOfArguments
+                 case 0
+                     obj.TrackingNavigationEditViewController =   obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking);
+                 case 1
+                     obj.TrackingNavigationEditViewController =   obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking, varargin{1});
+                 otherwise
+                     error('Wrong input.')
+            end
+
+            obj =                          obj.updateHandlesForTrackingNavigationEditView;
+        end
+
+        function obj =   showAutoCellRecognitionWindow(obj)
+
+            if isempty(obj.LoadedMovie)
+
+            else
+                myModel =                                   PMAutoCellRecognition(obj.getLoadedImageVolumes, find(obj.LoadedMovie.getActiveChannelIndex));
+                obj.AutoCellRecognitionController =         PMAutoCellRecognitionController(myModel);   
+
+                obj.AutoCellRecognitionController =         obj.AutoCellRecognitionController.setCallBacks(@obj.AutoCellRecognitionChannelChanged, @obj.AutoCellRecognitionFramesChanged, @obj.AutoCellRecognitionTableChanged, @obj.startAutoCellRecognitionPushed);
+
+            end
+
+        end
+
+        function obj = deleteImageAnalysisFile(obj)
+          obj.LoadedMovie = obj.LoadedMovie.deleteFile;
+        end
+
+
+        function obj = showAutoTrackingController(obj)
+             obj.TrackingAutoTrackingController =         obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking, 'ForceDisplay');
+             obj =                                        obj.updateHandlesForAutoTrackingController;
+        end
+            
+        function summary = getMetaDataSummary(obj)
+           summary = obj.LoadedMovie.getMetaDataSummary;
+            
+        end
+        
+        function obj = saveMetaData(obj, varargin)
+            NumberOfArguments = length(varargin);
+            switch NumberOfArguments
+                case 1
+                    obj.LoadedMovie = obj.LoadedMovie.saveMetaData(varargin{1});
+                    
+                otherwise
+                    error('Wrong input.')
+                
+            end
+ 
+        end
+           
+    end
+         
+    methods (Access = private) % highLightRectanglePixelsByMouse
+        
+       
+        
+         function SpaceCoordinates =           getCoordinateListByMousePositions(obj)
+
+                myRectangle =       PMRectangle(obj.getRectangleFromMouseDrag);
+                Coordinates_2D =    myRectangle.get2DCoordinatesConfinedByRectangle;
+                
+                [ ~, ~,  planeWithoutDrift, ~ ] =    obj.getCoordinatesOfCurrentMousePosition;
+                zListToAdd =    (linspace(planeWithoutDrift, planeWithoutDrift, length(Coordinates_2D(:, 1))))';
+
+                SpaceCoordinates = [Coordinates_2D, zListToAdd];
+
+         end
+         
+         
+         function [Rectangle] =                 getRectangleFromMouseDrag(obj)
             [ startrow, startcolumn,  ~, ~ ] =   obj.getCoordinatesOfButtonPress;
             [ endrow, endcolumn,  ~, ~ ] =       obj.getCoordinatesOfCurrentMousePosition;
             Rectangle =                         [startcolumn, startrow, endcolumn - startcolumn, endrow - startrow];
-        end
-
-        function [rowFinal, columnFinal, planeFinal, frame] =      getCoordinatesOfButtonPress(obj)
+         end
+         
+           function [rowFinal, columnFinal, planeFinal, frame] =      getCoordinatesOfButtonPress(obj)
             [columnFinal, rowFinal, planeFinal] =            obj.LoadedMovie.removeDriftCorrection(obj.MouseDownColumn, obj.MouseDownRow, obj.LoadedMovie.getActivePlanes);
             [rowFinal, columnFinal, planeFinal, frame] =     obj.roundCoordinates(rowFinal, columnFinal, planeFinal, obj.LoadedMovie.getActiveFrames);
             [rowFinal, columnFinal, planeFinal]  =            obj.LoadedMovie.verifyCoordinates(rowFinal, columnFinal,planeFinal);
+           end
+
+      
+        
+        
+            
+          
+           
+        
+        function [rowFinal, columnFinal, planeFinal, frame] =               getCoordinatesOfCurrentMousePosition(obj)
+            [columnFinal, rowFinal, planeFinal] =            obj.LoadedMovie.removeDriftCorrection(obj.MouseUpColumn, obj.MouseUpRow, obj.LoadedMovie.getActivePlanes);
+            [rowFinal, columnFinal, planeFinal, frame] =     obj.roundCoordinates(rowFinal, columnFinal, planeFinal, obj.LoadedMovie.getActiveFrames);
+            [rowFinal, columnFinal, planeFinal]  =           obj.LoadedMovie.verifyCoordinates(rowFinal, columnFinal,planeFinal);
+        end
+        
+       
+            
+        
+        
+    end
+
+    methods % reset axes by mouse movment
+       
+          function obj = resetAxesCenterByMouseMovement(obj)
+                XMovement =     obj.getMouseUpColumn - obj.getMouseDownColumn;
+                YMovement =     obj.getMouseUpRow - obj.getMouseDownRow;
+                obj =           obj.resetAxesCenter(XMovement, YMovement);
+            
+         end
+        
+    end
+    
+    methods (Access = private) % reset axes by mouse movement;
+       
+       
+        
+        
+        
+        
+          function Value = getMouseDownRow(obj)
+             Value = obj.MouseDownRow;
+          end
+          
+          function Value = getMouseDownColumn(obj)
+             Value = obj.MouseDownColumn;
+          end
+          
+          function Value = getMouseUpColumn(obj)
+             Value = obj.MouseUpColumn;
+          end
+          
+           function Value = getMouseUpRow(obj)
+             Value = obj.MouseUpRow;
+           end
+           
+        
+        
+    end
+    
+    
+    methods (Access = private) % drift correction
+        
+        
+            %% resetDriftCorrectionByManualClicks
+            function obj =         resetDriftCorrectionByManualClicks(obj)
+                obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.setByManualDriftCorrection);
+                obj =                  obj.resetDriftDependentParameters;
+            end
+
+            function obj =         resetDriftDependentParameters(obj)
+                obj.LoadedMovie =         obj.LoadedMovie.setDriftDependentParameters;
+                obj =                     obj.resetViewsForCurrentDriftCorrection; 
+            end 
+
+          
+
+            %% resetDriftCorrectionToNoDrift;
+            function obj =         resetDriftCorrectionToNoDrift(obj)
+                obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.eraseDriftCorrection);
+                obj =                 obj.resetDriftDependentParameters;   
+            end
+
+  
+        
+                
+                
+        function obj  =        setDriftCorrectionTo(obj, state)
+            obj.LoadedMovie =   obj.LoadedMovie.setDriftCorrectionTo(state); % the next function should be incoroporated into this function
+            obj =               obj.resetDriftDependentParameters;
+        end
+        
+
+        
+        
+        function obj = setManualDriftCorrection(obj, Value)
+
+            switch Value
+                case 'currentFrameByButtonPress'
+                   [rowFinal, columnFinal, planeFinal, frame] =     obj.getCoordinatesOfButtonPress;
+                   obj =               obj.setManualDriftCorrectionByTimeSpaceCoordinates(frame, columnFinal, rowFinal,  planeFinal );
+
+                case 'currentAndConsecutiveFramesByButtonPress'
+                       [rowFinal, columnFinal, planeFinal, frame] =     obj.getCoordinatesOfButtonPress;
+                       Frames = frame : obj.LoadedMovie.getMaxFrame;
+                       
+                   obj =               obj.setManualDriftCorrectionByTimeSpaceCoordinates(Frames, columnFinal, rowFinal,  planeFinal );
+
+                otherwise
+                    error('Wrong input.')
+            end
+
+        end
+        
+         function [obj]  =                setManualDriftCorrectionByTimeSpaceCoordinates(obj, frames, columnFinal, rowFinal,  planeFinal)
+            NewDriftCorrection =    obj.LoadedMovie.getDriftCorrection.updateManualDriftCorrectionByValues(columnFinal, rowFinal,planeFinal, frames);
+
+            Manual =                NewDriftCorrection.getManualDriftCorrectionValues;
+            obj.LoadedMovie =       obj.LoadedMovie.setDriftCorrection(NewDriftCorrection);
+            obj =                   obj.setDriftCorrectionIndicators;
+                
+         end
+        
+         
+        
+    end
+    
+    methods (Access = private) % getters tracks
+       
+          
+            function [StopTracks, GoTracks, StopTrackMetric, GoTracksMetric] = getStopGoTrackSegments(obj, DistanceLimit, MinTimeLimit, MaxTimeLimit)
+       
+                MyTrackingAnalysisMetric =      obj.LoadedMovie.getTrackingAnalysis;
+                MyTrackingAnalysisMetric =      MyTrackingAnalysisMetric.setSpaceUnits('µm');
+                MyTrackingAnalysisMetric =      MyTrackingAnalysisMetric.setTimeUnits('minutes');
+
+                MyTrackingAnalysisPixels =      MyTrackingAnalysisMetric.setSpaceUnits('pixels');
+                MyTrackingAnalysisPixels =      MyTrackingAnalysisPixels.setTimeUnits('frames');
+
+
+                MyStopSeries =                  PMStopTrackingSeries(MyTrackingAnalysisMetric.getTrackCell, DistanceLimit,  MyTrackingAnalysisPixels.getTrackCell);
+
+                StopTrackMetric=                MyStopSeries.getGoTracks;
+                GoTracksMetric =                MyStopSeries.getStopTracks;
+
+
+                StopTracks=                     MyStopSeries.getGoTracksPixels;
+                GoTracks =                      MyStopSeries.getStopTracksPixels;
+
+            end
+        
+    end
+    
+    methods (Access = private)
+        
+       
+        function [TrackId, RowOfSelection] = selectTrackIdForTogglingFromList(obj, TrackIdsToToggle)
+            
+            if isempty(TrackIdsToToggle)
+                TrackId = '';
+                RowOfSelection = '';
+            else
+                RowOfSelection =            find(obj.LoadedMovie.getIdOfActiveTrack == TrackIdsToToggle);
+                if isempty(RowOfSelection)
+                     [TrackId, RowOfSelection] = obj.getNextTrackIdAfterActiveTrackFromList(TrackIdsToToggle);
+                elseif length(RowOfSelection) == 1
+                     [TrackId, RowOfSelection] = obj.getTrackIdAfterCurrentRowFromList(TrackIdsToToggle, RowOfSelection);
+                else
+                     TrackId = '';
+                     RowOfSelection = '';
+                end
+            end  
+            
+        end
+        
+        function frames = getFollowingFramesOfCurrentTrack(obj)
+            frames =                obj.LoadedMovie.getTracking.getFrameNumbersForTrackID(obj.LoadedMovie.getIdOfActiveTrack);
+            frames(frames < obj.LoadedMovie.getActiveFrames) =     [];
+        end
+                
+          function [StartFrames, EndFrames] = getForwardTrackingFramesFromGapLimits(obj, GapLimits)
+            
+                if isempty(GapLimits)
+                    StartFrames = NaN;
+                elseif GapLimits(1) == GapLimits(2)
+                   StartFrames =    GapLimits;
+                else
+                    StartFrames =   (GapLimits(1) : GapLimits(2)) - 1;
+                end
+
+               StartFrames = obj.removeInvalidFrames(StartFrames);
+             EndFrames = StartFrames + 1;
+            
+           end
+           
+             function [StartFrames, EndFrames] = getBackwardTrackingFramesFromGapLimits(obj, GapLimits)
+            
+                if isempty(GapLimits)
+                    StartFrames = NaN;
+                elseif GapLimits(1) == GapLimits(2)
+                   StartFrames =    GapLimits;
+                else
+                    StartFrames =   (GapLimits(2) : -1: GapLimits(1)) + 1;
+                end
+
+               StartFrames = obj.removeInvalidFrames(StartFrames);
+             EndFrames = StartFrames - 1;
+            
+           end
+           
+           function StartFrames = removeInvalidFrames(obj, StartFrames)
+                StartFrames(StartFrames < 0, :) = [];
+                StartFrames(StartFrames > obj.LoadedMovie.getMaxFrame, :) = [];
+                if isempty(StartFrames)
+                   StartFrames = NaN; 
+                end
+           end
+           
+         function [TrackId, CandidateRow] = getNextTrackIdAfterActiveTrackFromList(obj, TrackIdsToToggle)
+             CandidateRow = find(TrackIdsToToggle > obj.LoadedMovie.getIdOfActiveTrack, 1, 'first');
+             if isempty(CandidateRow)
+                 CandidateRow = 1;
+             end
+             
+                 TrackId = TrackIdsToToggle(CandidateRow);
+             
+        end
+        
+        function [TrackId, RowOfSelection] = getTrackIdAfterCurrentRowFromList(~, TrackIdsToToggle, RowOfSelection)
+             if RowOfSelection == length(TrackIdsToToggle)
+               RowOfSelection = 1;
+            else
+                RowOfSelection = RowOfSelection + 1;
+             end
+             TrackId = TrackIdsToToggle(RowOfSelection);
+
+        end
+        
+        function StartFrames = getStartFramesForForwardGapTracking(obj)
+             GapLimits =        obj.LoadedMovie.getLimitsOfFirstForwardGapOfAllTracks;
+            StartFrames =       obj.getForwardTrackingFramesFromGapLimits(GapLimits);
+            if isnan(StartFrames)
+               StartFrames = 1; 
+            end
         end
 
+
+
+        function StartFrames = getStartFramesForBackwardGapTracking(obj)
+             GapLimits =        obj.LoadedMovie.getLimitsOfFirstBackwardGapOfAllTracks;
+            StartFrames =       obj.getBackwardTrackingFramesFromGapLimits(GapLimits);
+            if isnan(StartFrames)
+               StartFrames = 1; 
+            end
+        end
+
+   
+        %% getTrackIDFromMousePosition:
+        function SelectedTrackID =   getTrackIDFromMousePosition(obj)
+           frame =                                          obj.LoadedMovie.getActiveFrames;
+            [ClickedColumn, ClickedRow, ClickedPlane] =         obj.LoadedMovie.removeDriftCorrection(obj.MouseUpColumn, obj.MouseUpRow, obj.LoadedMovie.getActivePlanes);
+            [ClickedRow, ClickedColumn, ClickedPlane, ~] =      obj.roundCoordinates(ClickedRow, ClickedColumn, ClickedPlane, frame);
+            SelectedTrackID=                                    obj.LoadedMovie.getIdOfTrackThatIsClosestToPoint([ClickedRow, ClickedColumn, ClickedPlane]);
+        end
+        
+        
         function [rowFinal, columnFinal, planeFinal, frame] =     roundCoordinates(~, rowFinal, columnFinal, planeFinal, frame)
             rowFinal =          round(rowFinal);
             columnFinal =       round(columnFinal);
@@ -957,720 +1759,10 @@ classdef PMMovieController < handle
             frame =             round(frame);
         end
         
-        function [rowFinal, columnFinal, planeFinal, frame] =               getCoordinatesOfCurrentMousePosition(obj)
-            [columnFinal, rowFinal, planeFinal] =            obj.LoadedMovie.removeDriftCorrection(obj.MouseUpColumn, obj.MouseUpRow, obj.LoadedMovie.getActivePlanes);
-            [rowFinal, columnFinal, planeFinal, frame] =     obj.roundCoordinates(rowFinal, columnFinal, planeFinal, obj.LoadedMovie.getActiveFrames);
-            [rowFinal, columnFinal, planeFinal]  =           obj.LoadedMovie.verifyCoordinates(rowFinal, columnFinal,planeFinal);
-        end
-     
-            %% other 
-            function obj =                     usePressedCentroidAsMask(obj)
-                  if isnan(obj.LoadedMovie.getIdOfActiveTrack)
-                     return
-                  end
-                  [rowFinal, columnFinal, planeFinal, ~] =   obj.getCoordinatesOfCurrentMousePosition;
-
-                if ~isnan(rowFinal)
-                      mySegmentationObject =                     PMSegmentationCapture(obj, [rowFinal, columnFinal, planeFinal]);
-                      mySegmentationObject.SegmentationType =    'MouseClick';
-                      obj.LoadedMovie =                          obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
-                      obj =                                      obj.updateAllViewsThatDependOnActiveTrack;
-                end
-
-            end
-
-            function obj = updateAllViewsThatDependOnActiveTrack(obj)
-                obj =                   obj.updateNavigationViews;
-                obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
-                obj.LoadedMovie =       obj.LoadedMovie.setFocusOnActiveTrack;  
-                obj =                   obj.updateCroppingLimitView;
-                obj =                   obj.resetLimitsOfImageAxesWithAppliedCroppingGate;
-
-            end
-            
-              function obj = updateAllViewsThatDependOnSelectedTracks(obj)
-                obj =       obj.updateCentroidsOfSelectedMasksView;
-                obj =       obj.upCentroidOfActiveTrackView;
-                obj =       obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-                obj =       obj.updateRgbImage;
-                obj.TrackingViews.ActiveTrack.String =        num2str(obj.LoadedMovie.getIdOfActiveTrack);
-                obj.TrackingNavigationEditViewController =    obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking);
-
-          end
-            
-         %%     setTrackingNavigationEditViewController
-         function obj = setTrackingNavigationEditViewController(obj, varargin)
-             NumberOfArguments = length(varargin);
-             switch NumberOfArguments
-                 case 0
-                     obj.TrackingNavigationEditViewController =   obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking);
-                 case 1
-                     obj.TrackingNavigationEditViewController =   obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking, varargin{1});
-                 otherwise
-                     error('Wrong input.')
-             end
-
-              obj =                          obj.updateHandlesForTrackingNavigationEditView;
-         end
          
-            function obj = updateHandlesForTrackingNavigationEditView(obj)
+          
 
-                obj.TrackingNavigationEditViewController = obj.TrackingNavigationEditViewController.setCallbacks(...
-                        @obj.respondToTrackTableActivity, @obj.respondToActiveFrameClicked, ...
-                        @obj.respondToActiveTrackSelectionClicked, @obj.respondToActiveTrackActivity, ...
-                        @obj.respondToEditSelectedTrackSelectionClicked, @obj.respondToSelectedTrackActivity ...
-                        );
-            end
-       
-            function obj =   respondToTrackTableActivity(obj,~,a)
-                PressedCharacter =               obj.TrackingNavigationEditViewController.View.MainFigure.CurrentCharacter;
-                MySelectedTrackIds =             a.Source.Data{a.Indices(:,1),1};
-                switch PressedCharacter
-                    case {'a'}
-                        obj =         obj.resetModelWithActiveTrackNumber(MySelectedTrackIds)   ;
-                    case {'N','n'}
-                        obj =         obj.resetSelectedTracksWithTrackIDs(MySelectedTrackIds)   ;
-                    case {'s','S'}
-                        obj =         obj.addToSelectedTracksTrackIDs(MySelectedTrackIds)   ;
-                end
-            end
-            
-            function obj = respondToActiveFrameClicked(obj,~,~)
-                    newFrame =                                   str2double(obj.TrackingNavigationEditViewController.View.ActiveFrame.Value);
-                     obj  =                                       obj.resetFrame(newFrame);
-            end
-            
-           function obj = respondToActiveTrackSelectionClicked(obj,~,~)
-
-
-
-           end
-            
-                   
-       function obj = respondToActiveTrackActivity(obj,~,~)
-           
-                CurrentlyShownActionSelection =  obj.TrackingNavigationEditViewController.View.EditActiveTrackSelection.Value;
-                switch CurrentlyShownActionSelection
-                   
-                   case 'Delete active mask'
-                       obj = obj.deleteActiveMask;
-                   case 'Forward tracking'
-
-                   case 'Backward tracking'
-
-                   case 'Label finished'
-                        obj =                             obj.setFinishStatusOfTrackTo('Finished');
-                   case 'Label unfinished'
-                        obj =                             obj.setFinishStatusOfTrackTo('Unfinished');
-                end
-           
-       end
-       
-         function obj = respondToEditSelectedTrackSelectionClicked(obj,~,~)
-            obj.TrackingNavigationEditViewController =                               obj.TrackingNavigationEditViewController.resetSelectedTracksAction;
-         end
-        
-        function obj =   respondToSelectedTrackActivity(obj,~,~)
-               CurrentlyShownActionSelection =  obj.TrackingNavigationEditViewController.View.EditSelectedTrackSelection.Value;
-               switch CurrentlyShownActionSelection
-                   case 'Delete tracks'
-                        obj  =               obj.deleteSelectedTracks;
-                   case 'Merge tracks'  
-                        obj  =               obj.mergeSelectedTracks;
-                   case 'Split tracks'
-                       obj =          obj.splitSelectedTrack;
-               end
-                obj =  obj.setTrackingNavigationEditViewController;
-        end
-                
-         function obj = deleteSelectedTracks(obj)
-             obj.LoadedMovie =          obj.LoadedMovie.deleteSelectedTracks;
-             obj =                      obj.updateAllViewsThatDependOnActiveTrack;
-         end
-             
-          %% removeHighlightedPixelsFromMask
-          function [obj] =                   removeHighlightedPixelsFromMask(obj)
-             
-                if isnan(obj.LoadedMovie.getIdOfActiveTrack)
-                else
-                     Coordinates =     obj.getCoordinateListByMousePositions;
-                     
-                     RectangleImage(min(Coordinates(:, 2)): max(Coordinates(:, 2)), min(Coordinates(:, 1)): max(Coordinates(:, 1))) = 1;
-                     [y, x] = find(RectangleImage);
-
-                    pixelListWithoutSelected =     obj.LoadedMovie.getPixelsFromActiveMaskAfterRemovalOf([y,x]);
-                    obj.LoadedMovie =              obj.LoadedMovie.resetActivePixelListWith(PMSegmentationCapture(pixelListWithoutSelected, 'Manual'));
-                    obj =                          obj.updateAllViewsThatDependOnActiveTrack;
-                end
  
-          end
-          
-           function SpaceCoordinates =           getCoordinateListByMousePositions(obj)
-
-                myRectangle =       PMRectangle(obj.getRectangleFromMouseDrag);
-                Coordinates_2D =    myRectangle.get2DCoordinatesConfinedByRectangle;
-                
-                [ ~, ~,  planeWithoutDrift, ~ ] =    obj.getCoordinatesOfCurrentMousePosition;
-                zListToAdd =    (linspace(planeWithoutDrift, planeWithoutDrift, length(xListToAdd)))';
-
-                SpaceCoordinates = [Coordinates_2D, zListToAdd];
-
-            end
-            
-         %% add highlighte pixels
-         function obj =                     addHighlightedPixelsFromMask(obj)
-            Coordinates =   obj.getCoordinateListByMousePositions;
-            obj =           obj.highLightRectanglePixelsByMouse([Coordinates(:, 2), Coordinates(:, 1)]);
-            
-             if isnan(obj.LoadedMovie.getIdOfActiveTrack)
-                obj.LoadedMovie =     obj.LoadedMovie.updateMaskOfActiveTrackByAdding(yListToAdd, xListToAdd, zListToAdd);
-                obj =                 obj.updateAllViewsThatDependOnActiveTrack;
-             end
-             
-         end
-         
-        function [obj] =                            highLightRectanglePixelsByMouse(obj, coordinates)
-            HighlightedChannel =       1;
-            yCoordinates =       coordinates(:,1);
-            xCoordinates =       coordinates(:,2);
-            obj.Views.MovieView.MainImage.CData(: , :, HighlightedChannel) =                  0;
-            obj.Views.MovieView.MainImage.CData( round(min([yCoordinates]):max([yCoordinates])),round(min(xCoordinates):max(xCoordinates)), HighlightedChannel) = 200;
-
-        end
-            
-         %% addExtraPixelRowToCurrentMask
-         function obj =                     addExtraPixelRowToCurrentMask(obj)
-                mySegmentationObject =       PMSegmentationCapture(obj);
-                mySegmentationObject =       mySegmentationObject.addRimToActiveMask;
-                obj.LoadedMovie =          obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
-                obj =                      obj.updateAllViewsThatDependOnActiveTrack;    
-         end
-         
-         %% removePixelRimFromCurrentMask
-          function obj =                    removePixelRimFromCurrentMask(obj)
-                mySegmentationObject =     PMSegmentationCapture(obj);
-                mySegmentationObject =     mySegmentationObject.removeRimFromActiveMask;
-                obj.LoadedMovie =          obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
-                obj =                      obj.updateAllViewsThatDependOnActiveTrack;
-          end
-         
-         
-          
-          %% showAutoCellRecognitionWindow  
-          function obj =   showAutoCellRecognitionWindow(obj)
-                if isempty(obj.LoadedMovie)
-
-                else
-                    myModel =                                   PMAutoCellRecognition(obj.getLoadedImageVolumes, find(obj.LoadedMovie.getActiveChannelIndex));
-                    obj.AutoCellRecognitionController =         PMAutoCellRecognitionController(myModel);   
-          
-                    obj.AutoCellRecognitionController =         obj.AutoCellRecognitionController.setCallBacks(@obj.AutoCellRecognitionChannelChanged, @obj.AutoCellRecognitionFramesChanged, @obj.AutoCellRecognitionTableChanged, @obj.startAutoCellRecognitionPushed);
-                    
-                end
-            
-          end
-          
-          function obj = AutoCellRecognitionChannelChanged(obj, ~,third)
-               obj.AutoCellRecognitionController = setActiveChannel(obj.AutoCellRecognitionController, third.DisplayIndices(1));
-          end
-          
-          function obj = AutoCellRecognitionFramesChanged(obj, ~, third)
-              myFrames =  third.DisplayIndices(:, 1);
-              obj.AutoCellRecognitionController = setSelectedFrames(obj.AutoCellRecognitionController, myFrames);
-              
-          end
-          
-          
-             function obj = AutoCellRecognitionTableChanged(obj,src,~)
-                 obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.setCircleLimitsBy(src.Data);
-
-             end
-             
-             
-        function obj = startAutoCellRecognitionPushed(obj,~,~)
-
-            switch obj.AutoCellRecognitionController.getUserSelection
-                case 'Interpolate plane settings'
-                    obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.interpolateCircleRecognitionLimits;
-
-                case 'Circle recognition'
-                    obj =                           obj.askUserToDeleteTrackingData;
-                    obj.LoadedMovie.Tracking =      obj.LoadedMovie.Tracking.setTrackingAnalysis(obj.LoadedMovie.getTrackingAnalysis);
-                    obj.LoadedMovie =               obj.LoadedMovie.executeAutoCellRecognition(obj.AutoCellRecognitionController.getAutoCellRecognition);
-                    
-                    obj = updateAllViewsThatDependOnSelectedTracks(obj);
-                    
-            end
-           
-            
-        end
-
-     
-          
-          
-          %% autoDetectMasksByCircleRecognition
-          function obj = autoDetectMasksByCircleRecognition(obj)
-               fprintf('\nPMMovieController: @autoDetectMasksByCircleRecognition.\n');
-                
-                [myCellRecognition, MyFrames] =     obj.getAutoCellRecognitionObject;
-                if isempty(myCellRecognition) 
-                else
-                    obj.LoadedMovie =   obj.LoadedMovie.executeAutoCellRecognition(myCellRecognition, MyFrames);
-                    obj =   obj.updateAllViewsThatDependOnSelectedTracks;
-                end
-                     
-          end
-          
-          function obj = askUserToDeleteTrackingData(obj)
-                DeleteAllAnswer = questdlg('Do you want to delete all existing tracks before autodetection?', 'Cell autodetection');
-                switch DeleteAllAnswer
-                    case 'Yes'
-                        obj =         obj.deleteAllTracks;
-                end
-          end
-          
-            function [obj] =                             deleteAllTracks(obj)
-                obj.LoadedMovie.Tracking =     PMTrackingNavigation(0,0);
-                obj.LoadedMovie.Tracking =     obj.LoadedMovie.Tracking.fillEmptySpaceOfTrackingCellTime(obj.LoadedMovie.getMaxFrame);
-                obj =                          obj.setActiveTrack(NaN)   ;   
-            end
-            
-            function obj =  setActiveTrack(obj, SelectedTrackIDs)    
-                    obj.LoadedMovie =         obj.LoadedMovie.setActiveTrackWith(SelectedTrackIDs);
-                    obj =                       obj.updateAllViewsThatDependOnActiveTrack;
-            end
-            
-    
-          
-  
-          
-        
-          
-          %% autoDetectMasksOfCurrentFrame
-          function obj =                    autoDetectMasksOfCurrentFrame(obj)
-                StartFrame =            obj.LoadedMovie.getActiveFrames;
-                mySegmentationCapture =     PMSegmentationCapture(obj);
-                mySegmentationCapture =     mySegmentationCapture.setSizeForFindingCellsByIntensity(obj.MaskLocalizationSize);
-                
-                for PlaneIndex = 1:obj.LoadedMovie.getMaxPlane
-                    for FrameIndex = 1:obj.LoadedMovie.getMaxFrame
-                      obj =                     obj.resetFrame(FrameIndex);
-                      mySegmentationCapture =   mySegmentationCapture.emptyOutBlackedOutPixels;
-                      ContinueLoop = true;
-                      while ContinueLoop
-
-                        mySegmentationCapture =     mySegmentationCapture.resetWithMovieController(obj);
-                        mySegmentationCapture =     mySegmentationCapture.setActiveZCoordinate(PlaneIndex);
-                        mySegmentationCapture =     mySegmentationCapture.performAutothresholdSegmentationAroundBrightestAreaInImage;
-
-                        if mySegmentationCapture.testPixelValidity  
-                           obj =        obj.createNewTrackWithSegmentationCapture(mySegmentationCapture);
-                        elseif mySegmentationCapture.getAccumulatedSegmentationFailures <= 10
-                         else
-                                ContinueLoop = false;
-                        end
-                        
-                        
-                      end
-                      obj.PressedKeyValue  = '';
-                    end
-                end
-                obj =         obj.resetFrame( StartFrame);
-              
-          end
-          
-          function obj = createNewTrackWithSegmentationCapture(obj, mySegmentationCapture)
-                obj.LoadedMovie =      obj.LoadedMovie.setActiveTrackWith(obj.LoadedMovie.findNewTrackID);
-                obj.LoadedMovie =      obj.LoadedMovie.resetActivePixelListWith(mySegmentationCapture);
-                obj          =         obj.setActiveTrack(obj.LoadedMovie.getIdOfActiveTrack);  
-                obj =                  obj.resetPlane(PlaneIndex);
-                drawnow
-          end
-          
-          %% minimizeMasksOfCurrentTrackForFrames
-          function obj = minimizeMasksOfCurrentTrack(obj)
-                obj =                   obj.minimizeMasksOfCurrentTrackForFrames(obj.getFollowingFramesOfCurrentTrack); 
-          end
-          
-          function frames = getFollowingFramesOfCurrentTrack(obj)
-              frames =                obj.LoadedMovie.getTracking.getAllFrameNumbersOfTrackID(obj.LoadedMovie.getIdOfActiveTrack);
-                frames(frames < obj.LoadedMovie.getActiveFrames) =     [];
-          end
-                                             
-          
-          function obj =                    minimizeMasksOfCurrentTrackForFrames(obj, SourceFrames)
-              
-                for FrameIndex = 1:length(SourceFrames)
-                    obj =                      obj.resetFrame(SourceFrames(FrameIndex));
-                    obj.LoadedMovie =          obj.LoadedMovie.minimizeMasksOfActiveTrackAtFrame(FrameIndex);
-                    obj =                      obj.updateCroppingLimitView;
-                    obj =                      obj.resetLimitsOfImageAxesWithAppliedCroppingGate;
-                    obj =                      obj.updateAllViewsThatDependOnActiveTrack;
-
-                    drawnow  
-
-                end
-                
-          end
-          
-          %% recreateMasksOfCurrentTrackForFrames
-          function obj = recreateMasksOfCurrentTrack(obj)
-                    obj =             obj.recreateMasksOfCurrentTrackForFrames(obj.getFollowingFramesOfCurrentTrack);
-          end
-          
-           
-          
-          
-          
-          function  obj =                   recreateMasksOfCurrentTrackForFrames(obj,SourceFrames)
-              
-                AllowedXYShift =               3;
-                StopObject =                   obj.createStopButtonForAutoTracking;
-              
-                 SegmentationObjOfReferenceFrame =         PMSegmentationCapture(obj);
-                 SegmentationObjOfReferenceFrame.PixelShiftForEdgeDetection =       1;
-                 SegmentationObjOfReferenceFrame.AllowedExcessSizeFactor =      3;
-                 
-                 fprintf('\nRecreating masks of track %i has a maximum size of %i pixels\n', SegmentationObjOfReferenceFrame.CurrentTrackId);
-                 fprintf('The masks are allowed a maximum of %i pixels\n.', SegmentationObjOfReferenceFrame.getMaximumPixelNumber);
-                 fprintf('The allowed shift in X and Y is %i.\n\n', AllowedXYShift);
-
-                NumberOfFrames =     length(SourceFrames);
-                for FrameIndex = 1:NumberOfFrames
-
-                    if ~ishandle(StopObject.Button)
-                        break
-                    end
-                    
-                    PixelShift = 1;
-                    obj =                   obj.resetFrame(SourceFrames(FrameIndex));
-                    OriginalX =             mean(PMSegmentationCapture(obj).MaskCoordinateList(:,2));
-                    OriginalY =             mean(PMSegmentationCapture(obj).MaskCoordinateList(:,1));
-                    SegmentationObject =    PMSegmentationCapture(obj);
-                    
-                    SegmentationObject =    SegmentationObject.generateMaskByEdgeDetectionForceSizeBelow(SegmentationObjOfReferenceFrame.getMaximumPixelNumber);
-                    
-                   fprintf('New X= %6.2f. New Y= %6.2f.\n', SegmentationObject.getXCentroid, SegmentationObject.getXCentroid)
-                   XYDistance = max([abs(OriginalX- SegmentationObject.getXCentroid)], [abs(OriginalY- SegmentationObject.getXCentroid)]);
-                   if XYDistance< AllowedXYShift && SegmentationObject.getNumberOfPixels > 1 && SegmentationObject.getNumberOfPixels <= SegmentationObjOfReferenceFrame.getMaximumPixelNumber
-                       fprintf('For frame %i: %i pixels were added\n', FrameIndex, SegmentationObject.getNumberOfPixels);
-                        obj.LoadedMovie =                           obj.LoadedMovie.resetActivePixelListWith(SegmentationObject);
-                   else
-                       fprintf('For frame %i: %i pixels were found. Not added because size too large or XY off too much\n', FrameIndex, SegmentationObject.getNumberOfPixels)
-                   end
-                   
-                    obj.LoadedMovie =    obj.LoadedMovie.setFrameAndAdjustPlaneAndCropByTrack(SourceFrames(FrameIndex)); 
-                    obj =                obj.updateCroppingLimitView;
-                    obj =                obj.resetLimitsOfImageAxesWithAppliedCroppingGate;
-          
-                    obj =                obj.updateAllViewsThatDependOnActiveTrack;
-                    drawnow  
-                  
-                end
-                delete(StopObject.ParentFigure)
-          end
-          
-            function StopObject =            createStopButtonForAutoTracking(obj)
-                 %% create a stop-button: its only function is to let the user stop the tracking when something goes wrong;
-                MyFigure = figure;
-                MyFigure.MenuBar = 'none';
-                MyFigure.Position = [40 630 100 50 ];
-
-                ButtonHandle = uicontrol(MyFigure,'Style', 'PushButton', ...
-                'String', 'Stop tracking', ...
-                'Callback', 'delete(gcbf)');
-
-                ButtonHandle.Units = 'normalized';
-                ButtonHandle.Position = [ 0 0 1 1 ];
-
-                StopObject.ParentFigure = MyFigure;
-                StopObject.Button = ButtonHandle;
-
-            end
-          
-            
-            %% autoBackwardTrackingOfActiveTrack
-            function obj =                    autoBackwardTrackingOfActiveTrack(obj)
-                [SourceFrames,TargetFrames] =       obj.LoadedMovie.getFramesForTracking('backward');
-                obj =                               obj.autoTrackCurrentCellForFrames(SourceFrames,TargetFrames);  
-                
-            end
-                            
-            %% autoForwardTrackingOfActiveTrack
-            function obj =                    autoForwardTrackingOfActiveTrack(obj)
-                [SourceFrames,TargetFrames] =           obj.LoadedMovie.getFramesForTracking('forward');
-                obj =                   obj.autoTrackCurrentCellForFrames(SourceFrames, TargetFrames);
-            end
-                                     
-          %% autoTrackingWhenNoMaskInNextFrame
-          function obj =                    autoTrackingWhenNoMaskInNextFrame(obj)
-              
-                TrackingStartFrame =       obj.LoadedMovie.getActiveFrames;
-                TrackingEndFrame =         obj.LoadedMovie.getMaxFrame - 1;
-                TrackingFrames =           TrackingStartFrame:TrackingEndFrame;
-                TargetFrames =             TrackingFrames + 1;
-
-                TrackIDsForTracking =      obj.LoadedMovie.getTrackIDsWhereNextFrameHasNoMask;
-                NumberOfTracks =           size(TrackIDsForTracking,1);
-
-                  for TrackIDIndex = 1:NumberOfTracks
-
-                        obj =                   obj.resetFrame(TrackingStartFrame);  
-                        obj.LoadedMovie =       obj.LoadedMovie.setActiveTrackWith(TrackIDsForTracking(TrackIDIndex,1));
-                        obj.LoadedMovie =       obj.LoadedMovie.setFocusOnActiveTrack;
-                         [obj]          =       obj.setActiveTrack(obj.LoadedMovie.getIdOfActiveTrack);  
-                        drawnow
-                        obj =                   obj.autoTrackCurrentCellForFrames(TrackingFrames,TargetFrames);
-
-                  end
-              
-          end
-          
-          function obj =                    autoTrackCurrentCellForFrames(obj, SourceFrames, TargetFrames)
-                StopObject =                      obj.createStopButtonForAutoTracking;
-                obj.PressedKeyValue =             'a';
-                for FrameIndex = 1:length(SourceFrames)
-                    [~,SegementationObjOfTargetFrame] =         obj.performTrackingBetweenTwoFrames(SourceFrames(FrameIndex), TargetFrames(FrameIndex));
-
-                    if SegementationObjOfTargetFrame.testPixelValidity && ishandle(StopObject.Button) %% if the pixels are supicious or the user closed the stop button: stop tracking;
-                        obj.LoadedMovie =     obj.LoadedMovie.resetActivePixelListWith(SegementationObjOfTargetFrame);
-      
-                        obj =                 obj.updateAllViewsThatDependOnActiveTrack;
-                        drawnow
-                    else
-                         
-                        break
-                    end
-                end
-                obj.PressedKeyValue  =          '';
-                delete(StopObject.ParentFigure)
-          end
-         
-          
-          
-        
-          
-          
-          function [SegmentationObjOfSourceFrame,SegementationObjOfTargetFrame] =                    performTrackingBetweenTwoFrames(obj,sourceFrameNumber,targetFrameNumber)
-              
-                    obj =                                          obj.resetFrame(sourceFrameNumber);
-                    SegmentationObjOfSourceFrame =                 PMSegmentationCapture(obj, obj.LoadedMovie.getActiveChannelIndex);
-                    
-                    obj =                                          obj.resetFrame(targetFrameNumber);
-                    SegementationObjOfTargetFrame =                PMSegmentationCapture(obj, obj.LoadedMovie.getActiveChannelIndex);    
-                    SegementationObjOfTargetFrame.MaskCoordinateList =  SegmentationObjOfSourceFrame.MaskCoordinateList;
-                    SegementationObjOfTargetFrame.CurrentTrackId =      obj.LoadedMovie.getIdOfActiveTrack; % not sure if this is necessary
-
-                    SegementationObjOfTargetFrame =                     SegementationObjOfTargetFrame.setActiveCoordinateByBrightestPixels;
-                    SegementationObjOfTargetFrame =                     SegementationObjOfTargetFrame.generateMaskByAutoThreshold;
-                    
-          end
-          
-           %% resetActiveTrackByMousePosition
-           function obj=     resetActiveTrackByMousePosition(obj)
-                    obj =    obj.setActiveTrack(obj.getTrackIDFromMousePosition)   ;
-           end
-           
-           %% deleteActiveTrack
-          function obj =              deleteActiveTrack(obj)
-               obj.LoadedMovie =     obj.LoadedMovie.deleteActiveTrack;
-               obj =                 obj.updateAllViewsThatDependOnActiveTrack;
-                
-          end
-        
-         
-          
-          %% addMaskToNewTrackByButtonClick
-          function obj = addMaskToNewTrackByButtonClick(obj)
-                obj =     obj.activateNewTrack;
-                obj =     obj.updateActiveMaskByButtonClick;
-          end
-
-          function obj = activateNewTrack(obj)
-               obj.LoadedMovie =     obj.LoadedMovie.setActiveTrackToNewTrack;
-               obj =                 obj.updateAllViewsThatDependOnActiveTrack;
-          end                                  
-          
-          function [obj] =                   updateActiveMaskByButtonClick(obj)
-              
-                [rowPos, columnPos, planePos, ~] =   obj.getCoordinatesOfCurrentMousePosition;
-                if ~isnan(rowPos)
-                    obj =                       obj.highlightMousePositionInImage;
-                    mySegmentationObject =      PMSegmentationCapture(obj, [rowPos, columnPos, planePos, obj.LoadedMovie.getActiveChannelIndex]);
-                    mySegmentationObject =      mySegmentationObject.generateMaskByClickingThreshold;
-                    if mySegmentationObject.getActiveShape.testShapeValidity
-                        obj.LoadedMovie =   obj.LoadedMovie.resetActivePixelListWith(mySegmentationObject);
-                         obj =               obj.updateAllViewsThatDependOnActiveTrack;
-                    else
-                        fprintf('Button click did not lead to recognition of valid cell. No action taken.')
-                    end
-                   
-
-                end
-                
-                figure(obj.Views.Figure)
-                
-          end
-          
-          
-        function obj =             highlightMousePositionInImage(obj)
-            [rowPos, columnPos, ~, ~] =   obj.getCoordinatesOfCurrentMousePosition;
-            obj.Views.MovieView.MainImage.CData(rowPos,columnPos,:) =       255;
-        end
-        
-         %% setImageMaximumProjection
-        function obj = setImageMaximumProjection(obj, Value)
-            obj.LoadedMovie =                           obj.LoadedMovie.setCollapseAllPlanes(Value);
-            obj.Views.Navigation.ShowMaxVolume.Value =   Value;
-            obj =                                        obj.updateImageView;  
-            obj =                                        obj.updateNavigationViews;
-
-        end
-
-         %% addToSelectedTracksTrackIDs
-         function obj =      addToSelectedTracksTrackIDs(obj, TracksToAdd)
-            obj.LoadedMovie =       obj.LoadedMovie.addToSelectedTrackIds(TracksToAdd);
-            obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
-         end
-         
-         function obj =      removeMasksWithNoPixels(obj)
-              obj.LoadedMovie =     obj.LoadedMovie.removeMasksWithNoPixels;  
-         end
-         %% selectAllTracks
-         function obj =      selectAllTracks(obj)
-             obj.LoadedMovie = obj.LoadedMovie.selectAllTracks;
-             obj =                      obj.setTrackLineViews(obj.LoadedMovie.getAllTrackIDs);
-         end
-         
-         %% resetSelectedTracksWithTrackIDs:
-          function obj =      resetSelectedTracksWithTrackIDs(obj, TrackIds)
-                obj.LoadedMovie =  obj.LoadedMovie.setSelectedTrackIdsTo(TrackIds);
-                obj =                       obj.updateAllViewsThatDependOnActiveTrack;
-          end
-             
-         %% resetModelWithActiveTrackNumber
-          function obj = resetModelWithActiveTrackNumber(obj, TrackIds)
-              obj.LoadedMovie =  obj.LoadedMovie.setActiveTrackWith(TrackIds);
-              obj =              obj.updateAllViewsThatDependOnActiveTrack;
-          end
-          
-        
-           %% other          
-          function verifiedStatus =                     verifyActiveMovieStatus(obj)
-              verifiedStatus = ~isempty(obj)  && ~isempty(obj.LoadedMovie) && ~isempty(obj.Views) ;
-          end
-              
-          function [Category] =                         interpretMouseMovement(obj)
-              if isempty(obj) || isempty(obj.MouseDownRow) || isempty(obj.MouseDownColumn) 
-                  Category =      'Invalid';
-              elseif isnan(obj.MouseDownRow) || isnan(obj.MouseDownColumn)
-                  Category = 'Free movement';
-              else
-
-                    obj.MouseUpRow=           obj.Views.MovieView.ViewMovieAxes.CurrentPoint(1,2);
-                    obj.MouseUpColumn=        obj.Views.MovieView.ViewMovieAxes.CurrentPoint(1,1);
-
-                    CurrentRows(1,1) =              obj.MouseDownRow;
-                    CurrentRows(2,1) =              obj.MouseUpRow;
-
-                    CurrentColumns(1,1) =           obj.MouseDownColumn;
-                    CurrentColumns(2,1) =           obj.MouseUpColumn;
-
-                    if obj.pointIsWithinImageAxesBounds(CurrentRows, CurrentColumns)
-                        if (obj.MouseDownRow == obj.MouseUpRow) && (obj.MouseDownColumn ==  obj.MouseUpColumn)
-                            Category = 'Stay';
-                        else
-                            Category = 'Movement';
-                        end
-                    else
-                        Category = 'Out of bounds';
-                        obj.MouseDownRow =       NaN;
-                        obj.MouseDownColumn =    NaN;
-                        obj.MouseUpRow =         NaN;
-                        obj.MouseUpColumn =      NaN;
-                    end
-              end
-          end
-
-                function [check] =            pointIsWithinImageAxesBounds(obj, CurrentRow, CurrentColumn)
-              XLimMin =                 obj.Views.MovieView.ViewMovieAxes.XLim(1);
-              XLimMax =                 obj.Views.MovieView.ViewMovieAxes.XLim(2);
-              YLimMin =                 obj.Views.MovieView.ViewMovieAxes.YLim(1);
-              YLimMax =                 obj.Views.MovieView.ViewMovieAxes.YLim(2);
-              
-              if min(CurrentColumn >= XLimMin) && min(CurrentColumn <= XLimMax) && min(CurrentRow >= YLimMin) && min(CurrentRow <= YLimMax)
-                 check = true;
-              else
-                  check = false;
-              end
-              
-                end
-      
-                
-                            
-                                       
-                                        
-                
-         %% mouse interactions:
-            function obj = mouseMoved(obj)    %% get mouse action (defined by key press during button down); 
-                 mouseController =      PMMovieController_MouseAction(obj);
-                 obj =                  mouseController.mouseMoved;
-            end
-            
-            function obj = mouseButtonPressed(obj)    %% get mouse action (defined by key press during button down); 
-                 mouseController =      PMMovieController_MouseAction(obj);
-                 obj =                  mouseController.mouseButtonPressed;
-            end
-            
-            function obj = mouseButtonReleased(obj)    %% get mouse action (defined by key press during button down); 
-                 mouseController =      PMMovieController_MouseAction(obj);
-                 obj =                  mouseController.mouseButtonReleased;
-            end
-             
-             
-          function obj = deleteImageAnalysisFile(obj)
-              obj.LoadedMovie = obj.LoadedMovie.deleteFile;
-          end
-            
-        %% interpret key
-        function [obj] =    interpretKey(obj, PressedKey, CurrentModifier)
-            obj.PressedKeyValue =       PressedKey;  
-            obj =                       PMMovieController_Keypress(obj).processKeyInput(PressedKey, CurrentModifier);
-            obj.PressedKeyValue = '';
-        end
-        
-          %% update image:
-        function obj =                              updateImageView(obj)
-            obj =       obj.setViewsForCurrentEditingActivity;
-            obj =       obj.updateAnnotationViews;
-            
-            obj =       obj.updateCentroidsOfSelectedMasksView;
-            obj =       obj.upCentroidOfActiveTrackView;
-            
-            obj =       obj.updateManualDriftCorrectionView;
-            obj.Views.enableAllViews;
-            obj =       obj.shiftImageByDriftCorrection;
-            
-            obj.LoadedMovie =       obj.LoadedMovie.showEdgeDetectionInView(obj.Views.MovieView.MainImage);
-            obj =                   obj.updateRgbImage;
-            obj.Views.MovieView.ViewMovieAxes.Color =       [0.1 0.1 0.1];
-            
-        end
-        
-        %% showAutoTrackingController
-        function obj = showAutoTrackingController(obj)
-             obj.TrackingAutoTrackingController =         obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking, 'ForceDisplay');
-             obj =                                        obj.updateHandlesForAutoTrackingController;
-        end
-            
-             
-             
-        
-       
-    end
-    
-    methods (Access = private)
-        
         %% showAutoTrackingController
           function obj = updateHandlesForAutoTrackingController(obj)
 
@@ -1716,27 +1808,28 @@ classdef PMMovieController < handle
                  obj = obj.setTrackingNavigationByAutoTrackingView;
           end
           
-          
-          
-          
           function obj = startAutoTrackingPushed(obj,~,~)
 
-              switch obj.TrackingAutoTrackingController.getUserSelection
-                 
-                  case 'Tracking by minimizing object distances'
-                        obj =                           obj.trackByMinimizingDistancesOfTracks;
-                        
-                  case 'Delete tracks'
-                        obj =                           obj.unTrack;
-                        
-                  case 'Connect exisiting tracks with each other'
-                       obj.LoadedMovie.Tracking =      obj.LoadedMovie.Tracking.performSerialTrackReconnection;
-                       
-                  case 'Track-Delete-Connect'
-                       obj.LoadedMovie.Tracking =     obj.LoadedMovie.Tracking.autTrackingProcedure(obj.LoadedMovie.getTrackingAnalysis);
-                       
-              end
-              obj =       obj.updateAllTrackingViews;
+                switch obj.TrackingAutoTrackingController.getUserSelection
+
+                    case 'Tracking by minimizing object distances'
+                        obj =             obj.trackByMinimizingDistancesOfTracks;
+
+                    case 'Delete tracks'
+                        obj =             obj.unTrack;
+
+                    case 'Connect exisiting tracks with each other'
+                        obj.LoadedMovie =   obj.LoadedMovie.performTrackingMethod('performSerialTrackReconnection');
+
+                    case 'Track-Delete-Connect'
+                        obj.LoadedMovie =   obj.LoadedMovie.performAutoTrackingOfExistingMasks;
+
+                end
+
+               
+                obj =           obj.initializeViews;
+                obj =           obj.updateMovieView;
+                obj =           obj.setTrackViews;
 
           end
           
@@ -1748,211 +1841,1304 @@ classdef PMMovieController < handle
             obj.LoadedMovie =  obj.LoadedMovie.mergeTracksWithinDistance(round(str2double(answer{1})));   
             obj =              obj.updateAllViewsThatDependOnActiveTrack;
         end
-                                     
+        
+                                
 
-        %% setChannelCallbacks
-        function obj = setChannelCallbacks(obj)
+        
+           
+           
             
-            obj.Views.Channels.SelectedChannel.Callback =         @obj.channelViewClicked;
-            obj.Views.Channels.MinimumIntensity.Callback =        @obj.channelLowIntensityClicked;
-            obj.Views.Channels.MaximumIntensity.Callback =        @obj.channelHighIntensityClicked;
-            obj.Views.Channels.Color.Callback =                   @obj.channelColorClicked;
-            obj.Views.Channels.Comment.Callback =                 @obj.channelCommentClicked;
-            obj.Views.Channels.OnOff.Callback =                   @obj.channelOnOffClicked;
-            obj.Views.Channels.ChannelReconstruction.Callback =   @obj.channelReconstructionClicked;
- 
             
+          
+
+         
+             
+             function [rgbImage] =          addMasksToImage(obj, rgbImage)
+                    ColorOfSelectedTracks =     obj.getColorOfSelectedMasksForImage(rgbImage);
+                    MyFrame =                   obj.LoadedMovie.getActiveFrames;
+                    MyPlanes =                  obj.LoadedMovie.getTargetMoviePlanesForSegmentationVisualization;
+                    MyDriftCorrection =         obj.LoadedMovie.getDriftCorrection;
+                    
+                    MasksSelected =             obj.LoadedMovie.getTracking.getSelectedMasksAtFramePlaneDrift(MyFrame, MyPlanes, MyDriftCorrection);
+                    rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 1, ColorOfSelectedTracks(1));
+                    rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 2, ColorOfSelectedTracks(2));
+                    rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 3, ColorOfSelectedTracks(3));
+
+                    ActiveMask =                obj.LoadedMovie.getTracking.getActiveMasksAtFramePlaneDrift(MyFrame, MyPlanes, MyDriftCorrection);
+                    Intensity =                 obj.getColorOfActiveMaskForImage(rgbImage);
+                    rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ActiveMask, 1:3, Intensity);
+
+             end
+             
+             function MaskColor = getColorOfSelectedMasksForImage(obj, rgbImage)
+                MaskColor(1) =          obj.MaskColor(1);
+                MaskColor(2) =        obj.MaskColor(2);
+                MaskColor(3) =         obj.MaskColor(3);
+
+                if strcmp(class(rgbImage), 'uint16')
+                    MaskColor(1) =        MaskColor(1) * 255;
+                    MaskColor(2) =      MaskColor(2) * 255;
+                    MaskColor(3) =       MaskColor(3) * 255;
+                end
+             end
+             
+             function Intensity = getColorOfActiveMaskForImage(~, rgbImage)
+                Intensity =    255;
+                if strcmp(class(rgbImage), 'uint16')
+                    Intensity = Intensity * 255;
+                end
+                
+             end
+             
+             function rgbImage = highlightPixelsInRgbImage(~, rgbImage, CoordinateList, Channel, Intensity)
+                 
+                 if isempty(CoordinateList)
+                     
+                 else
+                     CoordinateList(isnan(CoordinateList(:,1)),:) = []; % this should not be necessary if everything works as expected;
+                     NumberOfPixels =                        size(CoordinateList,1);
+                    if ~isnan(Intensity)
+                        for CurrentPixel =  1:NumberOfPixels
+                            rgbImage(CoordinateList(CurrentPixel, 1), CoordinateList(CurrentPixel, 2), Channel)= Intensity;
+                        end
+                    end
+                     
+                 end
+                 
+                
+              
+             end
+           
+            
+      
+        
+            %% autoTrackCurrentCellForFrames:
+           function obj =                    autoTrackCurrentCellForFrames(obj, SourceFrames, TargetFrames)
+            
+            obj.LoadedMovie =                   obj.LoadedMovie.setPreventDoubleTracking(true, 2);
+            
+            StopObject =                        obj.createStopButtonForAutoTracking;
+            obj.PressedKeyValue =               'a';
+
+            obj =                               obj.setFrameByNumber(SourceFrames(1)); 
+            SegementationOfReference =          obj.getReferenceSegmentation;
+
+            for FrameIndex = 1 : length(SourceFrames)
+                
+                
+                try
+                    [~, SegementationObjOfTargetFrame] =         obj.performTrackingBetweenTwoFrames(SourceFrames(FrameIndex), TargetFrames(FrameIndex), SegementationOfReference);
+                catch E
+                    Text = [E.message, 'Going to next track.'];
+                    warning(Text)
+                    break
+                end
+                
+                try
+                    obj.LoadedMovie =    obj.LoadedMovie.resetActivePixelListWith(SegementationObjOfTargetFrame);
+                    fprintf('New mask added.\n');
+                catch E
+                    Text = [E.message, 'Going to next track.'];
+                    warning(Text)
+                    break
+                end
+                obj.LoadedMovie =  obj.LoadedMovie.setPreventDoubleTracking(false, 2);
+
+            end
+            
+            obj.PressedKeyValue  =          '';
+            delete(StopObject.ParentFigure)
+            
+            obj =                               obj.setTrackViews;
         end
         
-        %% other:
-            function obj =       setViewsForCurrentEditingActivity(obj)
-               index =      find(strcmp(obj.Views.getEditingType, obj.LoadedMovie.getPossibleEditingActivities));
-               obj.Views =  obj.Views.setEditingTypeToIndex(index);   
-           end
+            
+                       
+
+        function [SourceSegmentation,TargetSegmentation] =                    performTrackingBetweenTwoFrames(obj, sourceFrameNumber, targetFrameNumber, SegementationOfReference)
+
+            fprintf('Tracking from frame %i for segmentation of frame %i.\n', sourceFrameNumber, targetFrameNumber)
+            
+            obj =                         obj.setFrameByNumber(sourceFrameNumber);
+            SourceSegmentation =          PMSegmentationCapture(obj); 
+            SourceSegmentation =          obj.applyStandardValuesToSegmentation(SourceSegmentation);
+
+            if isempty(SourceSegmentation.getMaskCoordinateList)
+                ME = MException('MATLAB:performTrackingBetweenTwoFramesFailed', 'No source pixels found.');
+                    throw(ME)
+            else
+
+                obj =                       obj.focusOnActiveTrackAtFrame(targetFrameNumber);
+                TargetSegmentation =        PMSegmentationCapture(obj); 
+                
+                
+                TargetSegmentation =        obj.applyStandardValuesToSegmentation(TargetSegmentation);
+                TargetSegmentation =        TargetSegmentation.setMaskCoordinateList(SourceSegmentation.getMaskCoordinateList);
+                TargetSegmentation =        TargetSegmentation.generateMaskByEdgeDetectionForceSizeBelow(SegementationOfReference.getMaximumPixelArea);
+            
+                XYDistance =                obj.getXYDistanceBetween(SourceSegmentation, TargetSegmentation);
+                ZDistance =                 obj.getZDistanceBetween(SourceSegmentation, TargetSegmentation);
+                
+                if XYDistance > 8 || ZDistance > 1
+                    ME = MException('MATLAB:performTrackingBetweenTwoFramesFailed', 'Distance beyond limit.');
+                    throw(ME)
+                elseif isempty(TargetSegmentation) || TargetSegmentation.getNumberOfPixels < 1 
+                   ME = MException('MATLAB:performTrackingBetweenTwoFramesFailed', 'Target segmentation too small.');
+                    throw(ME)
+                elseif TargetSegmentation.getPixelArea > (SegementationOfReference.getMaximumPixelArea + 20)
+                     ME = MException('MATLAB:performTrackingBetweenTwoFramesFailed', 'Target segmentation too large.');
+                    throw(ME)
+                end
+             
+            end
+           
+
+        end
         
-            function obj =      updateAnnotationViews(obj)
-                % update annotation within image view:
-                switch obj.LoadedMovie.getTimeVisibility                  
-                      case 1
-                          obj.Views.MovieView.TimeStampText.Visible = 'on';
-                      otherwise
-                          obj.Views.MovieView.TimeStampText.Visible = 'off';
+             %% createStopButtonForAutoTracking
+            function StopObject =            createStopButtonForAutoTracking(obj)
+                 %% create a stop-button: its only function is to let the user stop the tracking when something goes wrong;
+                MyFigure = figure;
+                MyFigure.MenuBar = 'none';
+                MyFigure.Position = [40 630 100 50 ];
+
+                ButtonHandle = uicontrol(MyFigure,'Style', 'PushButton', ...
+                'String', 'Stop tracking', ...
+                'Callback', 'delete(gcbf)');
+
+                ButtonHandle.Units = 'normalized';
+                ButtonHandle.Position = [ 0 0 1 1 ];
+
+                StopObject.ParentFigure = MyFigure;
+                StopObject.Button = ButtonHandle;
+
+            end
+
+            
+         
+            
+            
+            %% performAutoTracking:
+            function obj = performAutoTracking(obj, varargin)
+                
+                if length(varargin) == 2
+                    
+                    switch varargin{1}
+                        case 'activeTrack'
+                            switch varargin{2}
+                                case 'forwardInFirstGap'
+                                    obj =    obj.autoForwardTrackingOfActiveTrack;
+                                case 'backwardInLastGap'
+                                    obj =    obj.autoBackwardTrackingOfActiveTrack;
+                                        %% minimizeMasksOfCurrentTrackForFrames
+                                case 'convertAllMasksToMiniMasks'
+                                    obj = minimizeMasksOfCurrentTrack(obj);
+                                case 'convertAllMasksByCurrentSettings'
+                                    obj = recreateMasksOfCurrentTrack(obj);
+          
+                                  
+          
+     
+                                otherwise
+                                    error('Input not supported.')
+                            end
+                            
+                        case 'allTracks'
+                            switch varargin{2}
+                               
+                                case 'forwardFromActiveFrame'
+                                    obj =                    obj.autoTrackingWhenNoMaskInNextFrame;
+                                otherwise
+                                    error('Input not supported')
+                                
+                                
+                            end
+                            
+                        case 'newMasks'
+                            switch varargin{2}
+                                case  'circle'
+                                    obj = autoDetectMasksByCircleRecognition(obj);
+                                case 'thresholdingInBrightAreas'
+                                    obj =                    autoDetectMasksOfCurrentFrame(obj);
+                                    
+                                otherwise
+                                    error('Input not supported.')
+                                    
+                                    
+                            end
+                                
+                            
+                            
+                        otherwise
+                            error('Input not supported.')
+                    end
+                    
+                    
+                else
+                   error('Input not supported.') 
                 end
-
-                switch obj.LoadedMovie.getPlaneVisibility
-                      case 1
-                          obj.Views.MovieView.ZStampText.Visible = 'on';
-                      otherwise
-                          obj.Views.MovieView.ZStampText.Visible = 'off';
+                
+                
+                
+            end
+            
+  
+            function obj =                    autoBackwardTrackingOfActiveTrack(obj)
+                %  autoBackwardTrackingOfActiveTrack: backward tracking of active track;
+                % tracks from already tracked start mask that is used as a reference for all untracked frames until tracked frame is hit;
+                GapFrames =   obj.LoadedMovie.getGapFrames('backward');
+                try
+                    obj =         obj.autoTrackCurrentCellForFrames(GapFrames + 1, GapFrames);  
+                catch E
+                       throw(E)
                 end
+            end
+                            
 
-                obj.Views.MovieView.ZStampText.String =             obj.LoadedMovie.getActivePlaneStamp;
-                obj.Views.MovieView.TimeStampText.String =          obj.LoadedMovie.getActiveTimeStamp;
+        function obj =                    autoForwardTrackingOfActiveTrack(obj)
+            %  AUTOFORWARDTRACKINGOFACTIVETRACK: forward tracking of active track;
+            % tracks from already tracked start mask that is used as a reference for all untracked frames until tracked frame is hit;
+            GapFrames =      obj.LoadedMovie.getGapFrames('forward');
+             if isempty(GapFrames)
+                 warning('No gap found. Therefore no autotracking. You have to find a gap before autotracking is allowed.')
+             else
+                obj =            obj.autoTrackCurrentCellForFrames(GapFrames - 1, GapFrames );  
+             end
+        end
+        
+        
+            %% autoTrackingWhenNoMaskInNextFrame
+          function obj =                    autoTrackingWhenNoMaskInNextFrame(obj)
+              
+                TrackingFrames =     obj.LoadedMovie.getActiveFrames : obj.LoadedMovie.getMaxFrame - 1;
+                for TrackID = (obj.LoadedMovie.getTrackIDsWhereNextFrameHasNoMask)'
+                    obj =                obj.setFrameByNumber(min(TrackingFrames));  
+                    obj          =       obj.setActiveTrackTo(TrackID);  
+                    drawnow
+                    obj =                obj.autoTrackCurrentCellForFrames(TrackingFrames, TrackingFrames + 1);   
+                end
+                
+                obj =              obj.saveMovie;
+              
+          end
+          
 
-                obj.Views =   obj.Views.setScaleBarVisibility(obj.LoadedMovie.getScaleBarVisibility);
-                obj.Views =   obj.Views.setScaleBarSize(obj.LoadedMovie.getDistanceBetweenXPixels_MicroMeter);
+          function obj = autoDetectMasksByCircleRecognition(obj)
+               fprintf('\nPMMovieController: @autoDetectMasksByCircleRecognition.\n');
+                
+                [myCellRecognition, MyFrames] =     obj.getAutoCellRecognitionObject;
+                if isempty(myCellRecognition) 
+                else
+                    obj.LoadedMovie =       obj.LoadedMovie.executeAutoCellRecognition(myCellRecognition, MyFrames);
+                    obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+                end          
+          end
+          
+           %% autoDetectMasksOfCurrentFrame
+          function obj =                    autoDetectMasksOfCurrentFrame(obj)
+              
+                StartFrame =                obj.LoadedMovie.getActiveFrames;
+                mySegmentationCapture =     PMSegmentationCapture(obj);
+                mySegmentationCapture =     mySegmentationCapture.setSizeForFindingCellsByIntensity(obj.MaskLocalizationSize);
+                for PlaneIndex = 1 : obj.LoadedMovie.getMaxPlane
+                    obj =                  obj.resetPlane(PlaneIndex);
+                    
+                    for FrameIndex = 1 : obj.LoadedMovie.getMaxFrame
+                      obj =                     obj.setFrameByNumber(FrameIndex);
+                      mySegmentationCapture =   mySegmentationCapture.emptyOutBlackedOutPixels; % don't understand what this does
+                     
+                     ContinueLoop = true;
+                      while ContinueLoop
+
+                        mySegmentationCapture =     mySegmentationCapture.resetWithMovieController(obj);
+                        mySegmentationCapture =     mySegmentationCapture.setActiveZCoordinate(PlaneIndex);
+                        mySegmentationCapture =     mySegmentationCapture.performAutothresholdSegmentationAroundBrightestAreaInImage;
+
+                        if mySegmentationCapture.testPixelValidity  
+                            obj.LoadedMovie =       obj.LoadedMovie.setActiveTrackWith(obj.LoadedMovie.findNewTrackID);
+                            obj.LoadedMovie =       obj.LoadedMovie.resetActivePixelListWith(mySegmentationCapture);
+
+                        elseif mySegmentationCapture.getAccumulatedSegmentationFailures <= 10
+                        
+                        else
+                                ContinueLoop = false;
+                        end
+                        
+                      end
+                      obj.PressedKeyValue  = '';
+                    end
+                end
+                
+                obj =      obj.setFrameByNumber( StartFrame);
+                obj =      obj.updateAllViewsThatDependOnActiveTrack;
                 
           end
-        
-            function obj =      updateCentroidsOfSelectedMasksView(obj)
+          
+               
+       
+              %% minimizeMasksOfCurrentTrackForFrames
+          function obj = minimizeMasksOfCurrentTrack(obj)
+                obj =                   obj.minimizeMasksOfCurrentTrackForFrames(obj.getFollowingFramesOfCurrentTrack); 
+          end
+          
+                                  
+          
+          function obj =                    minimizeMasksOfCurrentTrackForFrames(obj, SourceFrames)
+              
+                for FrameIndex = 1:length(SourceFrames)
+                        obj =                   obj.setFrameByNumber(SourceFrames(FrameIndex));
+                        obj.LoadedMovie =       obj.LoadedMovie.minimizeMasksOfActiveTrackAtFrame(FrameIndex);
+                        obj =                obj.setActiveCropOfMovieView;
+                        obj =                   obj.updateAllViewsThatDependOnActiveTrack;
 
-            if isempty(obj.LoadedMovie.getTrackingNavigationOfSelectedTracks)
-            else
-                obj.Views.MovieView.CentroidLine.XData =    obj.LoadedMovie.getTrackingNavigationOfSelectedTracks.getAllCentroidXCoordinates;
-                obj.Views.MovieView.CentroidLine.YData =    obj.LoadedMovie.getTrackingNavigationOfSelectedTracks.getAllCentroidYCoordinates;
+                    drawnow  
+
+                end
+                
+          end
+    
+            %% recreateMasksOfCurrentTrackForFrames
+          function obj = recreateMasksOfCurrentTrack(obj)
+                    obj =             obj.recreateMasksOfCurrentTrackForFrames(obj.getFollowingFramesOfCurrentTrack);
+          end
+          
+
+            
+                %% addToSelectedTracksTrackIDs
+         function obj =      addToSelectedTracksTrackIDs(obj, TracksToAdd)
+            obj.LoadedMovie =       obj.LoadedMovie.addToSelectedTrackIds(TracksToAdd);
+            obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
+         end
+         
+            
+
+            
+            %% recreateMasksOfCurrentTrackForFrames:
+            function  obj =                   recreateMasksOfCurrentTrackForFrames(obj, SourceFrames)
+              
+                AllowedXYShift =            5;
+                StopObject =                obj.createStopButtonForAutoTracking;
+
+               SegementationOfReference = obj.getReferenceSegmentation;
+
+                fprintf('\nRecreating masks of track %i has a maximum size of %i pixels\n', SegementationOfReference.getTrackId);
+                fprintf('The masks are allowed a maximum of %i pixels\n.', SegementationOfReference.getMaximumPixelNumber);
+                fprintf('The allowed shift in X and Y is %i.\n\n', AllowedXYShift);
+
+                for FrameIndex = 1 : length(SourceFrames)
+
+                    fprintf('For frame %i: ', FrameIndex)
+                    if ~ishandle(StopObject.Button)
+                        break
+                    end
+                    
+                    obj =                               obj.setFrameByNumber(SourceFrames(FrameIndex));
+                    SegmentationForPreviousMask =       PMSegmentationCapture(obj);
+                    SegmentationForCurrentMask =        obj.getSegmentationByEdgeWithMaxSize(SegementationOfReference);
+                    XYDistance =                        obj.getXYDistanceBetween(SegmentationForPreviousMask, SegmentationForCurrentMask);
+                    
+                    if SegmentationForCurrentMask.getNumberOfPixels < 1 || SegmentationForCurrentMask.getNumberOfPixels > SegementationOfReference.getMaximumPixelNumber
+                        
+                    elseif XYDistance > AllowedXYShift
+                        
+                    else
+                           fprintf('New mask added.\n');
+                           obj.LoadedMovie =                           obj.LoadedMovie.resetActivePixelListWith(SegmentationForCurrentMask);
+                    end
+
+                end
+                delete(StopObject.ParentFigure)
+                obj.LoadedMovie =   obj.LoadedMovie.setFocusOnActiveTrack; 
+                obj =               obj.updateAllViewsThatDependOnActiveTrack;
+          end
+          
+          function SegementationOfReference = getReferenceSegmentation(obj)
+                SegementationOfReference =   PMSegmentationCapture(obj, obj.LoadedMovie.getActiveChannelIndex);
+                SegementationOfReference = applyStandardValuesToSegmentation(obj, SegementationOfReference);
+                
+          end
+          
+          function SegementationOfReference = applyStandardValuesToSegmentation(~, SegementationOfReference)
+                SegementationOfReference =  SegementationOfReference.setPixelShiftForEdgeDetection(1);
+                SegementationOfReference =  SegementationOfReference.setAllowedExcessSizeFactor(1.3);
+                SegementationOfReference =  SegementationOfReference.setMaximumCellRadius(15);
+                SegementationOfReference =  SegementationOfReference.setMaximumDisplacement(15);
+                SegementationOfReference =  SegementationOfReference.setFactorForThreshold(1);
+                
+          end
+          
+      
+          
+          function XYDistance = getXYDistanceBetween(~, SegmentationForPreviousMask, SegmentationForCurrentMask)
+                XYDistance = max([abs(SegmentationForPreviousMask.getXCentroid- SegmentationForCurrentMask.getXCentroid)], [abs(SegmentationForPreviousMask.getYCentroid - SegmentationForCurrentMask.getYCentroid)]);
+                fprintf('XY distance %6.2.\n', XYDistance)
+          end
+          
+           function ZDistance = getZDistanceBetween(~, SegmentationForPreviousMask, SegmentationForCurrentMask)
+                ZDistance = abs(SegmentationForPreviousMask.getZCentroid- SegmentationForCurrentMask.getZCentroid);
+                fprintf('Z distance %6.2.\n', ZDistance)
+          end
+          
+          
+     
+            function SegmentationForCurrentMask = getSegmentationByEdgeWithMaxSize(obj, SegementationOfReference)
+                SegmentationForCurrentMask =    PMSegmentationCapture(obj);
+                SegmentationForCurrentMask =    SegmentationForCurrentMask.generateMaskByEdgeDetectionForceSizeBelow(SegementationOfReference.getMaximumPixelNumber);
+                fprintf('New X= %6.2f. New Y= %6.2f.\n', SegmentationForCurrentMask.getXCentroid, SegmentationForCurrentMask.getYCentroid)
+                fprintf('%i pixels.\n', SegmentationForCurrentMask.getNumberOfPixels)
             end
+            
+            
+            
+        
+        %% auto cell-recognation callbacks
+           function obj = AutoCellRecognitionChannelChanged(obj, ~,third)
+               obj.AutoCellRecognitionController = setActiveChannel(obj.AutoCellRecognitionController, third.DisplayIndices(1));
+          end
+          
+          function obj = AutoCellRecognitionFramesChanged(obj, ~, third)
+              myFrames =  third.DisplayIndices(:, 1);
+              obj.AutoCellRecognitionController = setSelectedFrames(obj.AutoCellRecognitionController, myFrames);
+              
+          end
+          
+             function obj = AutoCellRecognitionTableChanged(obj,src,~)
+                 obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.setCircleLimitsBy(src.Data);
+
+             end
+             
+        function obj = startAutoCellRecognitionPushed(obj,~,~)
+
+            switch obj.AutoCellRecognitionController.getUserSelection
+                case 'Interpolate plane settings'
+                    obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.interpolateCircleRecognitionLimits;
+
+                case 'Circle recognition'
+                    obj =                  obj.askUserToDeleteTrackingData;
+                    obj.LoadedMovie =      obj.LoadedMovie.setTrackingAnalysis;
+                    obj.LoadedMovie =      obj.LoadedMovie.executeAutoCellRecognition(obj.AutoCellRecognitionController.getAutoCellRecognition);
+                    
+                    obj = updateAllViewsThatDependOnSelectedTracks(obj);
+                    
+            end
+           
+            
+        end
+    
+          function obj = askUserToDeleteTrackingData(obj)
+                DeleteAllAnswer = questdlg('Do you want to delete all existing tracks before autodetection?', 'Cell autodetection');
+                switch DeleteAllAnswer
+                    case 'Yes'
+                        obj =         obj.tracking_deleteAllTracks;
+                end
+          end
+          
+           function obj = updateHandlesForTrackingNavigationEditView(obj)
+
+                obj.TrackingNavigationEditViewController = obj.TrackingNavigationEditViewController.setCallbacks(...
+                        @obj.respondToTrackTableActivity, @obj.respondToActiveFrameClicked, ...
+                        @obj.respondToActiveTrackSelectionClicked, @obj.respondToActiveTrackActivity, ...
+                        @obj.respondToEditSelectedTrackSelectionClicked, @obj.respondToSelectedTrackActivity ...
+                        );
+           end
+
+            function obj =   respondToTrackTableActivity(obj,~,a)
+                PressedCharacter =               obj.TrackingNavigationEditViewController.getCurrentCharacter;
+                
+                SelectedIndices = a.Indices(:,1);
+                MySelectedTrackIds =             a.Source.Data{SelectedIndices, 1};
+                 assert(isnumeric(MySelectedTrackIds) && isvector(MySelectedTrackIds), 'Wrong input.')
+                switch PressedCharacter
+                        case {'a'}
+                             if size(SelectedIndices, 1) == 1
+                                 obj =         obj.setActiveTrackTo(MySelectedTrackIds) ;
+                             else
+                                warning('Active track not reset because multiple selections made.')
+                             end
+                
+                           
+                        case {'N','n'}
+                            obj =         obj.resetSelectedTracksWithTrackIDs(MySelectedTrackIds);
+                        case {'s','S'}
+                            obj =         obj.addToSelectedTracksTrackIDs(MySelectedTrackIds);
+                end
+                    
+                
+                
+               
+                
+            end
+
+            function obj = respondToActiveFrameClicked(obj,~,~)
+                newFrame =        str2double(obj.TrackingNavigationEditViewController.getSelectedFrame);
+                 obj  =           obj.setFrameByNumber(newFrame);
+            end
+
+            function obj = respondToEditSelectedTrackSelectionClicked(obj,~,~)
+
+            end
+
+            function obj = respondToSelectedTrackActivity(obj,~,~)
+                CurrentlyShownActionSelection =  obj.TrackingNavigationEditViewController.getSelectedActionForSelectedTracks;
+                switch CurrentlyShownActionSelection
+                   case 'Delete tracks'
+                        obj  =               obj.tracking_deleteSelectedTracks;
+                   case 'Merge tracks'  
+                        obj  =               obj.mergeSelectedTracks;
+                   case 'Split tracks'
+                       obj =                obj.splitSelectedTrack;
+                end
+                obj =  obj.setTrackingNavigationEditViewController;
+            end
+            
+            function obj = respondToActiveTrackSelectionClicked(obj,~,~)
+
+
+
+            end
+
+            function obj = respondToActiveTrackActivity(obj,~,~)
+
+                CurrentlyShownActionSelection =  obj.TrackingNavigationEditViewController.getSelectedActionForActiveTrack;
+
+                switch CurrentlyShownActionSelection
+
+                   case 'Delete active mask'
+                       obj = obj.deleteActiveMask;
+                   case 'Forward tracking'
+
+                   case 'Backward tracking'
+
+                   case 'Label finished'
+                        obj =                             obj.setFinishStatusOfTrackTo('Finished');
+                   case 'Label unfinished'
+                        obj =                             obj.setFinishStatusOfTrackTo('Unfinished');
+                end
+
+            end
+
+            function obj = setMouseDownRow(obj, Value)
+                obj.MouseDownRow = Value;
+            end
+
+            function obj = setMouseDownColumn(obj, Value)
+             obj.MouseDownColumn = Value;
+            end
+
+            function obj = setMouseUpRow(obj, Value)
+                obj.MouseUpRow = Value;
+            end
+
+            function obj = setMouseUpColumn(obj, Value)
+                obj.MouseUpColumn = Value;
+            end
+
+            
+    end
+    
+    methods % vies
+       
+         function obj =    initializeViews(obj)
+            % INITIALIZEVIEWS: updates views of movie controller by state of current LoadedMovie property;
+            % sets numerouse views including centroid-visibility, tracking views, movie-view, track-visibility and save-status;
+
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+                    obj  =           obj.updateControlElements;
+
+                    obj.Views =     setCentroidVisibility(obj.Views, obj.LoadedMovie.getCentroidVisibility);
+                    obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
+                    obj.Views =     obj.Views.updateMovieViewWith(obj.LoadedMovie, obj.getRbgImage);
+                    obj.Views =     updateTrackVisibilityWith(obj.Views, obj.LoadedMovie);
+                    obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
+                    obj =           obj.updateSaveStatusView;
+            
+             end
 
         end
         
-            function obj =      upCentroidOfActiveTrackView(obj)
-                if isempty(obj.LoadedMovie.getTrackingNavigationOfActiveTrack)
-                else
-                obj.Views.MovieView.CentroidLine_SelectedTrack.XData =      obj.LoadedMovie.getTrackingNavigationOfActiveTrack.getAllCentroidXCoordinates;
-                obj.Views.MovieView.CentroidLine_SelectedTrack.YData =      obj.LoadedMovie.getTrackingNavigationOfActiveTrack.getAllCentroidYCoordinates;
+    end
+    
+    methods (Access = private) % views
 
-                end
+       
+        
+        function obj = blackOutViews(obj)
+            if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+                obj.Views=          blackOutMovieView(obj.Views); 
             end
+        end
+        
+        function obj = activateViews(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+           obj.Views = enableAllViews(obj.Views);
+             end
+        end
+        
+        function obj = setDriftCorrectionIndicators(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+            obj.Views =            updateManualDriftIndicatorsWith( obj.Views, obj.LoadedMovie);
+             end
+        end
+         
+         
+        
+        function obj = updateSaveStatusView(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+            obj.Views =     updateSaveStatusWith(obj.Views, obj.LoadedMovie);
+             end
+        end
+        
+         function obj = setViewsAfterChangeOfMaximumProjection(obj, Value)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+                obj.Views =     setShowMaximumProjection(obj.Views, Value);
+                obj =               obj.updateMovieView;
+                obj =               obj.setNavigationControls;
+                obj =               obj.setTrackViews;
+             end
+         end
+        
+        
+        function obj = setNavigationControls(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+                obj.Views =               setNavigationWith(obj.Views, obj.LoadedMovie);
+             end
+        end
 
-            function [obj] =    updateManualDriftCorrectionView(obj)
-
-            obj.Views.MovieView.ManualDriftCorrectionLine.XData =    obj.LoadedMovie.getActivePositionsOfManualDriftcorrectionFor('X');
-            obj.Views.MovieView.ManualDriftCorrectionLine.YData =    obj.LoadedMovie.getActivePositionsOfManualDriftcorrectionFor('Y');;
-
-            if ismember(obj.LoadedMovie.getActivePlanes,   obj.LoadedMovie.getActivePositionsOfManualDriftcorrectionFor('Z') )
-                obj.Views.MovieView.ManualDriftCorrectionLine.LineWidth =           3;
-            else
-                obj.Views.MovieView.ManualDriftCorrectionLine.LineWidth =          1;
-            end
-
-            end
-
-            function obj =      shiftImageByDriftCorrection(obj)
-            obj.Views.MovieView.MainImage.XData =       obj.getXLimitsOfImage;
-            obj.Views.MovieView.MainImage.YData =       obj.getYLimitsOfImage;
-
-            end
-
-            function xLimits =  getXLimitsOfImage(obj)
-             [~, columnsInImage, ~] =       obj.LoadedMovie.getImageDimensions;
-            CurrentColumnShift=             obj.LoadedMovie.getAplliedColumnShiftsForActiveFrames;
-            xLimits =                       [1+  CurrentColumnShift, columnsInImage + CurrentColumnShift];
-            end
-
-            function yLimits =  getYLimitsOfImage(obj)
-             [rowsInImage, ~, ~] =      obj.LoadedMovie.getImageDimensions;
-             CurrentRowShift =          obj.LoadedMovie.getAplliedRowShiftsForActiveFrames;
-             yLimits = [1+  CurrentRowShift, rowsInImage + CurrentRowShift];
-            end
-
-            function obj =      updateRgbImage(obj)
-                 obj =                   obj.updateLoadedImageVolumes;
-                 rgbImage =              obj.LoadedMovie.convertImageVolumeIntoRgbImage(obj.getActiveImageVolume); 
-                if obj.LoadedMovie.getMaskVisibility 
-                    rgbImage =                                                          obj.addMasksToImage(rgbImage);
-                end
-                obj.Views.MovieView.MainImage.CData=                                    rgbImage;
-
-            end
-
-            function obj =      updateLoadedImageVolumes(obj)
-                
-                 numericalNeededFrames =   obj.getFramesThatNeedToBeLoaded;
-                 if isempty(numericalNeededFrames)
-
-                 else
-                      obj.LoadedImageVolumes(numericalNeededFrames,1 ) = obj.LoadedMovie.loadImageVolumesForFrames(numericalNeededFrames);
-                 end
-                  obj.Views.enableAllViews;
-            end
-
-            function [requiredFrames] =     getFramesThatNeedToBeLoaded(obj)
-                obj =                                       obj.resetLoadedImageVolumesIfInvalid;
-                requiredFrames =                            obj.getFrameNumbersThatMustBeInMemory;
-                alreadyLoadedFrames =                       obj.getFramesThatAreAlreadyInMemory;
-
-                requiredFrames(alreadyLoadedFrames,1) =     false;
-                requiredFrames = find(requiredFrames);
-
-            end
-
-            function obj =              resetLoadedImageVolumesIfInvalid(obj)
-            if ~iscell(obj.LoadedImageVolumes) || length(obj.LoadedImageVolumes) ~= obj.LoadedMovie.getMaxFrame
-               obj.LoadedImageVolumes =                            cell(obj.LoadedMovie.getMaxFrame,1);
-            end
-            end
-
-            function requiredFrames =   getFrameNumbersThatMustBeInMemory(obj)
-                    requiredFrames(1: obj.LoadedMovie.getMaxFrame, 1) = false;
-                    range =                 obj.LoadedMovie.getActiveFrames - obj.getLimitForLoadingFrames : obj.LoadedMovie.getActiveFrames + obj.getLimitForLoadingFrames;
-                    range(range<=0) =       [];
-                    range(range > obj.LoadedMovie.getMaxFrame) =       [];
-                    requiredFrames(range,1) =                                     true;
-            end
-
-             function frames =          getLimitForLoadingFrames(obj)
-                   PressedKey =                            obj.PressedKeyValue;  
-                    PressedKeyAsciiCode=                    double(PressedKey);
-                    if PressedKeyAsciiCode == 29 
-                        frames =        obj.DefaultNumberOfLoadedFrames;
-                    else
-                        frames =        0;
-                    end
+        function obj =      updateMovieView(obj)
+             if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+                    obj.Views =     updateMovieViewWith(obj.Views, obj.LoadedMovie, obj.getRbgImage);
              end
 
-             function framesThatHaveTheMovieAlreadyLoaded = getFramesThatAreAlreadyInMemory(obj)
-                  framesThatHaveTheMovieAlreadyLoaded =         cellfun(@(x)  ~isempty(x),     obj.LoadedImageVolumes);   
+        end
 
-                  %framesWithMatchingImageSize =                 cellfun(@(x)  obj.LoadedMovie.imageMatchesDimensions(x),     obj.LoadedImageVolumes);  
-                 % neededFrames =                                min([framesThatHaveTheMovieAlreadyLoaded, framesWithMatchingImageSize], [], 2);
+        function obj =      updateMovieViewImage(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+           obj.Views =     setMovieImagePixels(obj.Views, obj.getRbgImage);
              end
+        end
+        
+        function obj =      resetViewsForCurrentDriftCorrection(obj)
 
-            function activeVolume = getActiveImageVolume(obj)
-                activeVolume =     obj.LoadedImageVolumes{obj.LoadedMovie.getActiveFrames,1};
-            end
+            obj.Views =     setLimitsOfMovieViewWith(obj.Views, obj.LoadedMovie); % reset applied cropping limit (dependent on drift correction)
+            obj.Views =     updateDriftWith(obj.Views, obj.LoadedMovie);
+            obj  =    obj.updateControlElements; % plane number may change
+            obj =           obj.setCroppingRectangle;% crop position may change
+
+            obj =           obj.setNavigationControls;
+            obj =           obj.updateMovieView;
+            obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie);   
+
+            obj.Views =    setSelectedCentroidsWith( obj.Views, obj.LoadedMovie);
+            obj.Views =     setActiveCentroidWith(obj.Views, obj.LoadedMovie);
+        end
+
+        function obj =      updateAllViewsThatDependOnActiveTrack(obj)
+            
+         %    obj.LoadedMovie =   obj.LoadedMovie.setFocusOnActiveTrack; 
              
-             function [rgbImage] =                addMasksToImage(obj, rgbImage)
-                  if isempty(obj.LoadedMovie.getTrackingNavigationOfSelectedTracks)
+             if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+                obj =               obj.setNavigationControls;
+                obj.Views =         setTrackingViewsWith(obj.Views, obj.LoadedMovie);
+                obj =               obj.updateAllViewsThatDependOnSelectedTracks;
+                
+                obj =                obj.setActiveCropOfMovieView;
+                
+             end
 
-                  else
-                       IntensityForRedChannel =          obj.MaskColor(1);
-                    IntensityForGreenChannel =        obj.MaskColor(2);
-                    IntensityForBlueChannel =         obj.MaskColor(3);
-                    if strcmp(class(rgbImage), 'uint16')
-                        IntensityForRedChannel =        IntensityForRedChannel * 255;
-                        IntensityForGreenChannel =      IntensityForGreenChannel * 255;
-                        IntensityForBlueChannel =       IntensityForBlueChannel * 255;
-                    end
+        end
 
-                    rgbImage = obj.highlightPixelsInRgbImage(rgbImage, obj.LoadedMovie.getTrackingNavigationOfSelectedTracks.getAllMaskCoordinates, 1, IntensityForRedChannel);
-                    rgbImage = obj.highlightPixelsInRgbImage(rgbImage, obj.LoadedMovie.getTrackingNavigationOfSelectedTracks.getAllMaskCoordinates, 2, IntensityForGreenChannel);
-                    rgbImage = obj.highlightPixelsInRgbImage(rgbImage, obj.LoadedMovie.getTrackingNavigationOfSelectedTracks.getAllMaskCoordinates, 3, IntensityForBlueChannel);
+        function obj =      setActiveCropOfMovieView(obj)
+            obj =               obj.setCroppingRectangle;
+            obj.Views =         obj.Views.setLimitsOfMovieViewWith(obj.LoadedMovie);
+        end
+        
+        function obj = setCroppingRectangle(obj)
+            if ~isempty(obj.Views)  && isvalid(getFigure(obj.Views))
+                obj.Views =        setRectangleWith(obj.Views, obj.LoadedMovie);
+            end
+        end
+
+        function obj =      updateAllViewsThatDependOnSelectedTracks(obj)
+
+        %   obj.LoadedMovie = obj.LoadedMovie.generalCleanup;
+
+            obj.Views =     setSelectedCentroidsWith(obj.Views, obj.LoadedMovie);
+            obj.Views =     setActiveCentroidWith(obj.Views, obj.LoadedMovie);
+
+            obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
+            obj =           obj.updateMovieViewImage;
+
+            obj.TrackingNavigationEditViewController =     obj.TrackingNavigationEditViewController.resetModelWith(obj.LoadedMovie.getTracking);
+
+        end
+
+        function obj =      setTrackViews(obj)
+            %  obj.LoadedMovie =   obj.LoadedMovie.generalCleanup; % should be removed when confidence that this is not necessary
+            if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+              obj.Views =         setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
+                obj =                 obj.updateAllViewsThatDependOnActiveTrack;
+            end
+
+        end
+
+        function obj =      updateControlElements(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+         obj.Views  =    setControlElements(obj.Views, obj.LoadedMovie); % plane number may change
+             end
+        end
+
+        function obj =      highlightMousePositionInImage(obj)
+
+            [rowPos, columnPos, ~, ~] =   obj.getCoordinatesOfCurrentMousePosition;
+            OldImage =                              obj.Views.getMovieImage.CData;
+            OldImage(rowPos, columnPos,:) =         255;
+            obj.Views =                             obj.Views.setMovieImagePixels(OldImage);
+
+        end
+
+        function [check] =  pointIsWithinImageAxesBounds(obj, CurrentRow, CurrentColumn)
+
+        if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+
+            XLimMin =                 obj.Views.getMovieAxes.XLim(1);
+            XLimMax =                 obj.Views.getMovieAxes.XLim(2);
+            YLimMin =                 obj.Views.getMovieAxes.YLim(1);
+            YLimMax =                 obj.Views.getMovieAxes.YLim(2);
+
+            if min(CurrentColumn >= XLimMin) && min(CurrentColumn <= XLimMax) && min(CurrentRow >= YLimMin) && min(CurrentRow <= YLimMax)
+                check = true;
+
+            else
+                check = false;
+
+            end
+
+        else
+          check = false;
+
+        end
 
 
-                    CoordinateListActive =    obj.LoadedMovie.getTrackingNavigationOfActiveTrack.getAllMaskCoordinates;
+        end
 
-                    if isempty( CoordinateListActive)
-                    else
+        function obj =                            highLightRectanglePixelsByMouse(obj)
 
-                        Intensity =    255;
-                        if strcmp(class(rgbImage), 'uint16')
-                            Intensity = Intensity * 255;
-                        end
+                if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+
+                    coordinates =        obj.getCoordinateListByMousePositions;
+
+                    yCoordinates =       coordinates(:,2);
+                    xCoordinates =       coordinates(:,1);
+
+                    HighlightedChannel =       1;
+                    OldImage =      obj.Views.getMovieImage.CData;
+                    OldImage(:, :, HighlightedChannel) = 0;
+                    OldImage(round(min(yCoordinates) : max(yCoordinates)), round(min(xCoordinates) : max(xCoordinates)), HighlightedChannel) = 200;
+
+                    obj.Views =         obj.Views.setMovieImagePixels(OldImage);
+
+                end
+
+         end
+         
+        function obj =             resetWidthOfMovieAxesToMatchAspectRatio(obj)
+            if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+                XLength =                   obj.Views.getMovieAxes.XLim(2)- obj.Views.getMovieAxes.XLim(1);
+                YLength =                   obj.Views.getMovieAxes.YLim(2)- obj.Views.getMovieAxes.YLim(1);
+                LengthenFactorForX =        XLength/  YLength;
+                obj.Views =                 obj.Views.setMovieAxesWidth(obj.Views.getMovieAxes.Position(4) * LengthenFactorForX);
+            end
+        end
+        
+        function obj = resetAxesCenter(obj, xShift, yShift)
+            obj.Views = obj.shiftAxes(xShift, yShift);
+            
+        end
+        
+        function obj = setFrameBySlider(obj)
+            MyNumber = round(obj.Views.Navigation.TimeSlider.Value);
+            obj = obj.setFrameByNumber(MyNumber);
+        end
+         
+        
+        
 
 
-                        CoordinateListActive(isnan(CoordinateListActive(:,1)),:) = [];
-                        rgbImage = obj.highlightPixelsInRgbImage(rgbImage, CoordinateListActive, 1:3, Intensity);
-
-                    end
-              end
-
-
-
-
-               end
 
 
 
     end
+
+    methods% views: set mouse positions
+       
+         function obj = setMouseEndPosition(obj)
+                if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+                    obj =          obj.setMouseUpRow(obj.getCurrentMouseRow);
+                    obj =          obj.setMouseUpColumn(obj.getCurrentMouseColumn);
+                end
+            end
+        
+    end
     
+    methods (Access = private) % views: set mouse positions
+        
+           
+
+            function position = getCurrentMouseRow(obj)
+                position =  obj.Views.getMovieAxes.CurrentPoint(1,2);
+            end
+
+            function position = getCurrentMouseColumn(obj)
+                position =  obj.Views.getMovieAxes.CurrentPoint(1,1);
+            end
+
+    end
+    
+    methods % mouse action
+
+    function [Category] =                         interpretMouseMovement(obj)
+
+        if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+
+
+          if isempty(obj) || isempty(obj.MouseDownRow) || isempty(obj.MouseDownColumn) 
+              Category =      'Invalid';
+
+          elseif isnan(obj.MouseDownRow) || isnan(obj.MouseDownColumn)
+              Category = 'Invalid';
+
+          else
+
+                if obj.pointIsWithinImageAxesBounds([obj.MouseDownRow, obj.getCurrentMouseRow], [obj.MouseDownColumn, obj.getCurrentMouseColumn])
+                    if (obj.MouseDownRow == obj.MouseUpRow) && (obj.MouseDownColumn ==  obj.MouseUpColumn)
+                        Category = 'Stay';
+                    else
+                        Category = 'Movement';
+                    end
+
+                else
+                    Category = 'Out of bounds';
+
+                end
+          end
+
+        else
+            Category =      'NoActiveView';
+
+        end
+
+    end
+
+    function [obj] =          myMouseButtonWasJustPressed(obj,~,~)
+        obj = obj.mouseButtonPressed(obj.Views.getPressedKey, obj.Views.getRawModifier);
+    end
+
+    function obj = mouseButtonPressed(obj, PressedKey, Modifier)    %% get mouse action (defined by key press during button down); 
+         mouseController =      PMMovieController_MouseAction(obj, PressedKey, Modifier);
+         obj =                  mouseController.mouseButtonPressed;
+    end
+
+    function [obj] =          myMouseJustMoved(obj,~,~)
+        obj = obj.mouseMoved(obj.Views.getPressedKey, obj.Views.getRawModifier);
+    end
+
+    function obj = mouseMoved(obj, PressedKey, Modifier)    %% get mouse action (defined by key press during button down); 
+        if strcmp(obj.getMouseAction, 'No action')
+        else
+               mouseController =      PMMovieController_MouseAction(obj, PressedKey, Modifier);   
+                obj =                  mouseController.mouseMoved;
+        end
+    end
+
+    function [obj] =          myMouseButtonWasJustReleased(obj,~,~)
+        obj = obj.mouseButtonReleased(obj.Views.getPressedKey, obj.Views.getRawModifier);
+    end
+
+    function obj = mouseButtonReleased(obj, PressedKey, Modifier)    %% get mouse action (defined by key press during button down); 
+         mouseController =      PMMovieController_MouseAction(obj, PressedKey, Modifier);
+         obj =                  mouseController.mouseButtonReleased;
+    end
+
+
+
+
+    end
+
+    methods (Access = private)% callbacks
+
+    function obj = setCallbacks(obj)
+
+        if isempty(obj.Views)
+            % sometimes no controller without views is more useful: in this case do not attempt to set callbacks;
+        else
+            obj = obj.setNavigationCallbacks;
+            obj = obj.setChannelCallbacks;
+            obj = obj.setAnnotationCallbacks;
+            obj = obj.setTrackingCallbacks;
+        end
+
+    end
+
+    end
+
+    methods (Access = private) % navigation callbacks
+
+        function obj =      setNavigationCallbacks(obj)
+             obj.Views  =    obj.Views.setNavigationCallbacks(...
+                                 @obj.editingOptionsClicked, ...
+                                @obj.planeViewClicked, ...
+                                 @obj.frameViewClicked, ...
+                                 @obj.maximumProjectionClicked, ...
+                                 @obj.croppingOnOffClicked, ...
+                                 @obj.driftCorrectionOnOffClicked ...
+                );
+
+        end
+
+        function obj =      editingOptionsClicked(obj, ~, ~)
+           obj =           obj.updateMovieView;
+
+        end
+
+        function obj =      planeViewClicked(obj,~,~)
+            obj  =          obj.resetPlane(obj.Views.getCurrentPlanes);
+        end
+
+   
+
+        function obj =      frameViewClicked(obj,~,~)
+            obj  =                  obj.setFrameByNumber(obj.Views.getCurrentFrames);
+        end
+
+        function obj =      maximumProjectionClicked(obj,~,~)
+          obj.LoadedMovie =     obj.LoadedMovie.setCollapseAllPlanes(obj.Views.getShowMaximumProjection);
+          obj =           obj.updateMovieView;
+
+        end
+
+        function obj =      croppingOnOffClicked(obj,~,~)
+            obj.LoadedMovie =    obj.LoadedMovie.setCroppingStateTo(obj.Views.getCropImage);
+            obj =                obj.resetViewsForCurrentCroppingState;
+        end
+
+        function obj =      resetViewsForCurrentCroppingState(obj)
+            obj.Views =     obj.Views.setLimitsOfMovieViewWith(obj.LoadedMovie); % reset applied cropping limit (dependent on drift correction)
+             obj =               obj.setCroppingRectangle; % crop position may change
+            obj =           obj.updateMovieView;
+        end
+
+        function obj =      driftCorrectionOnOffClicked(obj,~,~)
+           obj =                obj.setDriftCorrectionTo(obj.Views.getApplyDriftCorrection);  
+        end
+
+    end
+
+
+    methods % callbacks for key and mouse (optional: can be taken over from other sides
+
+        function obj = setKeyAndMouseCallbacks(obj)
+            obj.Views = obj.Views.setKeyMouseCallbacks(@obj.keyPressed, @obj.myMouseButtonWasJustPressed, @obj.myMouseButtonWasJustReleased, @obj.myMouseJustMoved);
+
+        end
+
+        function [obj] =           keyPressed(obj,~,~)
+
+            obj.interpretKey(obj.Views.getPressedKey, obj.Views.getRawModifier);
+            obj.Views = obj.Views.setCurrentCharacter('0');
+
+        end
+        
+         function [obj] =    interpretKey(obj, PressedKey, CurrentModifier)
+                obj.PressedKeyValue =       PressedKey;  
+               obj =                       PMMovieController_Keypress(obj).processKeyInput(obj.PressedKeyValue, CurrentModifier);
+
+                obj.PressedKeyValue = '';
+         end
+      
+        
+
+    end
+
+    methods (Access = private) % tracking callbacks:
+
+        function obj = setTrackingCallbacks(obj)
+         obj.Views  =    obj.Views.setTrackingCallbacks(...
+                                @obj.trackingActiveTrackButtonClicked, ...
+                                @obj.trackingCentroidButtonClicked, ...
+                                @obj.trackingShowMaskButtonClicked, ...
+                                @obj.trackingShowTracksButtonClicked, ...
+                                @obj.trackingShowMaximumProjectionButtonClicked ...
+                                 );
+        end
+
+        function [obj] =       trackingActiveTrackButtonClicked(obj,~,~)
+        obj.LoadedMovie =   obj.LoadedMovie.setActiveTrackIsHighlighted(obj.Views.getShowTrackingOfActiveTrack);
+        obj =          obj.initializeViews;
+        obj =           obj.updateMovieView;
+
+        end
+
+        function [obj] =      trackingCentroidButtonClicked(obj,~,~)
+            obj =               obj.setCentroidVisibilityByLogical(obj.Views.getShowCentroids);
+        end
+        
+        function obj = setCentroidVisibilityByLogical(obj, Value)
+            assert(islogical(Value), 'Wrong input type')
+            obj.LoadedMovie =   obj.LoadedMovie.setCentroidVisibility(Value);
+            obj =           obj.initializeViews;
+        end
+ 
+        function [obj] =      trackingShowMaskButtonClicked(obj,~,~)
+        obj.LoadedMovie =       obj.LoadedMovie.setMaskVisibility(obj.Views.getShowMasks);
+         obj =          obj.initializeViews;
+         obj =           obj.updateMovieView;
+
+        end
+
+        function [obj] =      trackingShowTracksButtonClicked(obj,~,~)
+            obj.LoadedMovie =   obj.LoadedMovie.setTrackVisibility(obj.Views.getShowTracks);
+             obj =               obj.initializeViews;
+        end
+
+        function [obj] =      trackingShowMaximumProjectionButtonClicked(obj,~,~)
+         obj =            obj.setCollapseTracking(obj.Views.getShowMaxProjectionOfTrackingData);
+        end
+
+    end
+
+    methods (Access = private) % annotation callbacks
+
+    function obj = setAnnotationCallbacks(obj)
+        obj.Views  =        obj.Views.setAnnotationCallbacks(...
+                                @obj.annotationScaleBarOnOffClicked, @obj.annotationScaleBarSizeClicked);
+    end
+
+    function [obj] =         annotationScaleBarOnOffClicked(obj,~,~)
+        obj =           obj.updateMovieView;
+    end
+
+    function [obj] =         annotationScaleBarSizeClicked(obj,~,~)
+        obj.LoadedMovie =       obj.LoadedMovie.setScaleBarSize(obj.Views.getScalbarSize);
+        obj =                   obj.updateMovieView;
+
+    end
+
+
+
+
+    end
+
+    
+    methods % view setters
+         function obj = setViews(obj, Value, varargin)
+           
+                FunctionName = ['view_', Value];
+                NumberOfArguments = length(varargin);
+                switch NumberOfArguments
+                    case 1
+                        obj = obj.(FunctionName)(varargin{1});
+                    otherwise
+                        error('Wrong input.')
+                end
+
+         end 
+        
+    end
+    methods (Access = private) % different view setters:
+
+       
+             
+        function obj = view_trackVisibility(obj, Value)
+            switch Value
+             case 'toggle'
+                obj =  obj.toggleTrackVisibility;
+             otherwise
+                 error('Wrong input.')
+            end
+
+
+        end
+        
+         function obj =    toggleTrackVisibility(obj)
+            obj.LoadedMovie =   obj.LoadedMovie.toggleTrackVisibility;
+            obj =               obj.initializeViews;
+
+         end
+         
+
+        function obj = view_CroppingGate(obj, Value)
+            switch Value
+             case 'changePositionByMouseDrag'
+                obj =       obj.setCroppingGateByMouseDrag;
+              case 'changeToDefault'
+                  obj = setDefaultCroppingGate(obj);
+              otherwise
+                  error('Wrong input.')
+            end
+
+        end
+
+        function obj = setDefaultCroppingGate(obj)
+            obj.LoadedMovie =         obj.LoadedMovie.resetCroppingGate;
+             obj =               obj.setCroppingRectangle;
+        end
+
+
+        function obj = setCroppingGateByMouseDrag(obj)
+            obj.LoadedMovie =   obj.LoadedMovie.setCroppingGateWithRectange(obj.getRectangleFromMouseDrag);
+             obj =               obj.setCroppingRectangle;
+        end
+
+        function obj = view_CroppingOn(obj, Value)
+            switch Value
+             case 'toggle'
+                obj.LoadedMovie =       obj.LoadedMovie.setCroppingStateTo(~obj.Views.getCropImage);
+                obj =                   obj.resetViewsForCurrentCroppingState;
+              otherwise
+                  error('Wrong input.')
+            end
+
+        end
+
+        function obj = view_channelVisibility(obj, Value)
+            switch Value
+             case 'toggleByKeyPress'
+
+                 PressedKey = obj.PressedKeyValue;
+                 obj = toggleVisibilityOfChannelIndex(obj, str2double(PressedKey));
+
+             otherwise
+                 error('Wrong input.')
+            end
+
+
+        end
+
+        function obj = view_timeAnnotationVisibility(obj, Value)
+            switch Value
+             case 'toggle'
+                obj =  toggleTimeVisibility(obj);
+             otherwise
+                 error('Wrong input.')
+            end
+
+
+        end
+
+        function obj = toggleTimeVisibility(obj)
+            obj.LoadedMovie =   obj.LoadedMovie.setTimeVisibility(~obj.LoadedMovie.getTimeVisibility);
+            obj =           obj.updateMovieView;
+        end
+
+        function obj =  toggleScaleBarVisibility(obj)
+            obj.LoadedMovie =      obj.LoadedMovie.toggleScaleBarVisibility;
+            obj =           obj.updateMovieView;
+
+        end
+
+        function obj = view_planeAnnotationVisibility(obj, Value)
+
+            switch Value
+                case 'toggle'
+                    obj.LoadedMovie =      obj.LoadedMovie.setPlaneVisibility( ~obj.LoadedMovie.getPlaneVisibility);
+                    obj =           obj.updateMovieView;
+                otherwise
+                    error('Wrong input.')
+            end
+
+
+        end
+
+        function obj = view_maskVisibility(obj, Value)
+            Type = class(Value);
+            switch Type
+            case 'char'
+                switch Value
+                    case 'toggle'
+                        obj = obj.toggleMaskVisibility;
+                    otherwise
+                        error('Wrong input.')
+
+                end
+
+            otherwise
+                error('Wrong input.')
+            end
+
+
+
+        end
+
+        function obj = view_centroidVisibility(obj, Value)
+            Type = class(Value);
+            switch Type
+            case 'char'
+                switch Value
+                    case 'toggle'
+                        obj = obj.toggleCentroidVisibility;
+                    otherwise
+                        error('Wrong input.')
+
+                end
+            case 'logical'
+                obj = setCentroidVisibilityByLogical(obj, Value);
+            otherwise
+                error('Wrong input.')
+            end
+
+
+
+        end
+
+        function obj = toggleMaskVisibility(obj)
+            obj.LoadedMovie =      obj.LoadedMovie.toggleMaskVisibility  ; 
+            obj =          obj.initializeViews;
+            obj =           obj.updateMovieView;
+
+
+        end
+
+        function obj = toggleCentroidVisibility(obj)
+            obj.LoadedMovie =   obj.LoadedMovie.toggleCentroidVisibility;
+            obj =           obj.initializeViews;
+
+        end
+
+    end
+
+    methods (Access = private) % track views
+       
+        function obj = setSegmentLineViews(obj, DistanceLimit, MinTimeLimit, MaxTimeLimit, Visibility)
+            % SETSEGMENTLINEVIEWS: graphically depcits stop- and go-segments of tracks;
+            % takes for arguments:
+            % 1: stop-distance limit
+            % 2: minimum time-limit for stop
+            % 3: maximum time-limit
+            % 4: visibility(true/false; false: no segments are depcicted)
+
+            if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
+
+                if ~Visibility
+                    MyStopCoordinates = cell(0, 3);
+                    MyGoCoordinates = cell(0, 3);
+
+                else
+                    [StopTracks, GoTracks] = obj.getStopGoTrackSegments(DistanceLimit, MinTimeLimit, MaxTimeLimit);
+                    MyGoCoordinates=       cellfun(@(x) cell2mat([x(:,4), x(:, 3), x(:, 5)]), StopTracks, 'UniformOutput', false);
+                    MyStopCoordinates =    cellfun(@(x) cell2mat([x(:,4), x(:, 3), x(:, 5)]),  GoTracks, 'UniformOutput', false);
+                end
+
+                obj.Views = obj.Views.setSegmentLineViews(MyStopCoordinates, MyGoCoordinates);
+
+            end
+
+        end
+
+        function setLineColorTo(~,Handle,Color)
+            Handle.Color =          Color;
+        end
+
+    end
+  
 end
 

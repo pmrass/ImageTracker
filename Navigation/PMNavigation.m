@@ -37,6 +37,17 @@ classdef PMNavigation
             end
         end
         
+        function obj = setMaximumRow(obj, Value)
+             obj.MaximumRow =  Value;
+        end
+        
+        function obj = setMaximumColumn(obj, Value)
+            obj.MaximumColumn =  Value;
+        end
+        
+        function obj = setMaximumPlane(obj, Value)
+            obj.MaximumPlane =  Value;
+        end
 
         function obj = set.MaximumRow(obj,Value)
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input format.')
@@ -93,7 +104,7 @@ classdef PMNavigation
         end
         
         function obj = setActivePlanes(obj, Value)
-            if Value >= 1 && Value <= obj.getMaxPlane
+            if Value >= 1% && Value <= obj.getMaxPlane
                 obj.ActivePlanes =  Value;
             elseif isnan(Value)
                 
@@ -105,6 +116,9 @@ classdef PMNavigation
         
         function obj = set.ActivePlanes(obj,Value)
             assert(isnumeric(Value) && isvector(Value), 'Wrong input format.')
+            arrayfun(@(x) assert(mod(x, 1) == 0, 'Wrong input.'),  Value)
+              
+        
             obj.ActivePlanes =  Value;
         end
         

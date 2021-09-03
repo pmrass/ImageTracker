@@ -34,30 +34,30 @@ classdef PMTrackingView
             Tracks_Main.Label=                                  'Tracking';
             Tracks_Main.Tag=                                    'Tracks_Main';
 
-            Tracks_AutoCellRecognition=                            uimenu(Tracks_Main);
-            Tracks_AutoCellRecognition.Label=                     'Autodetection of cells';
-            Tracks_AutoCellRecognition.Tag=                       'Tracks_AutoCellRecognition';
-            Tracks_AutoCellRecognition.Enable=                   'on';
-            Tracks_AutoCellRecognition.Separator=                               'off';
+             obj.Menu.AutoCellRecognition=                            uimenu(Tracks_Main);
+             obj.Menu.AutoCellRecognition.Label=                     'Autodetection of cells';
+             obj.Menu.AutoCellRecognition.Tag=                       'Tracks_AutoCellRecognition';
+             obj.Menu.AutoCellRecognition.Enable=                   'on';
+             obj.Menu.AutoCellRecognition.Separator=                               'off';
              
-            Tracks_TrackingSettings=                            uimenu(Tracks_Main);
-            Tracks_TrackingSettings.Label=                     'Autotracking';
-            Tracks_TrackingSettings.Tag=                       'Tracks_TrackingSettings';
-            Tracks_TrackingSettings.Enable=                   'on';
+             obj.Menu.AutoTracking=                            uimenu(Tracks_Main);
+             obj.Menu.AutoTracking.Label=                     'Autotracking';
+             obj.Menu.AutoTracking.Tag=                       'Tracks_TrackingSettings';
+             obj.Menu.AutoTracking.Enable=                   'on';
             
 
-             Tracks_EditAndView=                            uimenu(Tracks_Main);
-            Tracks_EditAndView.Label=                     'View and edit tracks';
-            Tracks_EditAndView.Tag=                       'Tracks_EditAndView';
-            Tracks_EditAndView.Enable=                   'on';
+             obj.Menu.EditAndView=                            uimenu(Tracks_Main);
+            obj.Menu.EditAndView.Label=                     'View and edit tracks';
+            obj.Menu.EditAndView.Tag=                       'Tracks_EditAndView';
+            obj.Menu.EditAndView.Enable=                   'on';
            
-
+            obj.Menu.TrackSegments=                            uimenu(Tracks_Main);
+            obj.Menu.TrackSegments.Label=                     'Edit track segments';
+            obj.Menu.TrackSegments.Enable=                   'on';
+           
          
             
-            obj.Menu.AutoCellRecognition =                  Tracks_AutoCellRecognition;
-            obj.Menu.AutoTracking =                         Tracks_TrackingSettings;
-            obj.Menu.EditAndView =                          Tracks_EditAndView;
-            
+          
           
 %             Masks_AutomatedCentroidConversion.Callback=         'CallbackForAutomatedMaskDetection';
 %             Export_T_Tiff.Callback=                             'ExportData(''Time-series TIFF'')'; 

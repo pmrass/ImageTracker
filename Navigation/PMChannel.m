@@ -11,8 +11,14 @@ classdef PMChannel
         ReconstructionType =    'Raw'
     end
     
-    methods
-        function obj = PMChannel(varargin)
+    properties (Constant, Access = private)
+       PossibleFilterTypes = {'Raw','Median', 'Complex'};
+        
+    end
+    
+    methods % initialization
+        
+         function obj = PMChannel(varargin)
             %PMCHANNEL Construct an instance of this class
             %   Detailed explanation goes here
             NumberOfArguments = length(varargin);
@@ -30,106 +36,36 @@ classdef PMChannel
                     error('Wrong number of arguments')
                 
             end
-        end
-        
-        function obj = setVisible(obj, Value)
-            obj.Visible = Value;
-        end
-        
-         function Value = getVisible(obj)
-            Value = obj.Visible ;
          end
         
-        %% intensity low
-        function obj = setIntensityLow(obj, Value)
-            obj.IntensityLow = Value;
-        end
-        
-         function obj = set.IntensityLow(obj,Value)
+          function obj = set.IntensityLow(obj,Value)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value) || Value >= obj.getIntensityHigh
-               warning('Intensity low is higher than intensity high. This is not allowed. Set was ignored.')
+               error('Wrong channel input.')
             else
                 obj.IntensityLow = Value;
                 
             end
             
             
-         end
-         
-         function Value = getIntensityLow(obj)
-            Value = obj.IntensityLow ;
-        end
-        
-        %% intensity high:
-        function obj = setIntensityHigh(obj, Value)
-            obj.IntensityHigh = Value;
-        end
-        
-         function obj = set.IntensityHigh(obj,Value)
+          end
+          
+           function obj = set.IntensityHigh(obj,Value)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value) || Value <= obj.getIntensityLow
-               warning('Intensity high is lower than intensity low. This is not allowed. Set was ignored.')
+              error('Wrong channel input.')
             else
                 obj.IntensityHigh = Value;
             end
-         end
-        
-       function Value = getIntensityHigh(obj)
-            Value = obj.IntensityHigh ;
-       end
-        
-        
-        %% color:
-        function obj = setColor(obj, Value)
-            
-            if ischar(Value)
-                FinalValue = obj.convertStringIntoColorVector(Value);
-            else
-                FinalValue = Value;
-            end
-            obj.Color = FinalValue;
-        end
-        
-    
-        
-        function code = convertStringIntoColorVector(obj, String)
-            switch String
-                case 'Red'
-                    code = [1 0 0];
-                case 'Green'
-                    code = [0 1 0];
-                case 'Blue'
-                    code = [0 0 1];
-                case 'Yellow'
-                    code = [1 1 0];
-                case 'Magenta'
-                    code = [1 0 1];
-                case 'Cyan'
-                     code = [0 1 1];
-                case 'White'
-                       code = [1 1 1];  
-                otherwise
-                    error('Color not supported')
-            end
-        end
-        
-        function obj = setComment(obj, Value)
-            obj.Comment = Value;
-        end
-        
+           end
          
-        
-        function obj = setReconstructionType(obj, Value)
-            obj.ReconstructionType = Value;
-        end
-        
+              
           function obj = set.ReconstructionType(obj,Value)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            assert(ischar(Value) , 'Wrong argument type.')
+            obj = obj.verifyFilterType(Value);
             obj.ReconstructionType = Value;
         end
         
@@ -162,25 +98,139 @@ classdef PMChannel
         
       
         
-        
          
         
+        
+    end
+    
+    methods (Access = private) % intialization
+        
+        function obj = verifyFilterType(obj, Value)
+           assert(ischar(Value), 'Wrong input.')
+           assert(max(strcmp(obj.PossibleFilterTypes, Value)), 'Wrong input.')
+
+            
+        end
+        
+    end
+    
+    methods % summary
+       
+        function obj = showSummary(obj)
+            
+                fprintf('This PMChannel object manages the state of a single channel:\n')
+
+                if obj.Visible
+                    fprintf('The channel is visible.\n')
+                else
+                    fprintf('The channel is not visible.\n')
+                end
+
+                fprintf('The bottom intensity is %6.4f\n', obj.IntensityLow)
+                fprintf('The top intensity is %6.4f\n', obj.IntensityHigh)
+                fprintf('The color is red: %6.4f green: %6.4f blue: %6.4f\n', obj.Color(1), obj.Color(2), obj.Color(3));
+                fprintf('The comment is "%s".\n', obj.Comment)
+                fprintf('The reconstruction type is "%s".\n', obj.ReconstructionType)
+                
+        end
+        
+        
+    end
+    
+    methods % setters
+        
+        function obj = setVisible(obj, Value)
+            obj.Visible = Value;
+        end
+        
+        function obj = setIntensityLow(obj, Value)
+            obj.IntensityLow = Value;
+        end
+        
+        function obj = setIntensityHigh(obj, Value)
+            obj.IntensityHigh = Value;
+        end
+        
+        function obj = setColor(obj, Value)
+            if ischar(Value)
+                FinalValue = obj.convertStringIntoColorVector(Value);
+            else
+                FinalValue = Value;
+            end
+            obj.Color = FinalValue;
+            
+        end
+        
+         function obj = setComment(obj, Value)
+            obj.Comment = Value;
+        end
+        
+        function obj = setReconstructionType(obj, Value)
+            obj.ReconstructionType = Value;
+        end
+        
+        
+        
+        
+    end
+    
+    methods
+       
+        function Value = getVisible(obj)
+            Value = obj.Visible ;
+        end
+
+        function Value = getIntensityLow(obj)
+            Value = obj.IntensityLow ;
+        end
+
+        function Value = getIntensityHigh(obj)
+            Value = obj.IntensityHigh ;
+        end
+
         function Value = getComment(obj)
             Value = obj.Comment ;
         end
-        
-         function Value = getColor(obj)
+
+        function Value = getColor(obj)
             Value = obj.Color ;
-         end
-        
-         function Value = getColorString(obj)
-             
+        end
+
+        function Value = getColorString(obj)    
             Value = convertColorVectorIntoString(obj, obj.Color);
-             
+        end
+
+        function Value = getReconstructionType(obj)
+            Value = obj.ReconstructionType ;
+        end
+        
+    end
+    
+    methods (Access = private)
+        
+        
+         function code = convertStringIntoColorVector(~, String)
+            switch String
+                case 'Red'
+                    code = [1 0 0];
+                case 'Green'
+                    code = [0 1 0];
+                case 'Blue'
+                    code = [0 0 1];
+                case 'Yellow'
+                    code = [1 1 0];
+                case 'Magenta'
+                    code = [1 0 1];
+                case 'Cyan'
+                     code = [0 1 1];
+                case 'White'
+                       code = [1 1 1];  
+                otherwise
+                    error('Color not supported')
+            end
          end
          
-         
-            function code = convertColorVectorIntoString(obj, Vector)
+           function code = convertColorVectorIntoString(~, Vector)
                 if isequal(Vector, [1 0 0])
                     
                     code = 'Red';
@@ -198,15 +248,16 @@ classdef PMChannel
                          code = 'Cyan';
                     elseif isequal(Vector, [1 1 1]) 
                            code = 'White';  
+                elseif isequal(Vector, [0 0 0])
+                      code = 'Black';  
                 else
-                        error('Color not supported')
+                       code = 'UnknownColor';
                 end
-        end
-         
+           end
         
-            function Value = getReconstructionType(obj)
-            Value = obj.ReconstructionType ;
-        end
+        
+         
+         
         
     end
 end
