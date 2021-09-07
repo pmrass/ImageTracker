@@ -33,16 +33,15 @@ classdef PMMovieLibraryManager < handle
         MaxStopDurationForGoSegment =           5;
         MinStopDurationForStopInterval =        20;
         
-     
     end
     
     properties(Access = private, Constant)
         FileWithPreviousSettings =         [userpath,'/imans_PreviouslyUsedFile.mat'];
     end
     
-     methods (Access = private) % movie-list clicked
+     methods  % movie-list clicked
         
-          function [obj] =        movieListClicked(obj, ~, ~)
+       function [obj] =         movieListClicked(obj, ~, ~)
                 fprintf('\nPMMovieLibraryManager: @movieListClicked\n')
                
                 switch obj.Viewer.getMousClickType
@@ -60,24 +59,26 @@ classdef PMMovieLibraryManager < handle
                         end
                 end    
           end
-        
-        
           
-        function obj = setPathForImageAnalysis(obj, ~, ~)
+       function obj =           setPathForImageAnalysis(obj, ~, ~)
             
               NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select tracking folder',...
                 'NumFiles', 1, 'Output', 'char');
             
                 if isempty(NewPath) || ~ischar(NewPath)
                 else
+                    obj = obj.setImageAnalysisPath(NewPath);
                     
-                    obj.MovieLibrary =              obj.MovieLibrary.setPathForImageAnalysis(NewPath);  
-                  
-                     
                 end
-        end
+       end
         
-        function obj =          setActiveMovieByNickName(obj, varargin)
+       
+       function obj = setImageAnalysisPath(obj, NewPath)
+           obj.MovieLibrary =              obj.MovieLibrary.setPathForImageAnalysis(NewPath);  
+           
+       end
+        
+       function obj =          setActiveMovieByNickName(obj, varargin)
             
             switch length(varargin)
                 case 1
@@ -98,11 +99,7 @@ classdef PMMovieLibraryManager < handle
             
 
         end
-        
-     
-        
-    
-        
+         
     end
    
     methods % initialization
@@ -122,6 +119,8 @@ classdef PMMovieLibraryManager < handle
             obj =           obj.addCallbacksToTrackingMenu;
             obj =           obj.addCallbacksToInteractionsMenu;
             obj =           obj.addCallbacksToHelpMenu;
+            
+            obj.MovieLibrary = PMMovieLibrary();
             
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
@@ -268,12 +267,18 @@ classdef PMMovieLibraryManager < handle
                 'NumFiles', 1, 'Output', 'char');
                 if isempty(UserSelectedFolder) || ~ischar(UserSelectedFolder)
                 else
-                    obj.MovieLibrary =              obj.MovieLibrary.setExportFolder(UserSelectedFolder);
-                   % obj =                           obj.Viewer.getSelectedNicknames;
-                    obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-                    obj =                           obj.setInfoTextView;
+                  obj = obj.setExportFolder(UserSelectedFolder);
                 end
 
+        end
+        
+        
+        function obj = setExportFolder(obj, UserSelectedFolder)
+              obj.MovieLibrary =              obj.MovieLibrary.setExportFolder(UserSelectedFolder);
+                   % obj =                           obj.Viewer.getSelectedNicknames;
+                %    obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
+                    obj =                           obj.setInfoTextView;
+            
         end
         
         %% add entry
@@ -284,12 +289,12 @@ classdef PMMovieLibraryManager < handle
           end
           
          function obj =          addNewMovie(obj, Nickname, AttachedFiles)
-                   obj.ActiveMovieController =             obj.ActiveMovieController.updateWith(obj.MovieLibrary);
-                  obj.ActiveMovieController =             obj.ActiveMovieController.saveMovie;
-                  obj.MovieLibrary =      obj.MovieLibrary.updateMovieListWithMovieController(obj.ActiveMovieController);
-                  obj.MovieLibrary =      obj.MovieLibrary.addNewEntryIntoLibrary(Nickname, AttachedFiles);
-                  obj =                   obj.setActiveMovieByNickName(Nickname);
-                  obj =                   obj.callbackForFilterChange;
+                  obj.ActiveMovieController =       obj.ActiveMovieController.updateWith(obj.MovieLibrary);
+                  obj.ActiveMovieController =       obj.ActiveMovieController.saveMovie;
+                  obj.MovieLibrary =                obj.MovieLibrary.updateMovieListWithMovieController(obj.ActiveMovieController);
+                  obj.MovieLibrary =                obj.MovieLibrary.addNewEntryIntoLibrary(Nickname, AttachedFiles);
+                  obj =                             obj.setActiveMovieByNickName(Nickname);
+                  obj =                             obj.callbackForFilterChange;
          end
           
         %% add all missing entries:
@@ -307,7 +312,7 @@ classdef PMMovieLibraryManager < handle
            
         %% remove single entry:
         function [obj] =        removeMovieClicked(obj,~,~)
-            answer = questdlg(['Are you sure you remove the movie ', obj.MovieLibrary.getMovieObjectSummaries, ' from the library?  Al linked data (tracking, drift correction etc.) will also be deleted. This is irreversible.'], ...
+            answer = questdlg(['Are you sure you remove the movie ', obj.MovieLibrary.getSelectedNickname, ' from the library?  Al linked data (tracking, drift correction etc.) will also be deleted. This is irreversible.'], ...
             'Project menu', 'Yes',   'No','No');
             switch answer
                 case 'Yes'

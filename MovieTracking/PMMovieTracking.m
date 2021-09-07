@@ -1201,8 +1201,8 @@ classdef PMMovieTracking < PMChannels
     
     methods % FILE SETTERS
           function [obj] =    setImageAnalysisFolder(obj, FolderName)
-        obj.AnnotationFolder =  FolderName;
-        obj = obj.setPathsThatDependOnAnnotationFolder;
+                obj.AnnotationFolder =  FolderName;
+                obj = obj.setPathsThatDependOnAnnotationFolder;
         end
 
         function obj =      setMovieFolder(obj, Value)
@@ -1213,7 +1213,7 @@ classdef PMMovieTracking < PMChannels
     end
     
 
-    methods (Access = private) % FILE SETTERS
+    methods % FILE SETTERS
              
         function obj = setPathsThatDependOnAnnotationFolder(obj)
              obj.Tracking =  obj.Tracking.setMainFolder(obj.getTrackingFolder);
@@ -1418,7 +1418,13 @@ classdef PMMovieTracking < PMChannels
         obj.CroppingGate = MovieTrackingInfo.MovieView.CroppingGate      ;
 
         obj.ActiveChannel = MovieTrackingInfo.Channels.ActiveChannel  ;
-        obj.Channels = MovieTrackingInfo.Channels.Channels ;
+        
+        if isempty(MovieTrackingInfo.Channels.Channels)
+            
+        else
+            obj.Channels = MovieTrackingInfo.Channels.Channels ;
+        end
+        
 
         end
 

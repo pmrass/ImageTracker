@@ -749,12 +749,21 @@ classdef PMTrackingNavigation
                 
                 
             elseif isscalar(Frames)
-                 TrackingCell = obj.TrackingCellForTime{Frames};
+                
+                if isempty(obj.TrackingCellForTime)
+                    TrackingCellDrift = cell(0, 7);
+                    TrackingCell = cell(0,7);
+                else
+                        TrackingCell = obj.TrackingCellForTime{Frames};
                  if isempty(obj.TrackingCellForTimeWithDrift)
                      TrackingCellDrift = cell(0, 7);
                  else
                     TrackingCellDrift = obj.TrackingCellForTimeWithDrift{Frames};
                  end
+                    
+                end
+                
+             
                             
             else
                 error('Not yest supported.')
@@ -1560,6 +1569,7 @@ classdef PMTrackingNavigation
            
             MainTrackingInfo = obj.getStructureForStorage;
             
+            if ~isempty(obj.TrackingCellForTime)
             ExportCell = cellfun(@(x) cell2mat(x(:, 1:5)), obj.TrackingCellForTime, 'UniformOutput', false);
             MainTrackingInfo.TrackingCellForTime = ExportCell;
             tic
@@ -1567,6 +1577,8 @@ classdef PMTrackingNavigation
            a = toc;
            
             fprintf('Saving of the basic tracking file took %6.1f seconds.', a)
+            
+            end
         end
         
         function obj = saveDetailed(obj)

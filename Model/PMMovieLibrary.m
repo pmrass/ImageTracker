@@ -159,7 +159,7 @@ classdef PMMovieLibrary
 
         function obj = setPathForImageAnalysis(obj, Value)
             obj.PathForImageAnalysis =      Value;
-            obj.MovieLibrary =              obj.MovieLibrary.saveMovieLibraryToFile;
+            obj =              obj.saveMovieLibraryToFile;
            
         end
 
@@ -219,7 +219,7 @@ classdef PMMovieLibrary
                     MovieStructure.NickName =  obj.ListWithMovieObjectSummary{MovieIndex,1}.getNickName;
                     newMovieTracking =         PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis}, 1);
                     newMovieTracking =          newMovieTracking.setKeywords(TargetKeyword);
-                    newMovieTracking.saveMovieDataWithOutCondition; 
+                    newMovieTracking.save; 
                 
                 end
                 
@@ -778,7 +778,8 @@ classdef PMMovieLibrary
                     Nickname=           Nickname{1,1};
                     if isempty(Nickname)
                     else
-                         Nickname =     obj.deleteNonUniqueNickName(Nickname);    
+                         Nickname =     obj.deleteNonUniqueNickName(Nickname);  
+                         assert(~isempty(Nickname), 'The nickname was already chosen. Take another one.')
                     end
                 end
            end
@@ -807,6 +808,10 @@ classdef PMMovieLibrary
         end
         
          function obj = setMainFilterWith(obj, PopupMenu)
+             if isempty(PopupMenu.Value)
+                PopupMenu.Value = 1; 
+             end
+             
             if ischar(PopupMenu.String)
                 SelectedString =  PopupMenu.String;
             else
@@ -970,10 +975,21 @@ classdef PMMovieLibrary
         
           %% addNewEntryIntoLibraryInternal
           function obj = addNewEntryIntoLibraryInternal(obj, NickName, AttachedFilenames)
+              
+              
               newMovieTrackingSummary =        obj.getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(NickName, AttachedFilenames); 
          
                 index =                                         obj.getNumberOfMovies + 1;
-                obj.ListhWithMovieObjects{index, 1}=            obj.getMovieTrackingForMovieTrackingSummary(newMovieTrackingSummary);
+                
+            newMovieTracking =      PMMovieTracking(newMovieTrackingSummary);
+            newMovieTracking =      newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
+             newMovieTracking =      newMovieTracking.setPropertiesFromImageFiles;
+            
+            
+            newMovieTracking =      newMovieTracking.save;
+           
+                
+                obj.ListhWithMovieObjects{index, 1}=            newMovieTracking;
                 obj.ListWithMovieObjectSummary{index, 1}=       newMovieTrackingSummary;
                 obj.FilterList(index, 1)=                       true;
                 obj.ListWithLoadedImageData{index, 1} =         '';
@@ -1017,10 +1033,7 @@ classdef PMMovieLibrary
         end
         
         function newMovieTracking = getMovieTrackingForMovieTrackingSummary(obj, newMovieTrackingSummary)
-            newMovieTracking =      PMMovieTracking(newMovieTrackingSummary);
-            newMovieTracking =      newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
-            newMovieTracking =      newMovieTracking.finalizeMovieTracking;
-            newMovieTracking =      newMovieTracking.saveMovieDataWithOutCondition;
+           
         end
           
         

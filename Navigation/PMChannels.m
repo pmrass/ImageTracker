@@ -42,7 +42,7 @@ classdef PMChannels
         
     end
     
-    methods (Access = private) % initialization
+    methods  % initialization
         
           function obj = setDefaultChannelsForChannelCount(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) && Value >= 1, 'Wrong argument type.')
