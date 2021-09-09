@@ -79,6 +79,7 @@ classdef PMTrackingNavigation
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
+                    
                 case 1
                   
                     switch class(varargin{1})
@@ -94,6 +95,7 @@ classdef PMTrackingNavigation
                     
                     
                 case 2
+                    
                     Data = varargin{1};
                     Version = varargin{2};
                     switch Version
@@ -110,6 +112,9 @@ classdef PMTrackingNavigation
                         otherwise
                                 error('Wrong input.')
                     end 
+                    
+                    
+              
 
                 otherwise
                     error('Wrong input.')

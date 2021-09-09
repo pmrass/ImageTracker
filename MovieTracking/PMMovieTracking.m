@@ -4,65 +4,61 @@ classdef PMMovieTracking < PMChannels
  
     properties (Access = private) % crucial to save these data:
 
+        NickName
+        MovieFolder                      % movie folder:
+        AttachedFiles =             cell(0,1) % list files that contain movie-information;
+        AnnotationFolder =          ''   % folder that contains files with annotation information added by user;
 
-    NickName
-    MovieFolder                      % movie folder:
-    AttachedFiles =             cell(0,1) % list files that contain movie-information;
-    AnnotationFolder =          ''   % folder that contains files with annotation information added by user;
-
-    DriftCorrection =           PMDriftCorrection
-    Interactions      
+        DriftCorrection =           PMDriftCorrection
+        Interactions      
 
     end
 
     properties (Access = private) % stop tracking settings:
 
-    StopDistanceLimit =                 15 
-    MaxStopDurationForGoSegment =       5
-    MinStopDurationForStopSegment =     20
+        StopDistanceLimit =                 15 
+        MaxStopDurationForGoSegment =       5
+        MinStopDurationForStopSegment =     20
 
-    Tracking =                  PMTrackingNavigation
+        Tracking =                  PMTrackingNavigation
 
 
     end
 
     properties (Access = private) % is saved but could also be reconstructed from original image file;
-    ImageMapPerFile
-    TimeCalibration =           PMTimeCalibrationSeries
-    SpaceCalibration =          PMSpaceCalibrationSeries 
+
+        ImageMapPerFile
+        TimeCalibration =           PMTimeCalibrationSeries
+        SpaceCalibration =          PMSpaceCalibrationSeries 
 
     end
 
     properties (Access = private) % movie view
 
+        TimeVisible =                  true
+        PlanePositionVisible =         true
+        ScaleBarVisible =           1   
+        ScaleBarSize =              50;
 
-    TimeVisible =                  true
-    PlanePositionVisible =         true
-    ScaleBarVisible =           1   
-    ScaleBarSize =              50;
+        CentroidsAreVisible =           false
+        TracksAreVisible =              false
+        MasksAreVisible =               false
+        ActiveTrackIsHighlighted =      false
+        CollapseAllTracking =          false
 
-    CentroidsAreVisible =           false
-    TracksAreVisible =              false
-    MasksAreVisible =               false
-    ActiveTrackIsHighlighted =      false
-    CollapseAllTracking =          false
+        CollapseAllPlanes =         1
 
-    CollapseAllPlanes =         1
-
-    CroppingOn =                0
-    CroppingGate =              [1 1 1 1]
-
-
-
+        CroppingOn =                0
+        CroppingGate =              [1 1 1 1]
 
     end
 
     properties (Access = private) % no need to save:
 
-    Navigation =                        PMNavigationSeries
-    AllPossibleEditingActivities =      {'No editing','Manual drift correction','Tracking'};
-    Keywords =                          cell(0,1)   % is this property necessary?
-    UnsavedTrackingDataExist =          true
+        Navigation =                        PMNavigationSeries
+        AllPossibleEditingActivities =      {'No editing','Manual drift correction','Tracking'};
+        Keywords =                          cell(0,1)   % is this property necessary?
+        UnsavedTrackingDataExist =          true
 
     end
 
@@ -79,6 +75,7 @@ classdef PMMovieTracking < PMChannels
             NumberOfInputArguments = length(varargin);
             switch NumberOfInputArguments
                 case 0
+                    
                 case 1
                     if isa(varargin{1}, 'PMMovieTrackingSummary')
                             obj.NickName =       varargin{1}.getNickName;
@@ -141,13 +138,13 @@ classdef PMMovieTracking < PMChannels
                             obj.AnnotationFolder =   varargin{2}{2}; %
 
                         case 2
-                            obj.NickName =                                              StructureOrNickName.NickName;
-                            obj.Keywords{1,1}=                                          StructureOrNickName.Keyword;
-                            obj.MovieFolder =                                                varargin{2};
-                            obj.AttachedFiles =                                         StructureOrNickName.FileInfo.AttachedFileNames;
-                            obj.DriftCorrection =                                       PMDriftCorrection(StructureOrNickName, varargin{3});
-                            obj =      setFrameTo(obj, StructureOrNickName.ViewMovieSettings.CurrentFrame);
-                            [obj] =            setSelectedPlaneTo(obj, min(StructureOrNickName.ViewMovieSettings.TopPlane:StructureOrNickName.ViewMovieSettings.TopPlane+StructureOrNickName.ViewMovieSettings.PlaneThickness-1));
+                            obj.NickName =                       StructureOrNickName.NickName;
+                            obj.Keywords{1,1}=                   StructureOrNickName.Keyword;
+                            obj.MovieFolder =                    varargin{2};
+                            obj.AttachedFiles =                  StructureOrNickName.FileInfo.AttachedFileNames;
+                            obj.DriftCorrection =                PMDriftCorrection(StructureOrNickName, varargin{3});
+                            obj =                               obj.setFrameTo(StructureOrNickName.ViewMovieSettings.CurrentFrame);
+                            obj =                               obj.setSelectedPlaneTo(min(StructureOrNickName.ViewMovieSettings.TopPlane:StructureOrNickName.ViewMovieSettings.TopPlane+StructureOrNickName.ViewMovieSettings.PlaneThickness-1));
                             
                        
                             if isfield(StructureOrNickName.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
@@ -167,25 +164,46 @@ classdef PMMovieTracking < PMChannels
                             end
                             obj.CroppingOn =                            0;
                             obj.Tracking =                               PMTrackingNavigation(StructureOrNickName.TrackingResults,varargin{3});
-                         otherwise
+                        
+                           otherwise
                             error('Cannot create movie tracking. Reason: loaded version is not supported')
                        end   
                         
                    end
     
                 case 4
-                          fprintf('Set NickName, MovieFolder and AnnotationFolder.\n')
-                            if isstruct(varargin{1})
-                                obj.NickName =      varargin{1}.NickName;
-                            else
-                                obj.NickName =      varargin{1};
-                            end
-                            
-                            obj.MovieFolder =                varargin{2}{1};
-                            obj.AnnotationFolder =      varargin{2}{2};
-                            obj =                       obj.setActiveChannel(varargin{4});
-                            obj =                       obj.loadLinkeDataFromFile;   
-                            obj.AnnotationFolder =      varargin{2}{2}; % duplicate because in some files this information may not be tehre
+                    fprintf('Set NickName, MovieFolder and AnnotationFolder.\n')
+                    if isstruct(varargin{1})
+                        obj.NickName =      varargin{1}.NickName;
+                    else
+                        obj.NickName =      varargin{1};
+                    end
+
+                    obj.MovieFolder =           varargin{2}{1};
+                    obj.AnnotationFolder =      varargin{2}{2};
+                    obj =                       obj.setActiveChannel(varargin{4});
+                    obj =                       obj.loadLinkeDataFromFile;   
+                    obj.AnnotationFolder =      varargin{2}{2}; % duplicate because in some files this information may not be tehre
+            
+                case 5
+                    
+                    assert(strcmp(varargin{5}, 'Initialize'), 'Wrong input.')
+                    
+                    
+                
+                    
+                    obj.NickName = varargin{1};
+                    obj.MovieFolder        = varargin{2};  
+                    obj.AttachedFiles =    varargin{3}; 
+                    obj.AnnotationFolder =   varargin{4};
+
+      
+        
+                    obj = obj.setPropertiesFromImageFiles;
+                    
+                    
+                    obj.DriftCorrection = obj.DriftCorrection.setBlankDriftCorrection;
+                
                 otherwise
                     error('Wrong number of arguments')
             end
@@ -221,7 +239,6 @@ classdef PMMovieTracking < PMChannels
               obj.AnnotationFolder = Value;
         end
           
-
         function obj = set.DriftCorrection(obj, Value)
             assert(isa(Value, 'PMDriftCorrection') && isscalar(Value), 'Wrong input.')
             obj.DriftCorrection = Value;
@@ -407,11 +424,11 @@ classdef PMMovieTracking < PMChannels
         end
         
         function [IdOfActiveTrack] =     getIdOfActiveTrack(obj)
-        IdOfActiveTrack =            obj.Tracking.getIdOfActiveTrack;
+            IdOfActiveTrack =            obj.Tracking.getIdOfActiveTrack;
         end
 
         function MySegmentation =   getUnfilteredSegmentationOfActiveTrack(obj)
-        MySegmentation =        obj.Tracking.getSegmentationForTrackID(obj.getIdOfActiveTrack);
+            MySegmentation =        obj.Tracking.getSegmentationForTrackID(obj.getIdOfActiveTrack);
         end
 
         function [segmentationOfCurrentFrame ] =            getUnfilteredSegmentationOfCurrentFrame(obj)
@@ -1193,14 +1210,36 @@ classdef PMMovieTracking < PMChannels
         end
         
         function obj = verifyAnnotationPaths(obj)
-            assert(~isempty(obj.AnnotationFolder) &&  ~isempty(obj.NickName), 'Invalid annotation filepaths.')
+            assert(obj.verifyExistenceOfAnnotationPaths, 'Invalid annotation filepaths.')
             
         end
+        
+        function exist = verifyExistenceOfAnnotationPaths(obj)
+            
+           exist =  ~isempty(obj.AnnotationFolder) &&  ~isempty(obj.NickName);
+           
+         
+           
+        end
+        
  
     end
     
     methods % FILE SETTERS
-          function [obj] =    setImageAnalysisFolder(obj, FolderName)
+        
+        function exist = verifyExistenceOfPaths(obj)
+           
+                existOne = obj.verifyExistenceOfAnnotationPaths;
+
+                existTwo = ~isempty(obj.MovieFolder);
+                existThree = ~isempty(obj.AttachedFiles);
+
+                exist = existOne && existTwo && existThree;
+
+            
+        end
+        
+        function [obj] =    setImageAnalysisFolder(obj, FolderName)
                 obj.AnnotationFolder =  FolderName;
                 obj = obj.setPathsThatDependOnAnnotationFolder;
         end
@@ -1212,7 +1251,6 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-
     methods % FILE SETTERS
              
         function obj = setPathsThatDependOnAnnotationFolder(obj)
@@ -1225,7 +1263,7 @@ classdef PMMovieTracking < PMChannels
 
             fprintf('\nPMMovieTracking:@setPropertiesFromImageFiles.\n')
             if isempty(obj.getPathsOfImageFiles)
-                fprintf('Files not connected. Attempt to create image map incomplete.\n')
+                error('Files not connected. Attempt to create image map incomplete.\n')
 
             else
                 % usually this will done only a single time for each file;
@@ -1267,7 +1305,6 @@ classdef PMMovieTracking < PMChannels
               linkeFiles =  obj.AttachedFiles;  
          end
         
-        
     end
     
     methods (Access = private) % FILE GETTERS
@@ -1284,6 +1321,30 @@ classdef PMMovieTracking < PMChannels
         end
 
 
+     
+
+        function test = isMapped(obj)
+            test(1) = ~isempty(obj.ImageMapPerFile);
+
+            test(2) = isa(obj.TimeCalibration, 'PMTimeCalibrationSeries');
+            test(3) = isa(obj.SpaceCalibration, 'PMSpaceCalibrationSeries');
+            test(4) = obj.checkCompletenessOfNavigation;
+            test = min(test);
+
+        end
+ 
+    end
+    
+    methods (Access = private) % ANNOTATION FILE GETTERS
+        
+        function paths = getAllAnnotationPaths(obj)
+            
+            paths{1,1 } = obj.getPathOfMovieTrackingForSingleFile;
+            paths{2,1 } = obj.getPathOfMovieTrackingForSmallFile;
+            paths{3,1 } = obj.getTrackingFolder;
+            
+        end
+        
         function fileName = getBasicMovieTrackingFileName(obj)
             if isempty(obj.AnnotationFolder) || isempty(obj.NickName)
                error('Filename not specified')
@@ -1293,11 +1354,9 @@ classdef PMMovieTracking < PMChannels
 
         end
 
-
         function fileName =     getPathOfMovieTrackingForSingleFile(obj)
             obj = obj.verifyAnnotationPaths;
             fileName = [obj.AnnotationFolder '/' obj.NickName  '.mat'];
-
         end
 
         function fileName =     getPathOfMovieTrackingForSmallFile(obj)
@@ -1311,120 +1370,114 @@ classdef PMMovieTracking < PMChannels
             Folder = [obj.AnnotationFolder '/' obj.NickName '_Tracking'];
         end
 
-
-        function test = isMapped(obj)
-            test(1) = ~isempty(obj.ImageMapPerFile);
-
-            test(2) = isa(obj.TimeCalibration, 'PMTimeCalibrationSeries');
-            test(3) = isa(obj.SpaceCalibration, 'PMSpaceCalibrationSeries');
-            test(4) = obj.checkCompletenessOfNavigation;
-            test = min(test);
-
-        end
-
-           
+        
         
     end
     
-      methods % FILE IMPORT
+    methods % FILE IMPORT
         
       
         function obj = load(obj)
 
-        version = detectVersionFromFileFormat(obj);
+            version = detectVersionFromFileFormat(obj);
 
-        switch version
+            switch version
 
-            case 'BeforeAugust2021'
-                OriginalAnnotationFolder = obj.AnnotationFolder;
-                OriginalMovieFolder =       obj.MovieFolder;
+                case 'BeforeAugust2021'
+                    OriginalAnnotationFolder = obj.AnnotationFolder;
+                    OriginalMovieFolder =       obj.MovieFolder;
 
-                obj =       obj.loadDataForFileFormatBefore_August2021;
+                    obj =       obj.loadDataForFileFormatBefore_August2021;
 
-                obj =       obj.setImageAnalysisFolder(OriginalAnnotationFolder);
-                obj =       obj.setMovieFolder(OriginalMovieFolder);
+                    obj =       obj.setImageAnalysisFolder(OriginalAnnotationFolder);
+                    obj =       obj.setMovieFolder(OriginalMovieFolder);
 
-                obj =       obj.save;
+                    obj =       obj.save;
 
-            case 'AfterAugust2021'
-
-
-            otherwise
-                error('Format not supported.')
+                case 'AfterAugust2021'
 
 
+                otherwise
+                    error('Format not supported.')
 
-        end
 
-        obj =           obj.loadDataForFileFormat_AfterAugust2021;
-        obj.Tracking =  PMTrackingNavigation(obj.getTrackingFolder);
 
-        obj.Tracking = obj.Tracking.load;
+            end
 
-        obj.Tracking = obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
+            obj =           obj.loadDataForFileFormat_AfterAugust2021;
+            obj.Tracking =  PMTrackingNavigation(obj.getTrackingFolder);
+
+            try
+                obj.Tracking = obj.Tracking.load;
+            catch
+                % if no file is available, simply use the "blank" tracking
+            end
+
+
+            obj.Tracking = obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
 
         end
 
         function version = detectVersionFromFileFormat(obj)
 
 
-        if exist(obj.getPathOfMovieTrackingForSmallFile) == 2 
-               version = 'AfterAugust2021';
-        elseif exist(obj.getPathOfMovieTrackingForSingleFile) == 2
-            version = 'BeforeAugust2021';
-        else
-            error('Could not detect valid format')
+            if exist(obj.getPathOfMovieTrackingForSmallFile) == 2 
+                   version = 'AfterAugust2021';
+            elseif exist(obj.getPathOfMovieTrackingForSingleFile) == 2
+                version = 'BeforeAugust2021';
+            else
+                error('Could not detect valid format')
 
-        end
+            end
 
 
         end
 
         function obj = loadDataForFileFormat_AfterAugust2021(obj)
 
-        load(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo');
+            load(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo');
 
-        obj.NickName  = MovieTrackingInfo.File.NickName         ;
-        obj.MovieFolder = MovieTrackingInfo.File.MovieFolder   ;                % movie folder:
-        obj.AttachedFiles =  MovieTrackingInfo.File.AttachedFiles     ;
-        obj.AnnotationFolder = MovieTrackingInfo.File.AnnotationFolder   ;
+            obj.NickName  = MovieTrackingInfo.File.NickName         ;
+            obj.MovieFolder = MovieTrackingInfo.File.MovieFolder   ;                % movie folder:
+            obj.AttachedFiles =  MovieTrackingInfo.File.AttachedFiles     ;
+            obj.AnnotationFolder = MovieTrackingInfo.File.AnnotationFolder   ;
 
-        obj.DriftCorrection  =  MovieTrackingInfo.File.DriftCorrection     ;
-        obj.Interactions = MovieTrackingInfo.File.Interactions        ;
+            obj.DriftCorrection  =  MovieTrackingInfo.File.DriftCorrection     ;
+            obj.Interactions = MovieTrackingInfo.File.Interactions        ;
 
-        obj.StopDistanceLimit = MovieTrackingInfo.StopTracking.StopDistanceLimit            ;
-        obj.MaxStopDurationForGoSegment =  MovieTrackingInfo.StopTracking.MaxStopDurationForGoSegment;    
-        obj.MinStopDurationForStopSegment = MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment  ;
+            obj.StopDistanceLimit = MovieTrackingInfo.StopTracking.StopDistanceLimit            ;
+            obj.MaxStopDurationForGoSegment =  MovieTrackingInfo.StopTracking.MaxStopDurationForGoSegment;    
+            obj.MinStopDurationForStopSegment = MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment  ;
 
-        obj.ImageMapPerFile = MovieTrackingInfo.ImageMapPerFile        ;
-        obj.TimeCalibration = MovieTrackingInfo.TimeCalibration         ;
-        obj.SpaceCalibration = MovieTrackingInfo.SpaceCalibration        ;
-        obj.Navigation =                MovieTrackingInfo.Navigation   ;  
+            obj.ImageMapPerFile = MovieTrackingInfo.ImageMapPerFile        ;
+            obj.TimeCalibration = MovieTrackingInfo.TimeCalibration         ;
+            obj.SpaceCalibration = MovieTrackingInfo.SpaceCalibration        ;
+            obj.Navigation =                MovieTrackingInfo.Navigation   ;  
 
-        obj.TimeVisible = MovieTrackingInfo.MovieView.TimeVisible         ;
-        obj.PlanePositionVisible = MovieTrackingInfo.MovieView.PlanePositionVisible  ;
-        obj.ScaleBarVisible = logical(MovieTrackingInfo.MovieView.ScaleBarVisible        );
-        obj.ScaleBarSize = MovieTrackingInfo.MovieView.ScaleBarSize         ;
+            obj.TimeVisible = MovieTrackingInfo.MovieView.TimeVisible         ;
+            obj.PlanePositionVisible = MovieTrackingInfo.MovieView.PlanePositionVisible  ;
+            obj.ScaleBarVisible = logical(MovieTrackingInfo.MovieView.ScaleBarVisible        );
+            obj.ScaleBarSize = MovieTrackingInfo.MovieView.ScaleBarSize         ;
 
-        obj.CentroidsAreVisible =  MovieTrackingInfo.MovieView.CentroidsAreVisible  ;
-        obj.TracksAreVisible = MovieTrackingInfo.MovieView.TracksAreVisible      ;
-        obj.MasksAreVisible = MovieTrackingInfo.MovieView.MasksAreVisible        ;
-        obj.ActiveTrackIsHighlighted = MovieTrackingInfo.MovieView.ActiveTrackIsHighlighted ;
-        obj.CollapseAllTracking =  MovieTrackingInfo.MovieView.CollapseAllTracking    ;
+            obj.CentroidsAreVisible =  MovieTrackingInfo.MovieView.CentroidsAreVisible  ;
+            obj.TracksAreVisible = MovieTrackingInfo.MovieView.TracksAreVisible      ;
+            obj.MasksAreVisible = MovieTrackingInfo.MovieView.MasksAreVisible        ;
+            obj.ActiveTrackIsHighlighted = MovieTrackingInfo.MovieView.ActiveTrackIsHighlighted ;
+            obj.CollapseAllTracking =  MovieTrackingInfo.MovieView.CollapseAllTracking    ;
 
-        obj.CollapseAllPlanes =  logical(MovieTrackingInfo.MovieView.CollapseAllPlanes );
+            obj.CollapseAllPlanes =  logical(MovieTrackingInfo.MovieView.CollapseAllPlanes );
 
-        obj.CroppingOn =  logical(MovieTrackingInfo.MovieView.CroppingOn            );
-        obj.CroppingGate = MovieTrackingInfo.MovieView.CroppingGate      ;
+            obj.CroppingOn =  logical(MovieTrackingInfo.MovieView.CroppingOn            );
+            obj.CroppingGate = MovieTrackingInfo.MovieView.CroppingGate      ;
 
-        obj.ActiveChannel = MovieTrackingInfo.Channels.ActiveChannel  ;
-        
-        if isempty(MovieTrackingInfo.Channels.Channels)
-            
-        else
-            obj.Channels = MovieTrackingInfo.Channels.Channels ;
-        end
-        
+            obj.ActiveChannel = MovieTrackingInfo.Channels.ActiveChannel  ;
+
+            if isempty(MovieTrackingInfo.Channels.Channels)
+
+            else
+                obj.Channels = MovieTrackingInfo.Channels.Channels ;
+            end
+
 
         end
 
@@ -1493,97 +1546,108 @@ classdef PMMovieTracking < PMChannels
         end
 
         function obj =       loadLinkeDataFromFile(obj)
-        error('Method not supported anymore. Use load instead.')
+            error('Method not supported anymore. Use load instead.')
 
         end
 
         function obj = save(obj)
-        MovieTrackingInfo = obj.getStructureForStorage;
-        tic
+            MovieTrackingInfo = obj.getStructureForStorage;
+            tic
 
-        save(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo')
-        a = toc;
-        fprintf('Saving of the movie-tracking file took %6.1f seconds.', a)
+            save(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo')
+            a = toc;
+            fprintf('Saving of the movie-tracking file took %6.1f seconds.', a)
 
-        obj.Tracking = obj.Tracking.saveBasic;
+            obj.Tracking = obj.Tracking.saveBasic;
 
         end
 
         function MovieTrackingInfo = getStructureForStorage(obj)
 
-        MovieTrackingInfo.File.NickName =           obj.NickName;
-        MovieTrackingInfo.File.MovieFolder       =  obj.MovieFolder;                % movie folder:
-        MovieTrackingInfo.File.AttachedFiles =      obj.AttachedFiles;
-        MovieTrackingInfo.File.AnnotationFolder  =  obj.AnnotationFolder;
+            MovieTrackingInfo.File.NickName =           obj.NickName;
+            MovieTrackingInfo.File.MovieFolder       =  obj.MovieFolder;                % movie folder:
+            MovieTrackingInfo.File.AttachedFiles =      obj.AttachedFiles;
+            MovieTrackingInfo.File.AnnotationFolder  =  obj.AnnotationFolder;
 
-        MovieTrackingInfo.File.DriftCorrection  =   obj.DriftCorrection;
-        MovieTrackingInfo.File.Interactions       = obj.Interactions;
+            MovieTrackingInfo.File.DriftCorrection  =   obj.DriftCorrection;
+            MovieTrackingInfo.File.Interactions       = obj.Interactions;
 
-        MovieTrackingInfo.StopTracking.StopDistanceLimit =              obj.StopDistanceLimit;
-        MovieTrackingInfo.StopTracking.MaxStopDurationForGoSegment =    obj.MaxStopDurationForGoSegment;
-        MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment =  obj.MinStopDurationForStopSegment;
+            MovieTrackingInfo.StopTracking.StopDistanceLimit =              obj.StopDistanceLimit;
+            MovieTrackingInfo.StopTracking.MaxStopDurationForGoSegment =    obj.MaxStopDurationForGoSegment;
+            MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment =  obj.MinStopDurationForStopSegment;
 
-        MovieTrackingInfo.ImageMapPerFile =         obj.ImageMapPerFile;
-        MovieTrackingInfo.TimeCalibration =         obj.TimeCalibration;
-        MovieTrackingInfo.SpaceCalibration =        obj.SpaceCalibration;
-        MovieTrackingInfo.Navigation =        obj.Navigation;
+            MovieTrackingInfo.ImageMapPerFile =         obj.ImageMapPerFile;
+            MovieTrackingInfo.TimeCalibration =         obj.TimeCalibration;
+            MovieTrackingInfo.SpaceCalibration =        obj.SpaceCalibration;
+            MovieTrackingInfo.Navigation =        obj.Navigation;
 
 
-        MovieTrackingInfo.MovieView.TimeVisible =             obj.TimeVisible;
-        MovieTrackingInfo.MovieView.PlanePositionVisible =    obj.PlanePositionVisible;
-        MovieTrackingInfo.MovieView.ScaleBarVisible =         obj.ScaleBarVisible;
-        MovieTrackingInfo.MovieView.ScaleBarSize =            obj.ScaleBarSize;
+            MovieTrackingInfo.MovieView.TimeVisible =             obj.TimeVisible;
+            MovieTrackingInfo.MovieView.PlanePositionVisible =    obj.PlanePositionVisible;
+            MovieTrackingInfo.MovieView.ScaleBarVisible =         obj.ScaleBarVisible;
+            MovieTrackingInfo.MovieView.ScaleBarSize =            obj.ScaleBarSize;
 
-        MovieTrackingInfo.MovieView.CentroidsAreVisible =     obj.CentroidsAreVisible;
-        MovieTrackingInfo.MovieView.TracksAreVisible =        obj.TracksAreVisible;
-        MovieTrackingInfo.MovieView.MasksAreVisible =         obj.MasksAreVisible;
-        MovieTrackingInfo.MovieView.ActiveTrackIsHighlighted =obj.ActiveTrackIsHighlighted;
-        MovieTrackingInfo.MovieView.CollapseAllTracking =     obj.CollapseAllTracking;
+            MovieTrackingInfo.MovieView.CentroidsAreVisible =     obj.CentroidsAreVisible;
+            MovieTrackingInfo.MovieView.TracksAreVisible =        obj.TracksAreVisible;
+            MovieTrackingInfo.MovieView.MasksAreVisible =         obj.MasksAreVisible;
+            MovieTrackingInfo.MovieView.ActiveTrackIsHighlighted =obj.ActiveTrackIsHighlighted;
+            MovieTrackingInfo.MovieView.CollapseAllTracking =     obj.CollapseAllTracking;
 
-        MovieTrackingInfo.MovieView.CollapseAllPlanes =       obj.CollapseAllPlanes;
+            MovieTrackingInfo.MovieView.CollapseAllPlanes =       obj.CollapseAllPlanes;
 
-        MovieTrackingInfo.MovieView.CroppingOn =              obj.CroppingOn;
-        MovieTrackingInfo.MovieView.CroppingGate =            obj.CroppingGate;
+            MovieTrackingInfo.MovieView.CroppingOn =              obj.CroppingOn;
+            MovieTrackingInfo.MovieView.CroppingGate =            obj.CroppingGate;
 
-         MovieTrackingInfo.Channels.ActiveChannel =            obj.ActiveChannel ;
-          MovieTrackingInfo.Channels.Channels =          obj.Channels;
+             MovieTrackingInfo.Channels.ActiveChannel =            obj.ActiveChannel ;
+              MovieTrackingInfo.Channels.Channels =          obj.Channels;
 
 
 
         end
 
         function  obj = saveMovieData(obj)
-        error('Method not supported anymore. Use save instead.')
-        fprintf('PMMovieTracking:@saveMovieData": ')
-        if obj.UnsavedTrackingDataExist 
-           obj =        obj.saveMovieDataWithOutCondition;
-        else
-            fprintf('Tracking data were already saved. Therefore no action taken.\n')
-        end
+            error('Method not supported anymore. Use save instead.')
+            fprintf('PMMovieTracking:@saveMovieData": ')
+            if obj.UnsavedTrackingDataExist 
+               obj =        obj.saveMovieDataWithOutCondition;
+            else
+                fprintf('Tracking data were already saved. Therefore no action taken.\n')
+            end
         end
 
         function obj = saveMovieDataWithOutCondition(obj)
-          error('Method not supported anymore. Use save instead.')
-        fprintf('\nEnter PMMovieTracking:@saveMovieDataWithOutCondition:\n')
-        fprintf('Get copy of PMMovieTracking object.\n')
+            error('Method not supported anymore. Use save instead.')
+            fprintf('\nEnter PMMovieTracking:@saveMovieDataWithOutCondition:\n')
+            fprintf('Get copy of PMMovieTracking object.\n')
 
-        MovieAnnotationData =                obj;
-        MovieAnnotationData.Tracking =       MovieAnnotationData.Tracking.removeRedundantData;
+            MovieAnnotationData =                obj;
+            MovieAnnotationData.Tracking =       MovieAnnotationData.Tracking.removeRedundantData;
 
-        save(obj.getPathOfMovieTrackingForSingleFile, 'MovieAnnotationData')
-        fprintf('File %s was saved successfully.\n', obj.getPathOfMovieTrackingForSingleFile)
-        obj =                               obj.setSavingStatus(false);
+            save(obj.getPathOfMovieTrackingForSingleFile, 'MovieAnnotationData')
+            fprintf('File %s was saved successfully.\n', obj.getPathOfMovieTrackingForSingleFile)
+            obj =                               obj.setSavingStatus(false);
 
-        fprintf('Exit PMMovieTracking:@saveMovieDataWithOutCondition.\n\n')
+            fprintf('Exit PMMovieTracking:@saveMovieDataWithOutCondition.\n\n')
 
         end
 
-        function obj = deleteFile(obj)
-        fprintf('\nEnter PMMovieTracking:@deleteFile:\n')
-        if exist(obj.getPathOfMovieTrackingForSingleFile) == 2
-        delete(obj.getPathOfMovieTrackingForSingleFile)
-        end
-        fprintf('Exit PMMovieTracking:@deleteFile.\n\n')
+        function obj = deleteFiles(obj)
+           
+            ListWithFiles = obj.getAllAnnotationPaths;
+            
+            for index = 1 : length(ListWithFiles)
+                
+                CurrentPath =   ListWithFiles{index};
+                
+                if exist(CurrentPath) == 2
+                    delete(CurrentPath);
+                elseif exist(CurrentPath) == 7
+                    rmdir(CurrentPath);
+                end
+                
+                
+            end
+
         end 
 
         function obj=     renameMovieDataFile(obj, OldPath)
@@ -1605,11 +1669,11 @@ classdef PMMovieTracking < PMChannels
         end
 
         function obj =    setSavingStatus(obj, Value)
-        obj.UnsavedTrackingDataExist = Value;
+            obj.UnsavedTrackingDataExist = Value;
         end
 
         function obj =    setNamesOfMovieFiles(obj, Value)
-        obj.AttachedFiles =       Value;
+            obj.AttachedFiles =       Value;
         end
 
         function obj =      saveMetaData(obj, varargin)
@@ -1653,7 +1717,6 @@ classdef PMMovieTracking < PMChannels
         
       end
   
-    
     methods (Access = private) % image map
         
           function obj =    replaceImageMapPaths(obj)
@@ -1789,9 +1852,7 @@ classdef PMMovieTracking < PMChannels
           function obj = showPlane(obj)
               obj.PlanePositionVisible = true;  
           end
-          
-          %% updateTrackingWith
-          
+         
         
           %% scale-bar
           function obj = toggleScaleBarVisibility(obj)
@@ -2377,7 +2438,6 @@ classdef PMMovieTracking < PMChannels
          
     end
      
-    
     methods % verify user input
         
         function  [rowFinal, columnFinal, planeFinal] =                         verifyCoordinates(obj, rowFinal, columnFinal,planeFinal)
@@ -2389,7 +2449,7 @@ classdef PMMovieTracking < PMChannels
 
     end
     
-     methods  (Access = private) % verify user input
+    methods  (Access = private) % verify user input
          
         function rowFinal = verifyYCoordinate(obj, rowFinal)
             if     rowFinal>=1 && rowFinal<=obj.Navigation.getMaxRow 
@@ -2415,7 +2475,6 @@ classdef PMMovieTracking < PMChannels
                
          
      end
-    
     
     methods % load images from file:
        
@@ -2617,7 +2676,6 @@ classdef PMMovieTracking < PMChannels
             end
 
     end
-    
     
     methods (Access = private)
         

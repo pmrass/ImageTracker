@@ -76,7 +76,14 @@ classdef PMMovieLibrary
                     else
                        error('Invalid filename')
                     end
-
+                    
+                case 4
+                    
+                    
+                        obj.FileName =              varargin{1};
+                        obj.PathForImageAnalysis =  varargin{2};
+                        obj.PathOfMovieFolder =     varargin{3};
+                        obj.PathForExport=          varargin{4};
             
                 otherwise
                     error('Wrong number of arguments')
@@ -275,10 +282,8 @@ classdef PMMovieLibrary
         
         function myMovieController = getActiveMovieController(obj, varargin)
             fprintf('PMMovieLibraryManager:@getActiveMovieController: ')
-             
 
-            assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')
-               
+            assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')  
             switch length(varargin)
                
                 case 0
@@ -290,7 +295,6 @@ classdef PMMovieLibrary
                     error('Wrong input.')
                 
             end
-            
             
             myMovieController =     myMovieController.setLoadedImageVolumes(obj.getLoadedImageDataOfActiveMovie); 
             myMovieController =     myMovieController.setExportFolder(obj.getExportFolder);
@@ -313,6 +317,7 @@ classdef PMMovieLibrary
                 % GETINITIALIZEDMOVIETRACKING get a simple PMMovieTracking object with all the filenames, nicknames etc. set correctly;
                 % does not load the complete data to save time; gives user the opportunity to get direct access to derivative data;
                 obj =                   obj.verifyThatAllFoldersAreSpecified;
+                
                 myMovieTracking =       PMMovieTracking;
                 myMovieTracking =       myMovieTracking.setNickName(obj.getNickNameOfActiveMovie);
                 myMovieTracking =       myMovieTracking.setNamesOfMovieFiles(obj.getAttachedImageSourceOfActiveMovie);
@@ -330,6 +335,22 @@ classdef PMMovieLibrary
     end
     
     methods % getters
+        
+        
+        function test = allPropertiesAreValid(obj)
+            
+            FileNameTest = ~isempty(obj.FileName);
+            ImageAnalysisTest = ~isempty(obj.PathForImageAnalysis);
+            PathOfMovieFolderTest = ~isempty(obj.PathOfMovieFolder);
+            PathForExporTest = ~isempty(obj.PathForExport);
+
+            % other
+            SelectedNicknameTest = ~isempty(obj.SelectedNickname); 
+            
+            test = FileNameTest && ImageAnalysisTest && PathOfMovieFolderTest && PathForExporTest && SelectedNicknameTest;
+            
+        end
+        
         
          function path = getExportFolder(obj)
               path = obj.PathForExport;
@@ -352,11 +373,33 @@ classdef PMMovieLibrary
             rowInLibrary =     obj.getRowForNickName(obj.SelectedNickname);
         end
         
+        function [SelectedRow] =                    getRowForNewOrExistingNickName(obj, NickNameString)
+            assert(ischar(NickNameString), 'Wrong input.')
+            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
+            
+            switch sum(SelectedRow)
+               
+                case 1
+                    
+                case 0
+                    SelectedRow = obj.getNumberOfMovies + 1;
+                otherwise
+                    
+                    error('Nickname does not work.')
+                
+                
+            end
+            
+           
+        end
+        
         function [SelectedRow] =                    getRowForNickName(obj, NickNameString)
             assert(ischar(NickNameString), 'Wrong input.')
-            SelectedRow =                           strcmp(obj.getAllNicknames, NickNameString);
+            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
             assert(sum(SelectedRow) == 1, 'Non-unique nickname chosen.')
         end
+        
+     
          
         function obj = setNewNickname(obj, Value)
             obj.SelectedNickname =      Value;
@@ -457,20 +500,10 @@ classdef PMMovieLibrary
             Movie  =      obj.ListhWithMovieObjects{strcmp(obj.getAllNicknames, Nickname)};    
         end
         
-
-    
-        
-   
-        
-    
         function obj = loadMovieIntoListhWithMovieObjects(obj, NickName)
                 MovieStructure.NickName =                       NickName;
                 obj.ListhWithMovieObjects{obj.getRowForNickName(NickName), 1} =      PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1);  
         end
-        
-         
-        
-
 
         
         function [obj] =                sortByNickName(obj)
@@ -592,11 +625,13 @@ classdef PMMovieLibrary
         function folder = getMovieFolder(obj)
               if ischar(obj.PathOfMovieFolder)
                   folder =          obj.PathOfMovieFolder;
+                  
               elseif iscellstr(obj.PathOfMovieFolder)
                   folder =      PMFolderManagement(obj.PathOfMovieFolder).getFirstValidFolder;
+                  
               else
                   folder = '';
-                  warning('Invalid movie folder.')
+                  error('Invalid movie folder.')
               end
         end
         
@@ -604,7 +639,7 @@ classdef PMMovieLibrary
              
              
              if isempty(obj.PathForImageAnalysis)
-                 warning('Path for image analysis not specified.')
+                 error('Path for image analysis not specified.')
                  mainFolder = '';
              else
                  mainFolder = obj.PathForImageAnalysis;  
@@ -651,28 +686,40 @@ classdef PMMovieLibrary
             InfoText=                          [FileNameOfProject;AllMovieFolders;  FolderWithMovieFiles; PathForDataExport; AnnotationFolder];
         end
 
-        function files = getAttachedMoviePathsForEachEntry(obj)
-            if isempty(obj.ListWithMovieObjectSummary)
-                files = cell(0,1);
-            else
-                files =          cellfun(@(x) x.getAttachedFiles, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
-            end
-
-        end
+ 
         
-        function files = getAllAttachedMoviePaths(obj)
-            files =         obj.getAttachedMoviePathsForEachEntry;
-            files=          vertcat(files{:});
-            if isempty(files)
-               files = cell(0,1); 
-            end
-        end
+           
+    end
+    
+    methods % getters image paths:
+        
         
         function names = getAllAttachedMovieFileNames(obj)
             allPaths = obj.getAllAttachedMoviePaths;
                 [~, file, ext]  =                cellfun(@(x) fileparts(x), allPaths, 'UniformOutput', false);
                 names =          cellfun(@(x,y) [x, y], file, ext, 'UniformOutput', false);   
         end
+        
+          function files = getAllAttachedMoviePaths(obj)
+            files =         obj.getAttachedMoviePathsForEachEntry;
+            files=          vertcat(files{:});
+            if isempty(files)
+               files = cell(0,1); 
+            end
+          end
+          
+        function files = getAttachedMoviePathsForEachEntry(obj)
+            if isempty(obj.ListWithMovieObjectSummary)
+            files = cell(0,1);
+            else
+                files =          cellfun(@(x) x.getAttachedFiles, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
+            end
+
+        end
+        
+      
+        
+        
         
         function [namesOfAvailableFiles] =  getFileNamesOfUnincorporatedMovies(obj)
             namesOfAvailableFiles =    PMFileManagement(obj.getMovieFolder).getFileNames;
@@ -690,7 +737,8 @@ classdef PMMovieLibrary
           function folders = getNamesOfAllMovieFolders(obj) 
             folders = obj.PathOfMovieFolder;
           end
-           
+          
+        
     end
     
     
@@ -936,27 +984,29 @@ classdef PMMovieLibrary
     end
     
     methods % movie-list
-       
+    
          function [obj] =           updateMovieListWithMovieController(obj, ActiveMovieController)
             
-            if isempty(ActiveMovieController.getLoadedMovie)
-                fprintf('ActiveMovieController has no valid LoadedMovie: therefore no action taken.\n')
-                
-            elseif isempty(ActiveMovieController.getLoadedMovie.getLinkedMovieFileNames)
-                 error('LoadedMovie of ActiveMovieController has no AttachedFiles: this needs to be fixed.\n')
-                 
-            else
-                SelectedRow =                                       obj.getRowForNickName(ActiveMovieController.getLoadedMovie.getNickName);
-                MyLoadedMovie =                                     ActiveMovieController.getLoadedMovie;
-                
-                obj.ListWithMovieObjectSummary{SelectedRow,1} =     PMMovieTrackingSummary(MyLoadedMovie);
-                obj.ListhWithMovieObjects{SelectedRow,1} =          ActiveMovieController.getLoadedMovie;
-                obj.ListWithLoadedImageData{SelectedRow,1} =        ActiveMovieController.getLoadedImageVolumes;
- 
-            end
-            fprintf('Exit PMMovieLibrary:@updateMovieListWithMovieController.\n')
- 
-        end
+            MyLoadedMovie =                ActiveMovieController.getLoadedMovie;
+            NickNameOfLoadedMovie =        MyLoadedMovie.getNickName;
+            LinkedFilesOfLoadedMovie =     MyLoadedMovie.getLinkedMovieFileNames;
+            MyLoadedImageVolumes =         ActiveMovieController.getLoadedImageVolumes;
+
+            assert(isa(MyLoadedMovie, 'PMMovieTracking'), 'Movie controller has no LoadedMovie attached.')
+            assert(ischar(NickNameOfLoadedMovie), 'LoadedMovie has no nickname.')
+            assert(~isempty(LinkedFilesOfLoadedMovie), 'LoadedMovie has no filenames for image files attached.')
+
+            SelectedRow =                                       obj.getRowForNewOrExistingNickName(NickNameOfLoadedMovie);
+
+            obj.ListWithMovieObjectSummary{SelectedRow,1} =     PMMovieTrackingSummary(MyLoadedMovie);
+            obj.ListhWithMovieObjects{SelectedRow,1} =          MyLoadedMovie;
+            obj.ListWithLoadedImageData{SelectedRow,1} =        MyLoadedImageVolumes;
+            obj.FilterList(SelectedRow, 1)=                       true;
+
+
+         end
+        
+        
         
         
     end
@@ -976,19 +1026,17 @@ classdef PMMovieLibrary
           %% addNewEntryIntoLibraryInternal
           function obj = addNewEntryIntoLibraryInternal(obj, NickName, AttachedFilenames)
               
-              
-              newMovieTrackingSummary =        obj.getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(NickName, AttachedFilenames); 
-         
-                index =                                         obj.getNumberOfMovies + 1;
-                
-            newMovieTracking =      PMMovieTracking(newMovieTrackingSummary);
-            newMovieTracking =      newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
-             newMovieTracking =      newMovieTracking.setPropertiesFromImageFiles;
-            
-            
-            newMovieTracking =      newMovieTracking.save;
-           
-                
+              error('Do not use this. Use updateMovieListWithMovieController instead.')
+                newMovieTrackingSummary =   obj.getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(NickName, AttachedFilenames); 
+
+                index =                     obj.getNumberOfMovies + 1;
+
+                newMovieTracking =          PMMovieTracking(newMovieTrackingSummary);
+                newMovieTracking =          newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
+                newMovieTracking =          newMovieTracking.setPropertiesFromImageFiles;
+
+                newMovieTracking =          newMovieTracking.save;
+
                 obj.ListhWithMovieObjects{index, 1}=            newMovieTracking;
                 obj.ListWithMovieObjectSummary{index, 1}=       newMovieTrackingSummary;
                 obj.FilterList(index, 1)=                       true;

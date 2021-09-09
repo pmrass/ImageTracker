@@ -957,7 +957,10 @@ classdef PMMovieController < handle
          end
          
          function verifiedStatus =                     verifyActiveMovieStatus(obj)
-              verifiedStatus = ~isempty(obj)  && ~isempty(obj.LoadedMovie) ;
+              verifiedStatus = ~isempty(obj.LoadedMovie) &&   isa(obj.LoadedMovie, 'PMMovieTracking') && isscalar(obj.LoadedMovie) &&  obj.LoadedMovie.verifyExistenceOfPaths;
+              
+             
+              
          end
           
     end
@@ -970,10 +973,8 @@ classdef PMMovieController < handle
             % takes 1 argument:
             % option 1: PMMovieLibrary: this will set the image-analysis folder of PMMovieTracking;
             % option 2: PMInteractionsManager: this will update the attached PMMovieTracking;
-            if isempty(obj.LoadedMovie)
-                warning('Could not update LoadedMovie because the property was not set yet.')
-            else
-                
+        
+            assert(~isempty(obj.LoadedMovie), 'No loaded movie available.')
                  Type = class(Value);
                 switch Type
                     case 'PMMovieLibrary'
@@ -987,7 +988,7 @@ classdef PMMovieController < handle
                     otherwise
                         error('Cannot parse input.')
                 end
-            end
+           
     
         end
         
@@ -1431,7 +1432,7 @@ classdef PMMovieController < handle
         end
 
         function obj = deleteImageAnalysisFile(obj)
-          obj.LoadedMovie = obj.LoadedMovie.deleteFile;
+          obj.LoadedMovie = obj.LoadedMovie.deleteFiles;
         end
 
 
@@ -2447,7 +2448,7 @@ classdef PMMovieController < handle
 
                     obj.Views =     setCentroidVisibility(obj.Views, obj.LoadedMovie.getCentroidVisibility);
                     obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
-                    obj.Views =     obj.Views.updateMovieViewWith(obj.LoadedMovie, obj.getRbgImage);
+                    obj.Views =    updateMovieViewWith( obj.Views, obj.LoadedMovie, obj.getRbgImage);
                     obj.Views =     updateTrackVisibilityWith(obj.Views, obj.LoadedMovie);
                     obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
                     obj =           obj.updateSaveStatusView;

@@ -29,7 +29,7 @@ classdef PMDriftCorrection
     
     
     
-    methods
+    methods % initialize:
        
          function obj = PMDriftCorrection(varargin)
             %PMDRIFTCORRECTION Construct an instance of this class
@@ -37,7 +37,12 @@ classdef PMDriftCorrection
             
             NumberOfArgments = length(varargin);
             switch NumberOfArgments
+                
                 case 0
+                    
+                case 1
+                    obj.Navigation =    varargin{1};
+                    obj =               obj.setBlankDriftCorrection;
                    
                 case 2
                      switch varargin{2}
@@ -50,22 +55,18 @@ classdef PMDriftCorrection
             
            
             
-        end
-        
-        function obj = setDriftCorrectionActive(obj, Value)
-            assert((islogical(Value) || isnumeric(Value)) && isscalar(Value), 'Wrong input type')
-            obj.DriftCorrectionIsOn = Value;
-            
-        end
-        
-        function obj = setNavigation(obj, Value)
+         end
+         
+       function obj = set.Navigation(obj, Value)
+            assert(isa(Value, 'PMNavigationSeries'), 'Wrong argument type')
             obj.Navigation = Value;
-        end
+       end
         
-        function obj = set.Navigation(obj, Value)
-             assert(isa(Value, 'PMNavigationSeries'), 'Wrong argument type')
-            obj.Navigation = Value;
-        end
+        
+         
+         
+        
+      
         
         function shifts = getAppliedColumnShifts(obj)
              switch obj.getDriftCorrectionActive
@@ -103,12 +104,7 @@ classdef PMDriftCorrection
         end
         
               
-         function obj =                         update(obj) % it would be good to always use this internally when necessary so that it doesn't have to be called from the outside:;
-            obj =    obj.updateManualDriftCorrection;
-            if ~ obj.testForExistenceOfDetailedDriftCorrection
-                obj =           obj.createDetailedDriftAnalysisFromManualAnalysis;
-            end
-         end
+  
          
          function Values = getManualDriftCorrectionValues(obj)
              obj =          obj.updateManualDriftCorrection;
@@ -116,28 +112,7 @@ classdef PMDriftCorrection
          end
          
          
-        function obj =  setByManualDriftCorrection(obj)
-                obj =        obj.updateManualDriftCorrection;
-                obj =       obj.createDetailedDriftAnalysisFromManualAnalysis; 
-        end
-        
-        function [obj ] =                      eraseDriftCorrection(obj)
-            [obj] =                        obj.autoPopulateDefaultManualValues;
-            obj =                         obj.createDetailedDriftAnalysisFromManualAnalysis;
-        end
-        
-         function [obj] =               updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
-             
-             ListWithFrames = frame(:);
-             
-             for frame = ListWithFrames'
-                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
-                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
-                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
-             end
-             
-         end
-
+     
         function manualOrDetailedExists = testForExistenceOfDriftCorrection(obj) 
             manualExists =          obj.testForExistenceOfManualDriftCorrection;
             detailedExists =        obj.testForExistenceOfDetailedDriftCorrection;
@@ -177,27 +152,88 @@ classdef PMDriftCorrection
              numberOfFrames = size(obj.ListWithBestAlignmentPositions, 1);
          end
          
-         function obj = convertToMetricBySpaceCalibration(obj, SpaceCalibration)
-             
-             obj.ListWithBestAlignmentPositions(:, 2:3) = SpaceCalibration.convertYPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 2:3));
-             obj.ListWithBestAlignmentPositions(:, 4:5) = SpaceCalibration.convertXPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 4:5));
-             obj.ListWithBestAlignmentPositions(:, 6:7) = SpaceCalibration.convertZPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 6:7));
-             
-             obj.ManualDriftCorrectionValues(:, 2) =        SpaceCalibration.convertXPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 2));
-             obj.ManualDriftCorrectionValues(:, 3) =        SpaceCalibration.convertYPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 3));
-             obj.ManualDriftCorrectionValues(:, 4) =        SpaceCalibration.convertZPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 4));
-             
-         end
+  
          
          function shiftCorrdinates = shiftCoordinatesInFrameRelativeToFrame(obj, SourceCoordinates, Frame, ReferenceFrame)
             
-             
-            shiftCorrdinates(1, 1)=         SourceCoordinates(1, 1) + getColumnShiftBetweenFrames(obj, Frame, ReferenceFrame);
+                shiftCorrdinates(1, 1)=         SourceCoordinates(1, 1) + getColumnShiftBetweenFrames(obj, Frame, ReferenceFrame);
                 shiftCorrdinates(1, 2)=         SourceCoordinates(1, 2) + getRowShiftBetweenFrames(obj, Frame, ReferenceFrame);
                 shiftCorrdinates(1, 3)=         SourceCoordinates(1, 3) + getPlaneShiftBetweenFrames(obj, Frame, ReferenceFrame);
          end
         
 
+    end
+    
+    methods % setters
+        
+        function obj =                         update(obj) % it would be good to always use this internally when necessary so that it doesn't have to be called from the outside:;
+            obj =    obj.updateManualDriftCorrection;
+            if ~ obj.testForExistenceOfDetailedDriftCorrection
+                obj =           obj.createDetailedDriftAnalysisFromManualAnalysis;
+            end
+        end
+
+        
+        function obj = setDriftCorrectionActive(obj, Value)
+            assert((islogical(Value) || isnumeric(Value)) && isscalar(Value), 'Wrong input type')
+            obj.DriftCorrectionIsOn = Value;
+            
+        end
+        
+        function obj = setNavigation(obj, Value)
+            obj.Navigation = Value;
+        end
+        
+        function obj = convertToMetricBySpaceCalibration(obj, SpaceCalibration)
+
+            obj.ListWithBestAlignmentPositions(:, 2:3) =    SpaceCalibration.convertYPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 2:3));
+            obj.ListWithBestAlignmentPositions(:, 4:5) =    SpaceCalibration.convertXPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 4:5));
+            obj.ListWithBestAlignmentPositions(:, 6:7) =    SpaceCalibration.convertZPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 6:7));
+
+            obj.ManualDriftCorrectionValues(:, 2) =        SpaceCalibration.convertXPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 2));
+            obj.ManualDriftCorrectionValues(:, 3) =        SpaceCalibration.convertYPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 3));
+            obj.ManualDriftCorrectionValues(:, 4) =        SpaceCalibration.convertZPixelsIntoUm(obj.ManualDriftCorrectionValues(:, 4));
+
+        end
+        
+        function [obj] =               updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
+
+             ListWithFrames = frame(:);
+
+             for frame = ListWithFrames'
+                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
+                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
+                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
+             end
+
+        end
+        
+           function obj =  setByManualDriftCorrection(obj)
+                obj =        obj.updateManualDriftCorrection;
+                obj =       obj.createDetailedDriftAnalysisFromManualAnalysis; 
+        end
+        
+        function obj =                      eraseDriftCorrection(obj)
+            error('Use setBlankDriftCorrection')
+            obj =      obj.autoPopulateDefaultManualValues;
+            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
+        end
+        
+         function obj =                      setBlankDriftCorrection(obj)
+            obj =      obj.autoPopulateDefaultManualValues;
+            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
+         end
+        
+        
+     
+
+        
+         
+         
+        
+        
+        
+        
     end
     
     methods (Access = private) % this should transfer into private
