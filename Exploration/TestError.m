@@ -10,7 +10,7 @@ function TestError
     myLib =     myLib.setExportFolder(Path);
 
     myLib.addNewMovie('NickNameTest', {'TestMovie.czi'});
-    
+
 end
 
 %{

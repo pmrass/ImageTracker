@@ -2448,7 +2448,7 @@ classdef PMMovieController < handle
 
                     obj.Views =     setCentroidVisibility(obj.Views, obj.LoadedMovie.getCentroidVisibility);
                     obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
-                    obj.Views =    obj.Views.updateMovieViewWith(  obj.LoadedMovie, obj.getRbgImage);
+                    obj.Views =     obj.Views.updateMovieViewWith(  obj.LoadedMovie, obj.getRbgImage);
                     obj.Views =     updateTrackVisibilityWith(obj.Views, obj.LoadedMovie);
                     obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
                     obj =           obj.updateSaveStatusView;

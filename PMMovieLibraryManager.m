@@ -17,11 +17,8 @@ classdef PMMovieLibraryManager < handle
     end
     
     properties % add accessors and make private;
-       
-           DistanceLimits = {[0, 8];  [2, 8]; [0, 1]};
+          DistanceLimits = {[0, 8];  [2, 8]; [0, 1]};
           DistanceType =  'FractionFullPixels';
-        
-        
     end
     
     properties (Access = private) % default settings for some advanced analysis
@@ -54,30 +51,28 @@ classdef PMMovieLibraryManager < handle
                         obj =        obj.setActiveMovieByNickName(SelectedNicknames{1});
 
                     end
-            end    
+            end 
+            
         end
-
-
-       
 
         function obj =          setActiveMovieByNickName(obj, varargin)
 
-        switch length(varargin)
-            case 1
-                obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
-                obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
+            switch length(varargin)
+                
+                case 1
+                    obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
+                    obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
 
-                obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
-                obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
-                obj =                                   obj.addCallbacksToInteractionManager;
-                obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-                obj =                                   obj.setInfoTextView;
+                    obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
+                    obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
+                    obj =                                   obj.addCallbacksToInteractionManager;
+                    obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
+                    obj =                                   obj.setInfoTextView;
 
 
-            otherwise
-                error('Invalid number of arguments')
-        end
-
+                otherwise
+                    error('Invalid number of arguments')
+            end
 
 
         end
@@ -86,14 +81,14 @@ classdef PMMovieLibraryManager < handle
    
     methods % initialization
         
-              function obj =          PMMovieLibraryManager(varargin)
+        function obj =          PMMovieLibraryManager(varargin)
 
             obj.Viewer =    PMImagingProjectViewer;
             obj.Viewer.MovieControllerViews.blackOutMovieView;
             obj =           obj.adjustViews;
-       
+
             obj =           obj.addCallbacksToFileAndProject;
-            
+
             obj =           obj.addCallbacksToFileMenu;
             obj =           obj.addCallbacksToProjectMenu;
             obj =           obj.addCallbacksToMovieMenu;
@@ -101,28 +96,28 @@ classdef PMMovieLibraryManager < handle
             obj =           obj.addCallbacksToTrackingMenu;
             obj =           obj.addCallbacksToInteractionsMenu;
             obj =           obj.addCallbacksToHelpMenu;
-            
+
             obj.MovieLibrary = PMMovieLibrary();
-            
+
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
-                     myFileName =   obj.getPreviouslyUsedFileName;
+                    myFileName =   obj.getPreviouslyUsedFileName;
                 case 1
                     myFileName =  varargin{1};
                 otherwise
                     error('Wrong number of arguments')
             end
 
-           if isempty(myFileName)
-                    obj =       obj.userLoadsExistingLibrary;
-           else
-                    obj =       obj.changeLibraryToFileName(myFileName);
-           end
-                     
-            
-            
-        end
+            if isempty(myFileName)
+                obj =       obj.userLoadsExistingLibrary;
+            else
+                obj =       obj.changeLibraryToFileName(myFileName);
+            end
+
+
+
+       end
         
         function set.ActiveMovieController(obj, Value)
            assert(isa(Value,  'PMMovieController'), 'Wrong input type.')
@@ -139,7 +134,6 @@ classdef PMMovieLibraryManager < handle
     methods % getter
         
         function obj = showSummary(obj)
-            
             obj.ActiveMovieController = obj.ActiveMovieController.showSummary;
         end
         
@@ -533,16 +527,12 @@ classdef PMMovieLibraryManager < handle
         
         function [obj] =        addCallbacksToTrackingMenu(obj)
             
-           
             obj.Viewer.TrackingViews.Menu.AutoCellRecognition.MenuSelectedFcn =      @obj.manageAutoCellRecognition;
             obj.Viewer.TrackingViews.Menu.AutoTracking.MenuSelectedFcn =             @obj.manageTrackingAutoTracking;
             obj.Viewer.TrackingViews.Menu.EditAndView.MenuSelectedFcn =              @obj.manageTrackingEditAndView;
             obj.Viewer.TrackingViews.Menu.TrackSegments.MenuSelectedFcn =              @obj.manageTrackSegments;
             % addlistener(obj.Viewer.MovieControllerViews.Navigation.TimeSlider,'Value','PreSet', @obj.sliderActivity);
-
-
-         
-             
+    
         end
         
         function obj = addCallbacksToHelpMenu(obj)
