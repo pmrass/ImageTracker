@@ -841,6 +841,12 @@ classdef PMMovieController < handle
             
         end
         
+        function obj = deleteImageAnalysisFile(obj)
+            obj.LoadedMovie = obj.LoadedMovie.deleteFiles;
+        end
+
+        
+        
         
         
         
@@ -1434,10 +1440,7 @@ classdef PMMovieController < handle
 
         end
 
-        function obj = deleteImageAnalysisFile(obj)
-          obj.LoadedMovie = obj.LoadedMovie.deleteFiles;
-        end
-
+     
 
         function obj = showAutoTrackingController(obj)
              obj.TrackingAutoTrackingController =         obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking, 'ForceDisplay');

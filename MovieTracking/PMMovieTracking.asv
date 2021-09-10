@@ -1633,12 +1633,26 @@ classdef PMMovieTracking < PMChannels
 
         function obj = deleteFiles(obj)
            
-            ListWi
+            ListWithFiles = obj.getAllAnnotationPaths;
             
-            if exist(obj.getPathOfMovieTrackingForSingleFile) == 2
-                delete(obj.getPathOfMovieTrackingForSingleFile)
-            end
-            fprintf('Exit PMMovieTracking:@deleteFile.\n\n')
+            ListWithFiles = ['Are you sure you want to delete the following files? This is irreversible.'; ListWithFiles];
+            
+           Answer =  questdlg(ListWithFiles);
+          
+           if strcmp(Answer, 'Yes')
+                for index = 1 : length(ListWithFiles)
+                    CurrentPath =   ListWithFiles{index};
+                    if exist(CurrentPath) == 2
+                        delete(CurrentPath);
+                    elseif exist(CurrentPath) == 7
+                        rmdir(CurrentPath);
+                    end
+
+
+                end
+           end
+           
+
         end 
 
         function obj=     renameMovieDataFile(obj, OldPath)

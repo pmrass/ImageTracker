@@ -1635,18 +1635,23 @@ classdef PMMovieTracking < PMChannels
            
             ListWithFiles = obj.getAllAnnotationPaths;
             
-            for index = 1 : length(ListWithFiles)
-                
-                CurrentPath =   ListWithFiles{index};
-                
-                if exist(CurrentPath) == 2
-                    delete(CurrentPath);
-                elseif exist(CurrentPath) == 7
-                    rmdir(CurrentPath);
+            ListWithFiles = ['Are you sure you want to delete the following files? This is irreversible.'; ListWithFiles];
+            
+           Answer =  questdlg(ListWithFiles);
+          
+           if strcmp(Answer, 'Yes')
+                for index = 1 : length(ListWithFiles)
+                    CurrentPath =   ListWithFiles{index};
+                    if exist(CurrentPath) == 2
+                        delete(CurrentPath);
+                    elseif exist(CurrentPath) == 7
+                        rmdir(CurrentPath);
+                    end
+
+
                 end
-                
-                
-            end
+           end
+           
 
         end 
 

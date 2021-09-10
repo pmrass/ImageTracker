@@ -1070,7 +1070,6 @@ classdef PMMovieControllerView
     methods % callbacks
        
         
-        %% set callbacks:
         function obj = setKeyMouseCallbacks(obj, varargin)
                 obj.Figure.WindowKeyPressFcn =        varargin{1};
                 obj.Figure.WindowButtonDownFcn =      varargin{2};

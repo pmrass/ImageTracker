@@ -2,30 +2,19 @@ classdef PMImagingProjectViewer
     %PMIMAGINGPROJECTVIEWER Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
-        
-        
-       
-        
-    end
-    
     properties (Access = private)
         Figure
-        
+
         ProjectAxes
-        
-        
+
         ProjectViews
         MovieControllerViews
         TrackingViews
-        
-         InfoView
+
+        InfoView
         TagForKeywordEditor =           'PMImagingProject_EditKeywordsViewer'
-        
+
     end
-    
-    
-    
     
     properties (Access = private) % menus:
 
@@ -38,7 +27,7 @@ classdef PMImagingProjectViewer
 
     end
     
-    
+
     properties (Constant, Access = private)
         
         StartRowNavigation =            1;
@@ -66,27 +55,27 @@ classdef PMImagingProjectViewer
     methods % initialize:
         
           function obj =                                          PMImagingProjectViewer
-            %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
-            %   Detailed explanation goes here
+                %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
+                %   Detailed explanation goes here
 
-            fprintf('\n@Create PMImagingProjectViewer:\n')
+                fprintf('\n@Create PMImagingProjectViewer:\n')
 
-            obj =                        obj.CreateProjectFigure;
+                obj =                        obj.CreateProjectFigure;
 
-            obj =                        obj.CreateFileMenu;
-            obj =                        obj.CreateProjectMenu;
-            obj.MovieMenu =              PMMovieTrackingMenu(obj.Figure);
-            obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
+                obj =                        obj.CreateFileMenu;
+                obj =                        obj.CreateProjectMenu;
+                obj.MovieMenu =              PMMovieTrackingMenu(obj.Figure);
+                obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
 
-            obj.TrackingViews =          PMTrackingView(obj);
-            obj.InteractionsMenu =       PMInteractionsMenu(obj.Figure);
+                obj.TrackingViews =          PMTrackingView(obj);
+                obj.InteractionsMenu =       PMInteractionsMenu(obj.Figure);
 
-            obj =                        obj.CreateHelpMenu;  
-            
-            obj =                        obj.CreateProjectViews;
+                obj =                        obj.CreateHelpMenu;  
 
-            obj.MovieControllerViews =   PMMovieControllerView(obj);
-            obj =                        obj.createInfoView;
+                obj =                        obj.CreateProjectViews;
+
+                obj.MovieControllerViews =   PMMovieControllerView(obj);
+                obj =                        obj.createInfoView;
             
 
                 
@@ -96,7 +85,6 @@ classdef PMImagingProjectViewer
         
     end
 
-    
     methods % setters
         
         function obj = setContentTypeFilterTo(obj, Value)
@@ -311,6 +299,11 @@ classdef PMImagingProjectViewer
         
         function figure = getFigure(obj)
            figure = obj.Figure; 
+        end
+        
+        function views = getProjectViews(obj)
+            
+            views = obj.ProjectViews;
         end
         
         function views = getTrackingViews(obj)

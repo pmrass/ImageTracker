@@ -176,31 +176,7 @@ classdef PMMovieLibrary
 
           
     
-       
-            %% remove active entry:
-         function obj = removeActiveMovieFromLibrary(obj)
-             if isempty(obj.SelectedNickname)
-                 fprintf('No active movie selected. Removal not possible.\n')
-             else
-                 obj =          obj.removeFromLibraryMovieWithNickName(obj.SelectedNickname);
-                 
-             end
-         end
-                 
-        function [obj] =                removeFromLibraryMovieWithNickName(obj, NickName)
-            SelectedRow =               obj.getRowForNickName(NickName);
-            obj =                       obj.clearContentsOfLibraryIndex(SelectedRow);
-            obj.SelectedNickname =      '';
-            
-        end
-        
-        function obj = clearContentsOfLibraryIndex(obj, index)
-            obj.ListhWithMovieObjects(index, :)=          [];
-            obj.ListWithMovieObjectSummary(index, :)=     [];
-            obj.FilterList(index, :)=                     [];
-            obj.ListWithLoadedImageData(index, :) =       [];
-        end
-        
+    
           %% replace keywords:
         function obj = replaceKeywords(obj, SourceKeyword, TargetKeyword)
             % REPLACEKEYWORDS: replaces keywords in movie-library entries;
@@ -244,6 +220,34 @@ classdef PMMovieLibrary
         
         
          
+    end
+    
+    methods % remove active entry:
+       
+         function obj = removeActiveMovieFromLibrary(obj)
+             obj =          obj.removeFromLibraryMovieWithNickName(obj.SelectedNickname);
+         end
+                 
+        function [obj] =                removeFromLibraryMovieWithNickName(obj, NickName)
+            SelectedRow =               obj.getRowForNickName(NickName);
+            obj =                       obj.clearContentsOfLibraryIndex(SelectedRow);
+            obj.SelectedNickname =      '';
+            
+        end
+        
+        function obj = clearContentsOfLibraryIndex(obj, index)
+            assert(isvector(index) && isnumeric(index), 'Wrong input.')
+            cellfun(@(x) assert(mod(x, 1) == 0, 'Wrong input.'), index)
+            assert(min(index) >= 1 && max(index) <= obj.getNumberOfMovies, 'Wrong input.')
+
+            obj.ListhWithMovieObjects(index, :)=          [];
+            obj.ListWithMovieObjectSummary(index, :)=     [];
+            obj.FilterList(index, :)=                     [];
+            obj.ListWithLoadedImageData(index, :) =       [];
+        end
+        
+        
+        
     end
     
     methods % switch active movie
@@ -392,6 +396,18 @@ classdef PMMovieLibrary
             
            
         end
+        
+        function value = checkForUseOfNickName(obj, Value)
+            
+            [SelectedRow] =                    obj.getRowForNickName(Value);
+            if sum(SelectedRow) >= 1
+                value = true;
+            else
+                value = false;
+                
+            end
+        end
+        
         
         function [SelectedRow] =                    getRowForNickName(obj, NickNameString)
             assert(ischar(NickNameString), 'Wrong input.')

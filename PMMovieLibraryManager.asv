@@ -84,8 +84,8 @@ classdef PMMovieLibraryManager < handle
         function obj =          PMMovieLibraryManager(varargin)
 
             obj.Viewer =    PMImagingProjectViewer;
-            obj.Viewer.MovieControllerViews.blackOutMovieView;
-            obj =           obj.adjustViews;
+            obj.Viewer.getMovieControllerView.blackOutMovieView;
+            obj.Viewer =    obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
 
             obj =           obj.addCallbacksToFileAndProject;
 
@@ -196,13 +196,6 @@ classdef PMMovieLibraryManager < handle
             
         end
         
-        
-   
-       
-         
-
-           
-       
          %% editMovieSettingsClicked:
          function obj = editMovieSettingsClicked(obj,~,~)
                 obj =  obj.resetMovieTrackingFileController;
@@ -372,16 +365,18 @@ classdef PMMovieLibraryManager < handle
 
 
                  end
-                obj.Viewer.Figure.CurrentCharacter =                   '0';
+                 
+                 obj.Viewer = obj.Viewer.setCurrentCharacter('0');
+               
                 
           end
           
           function PressedKey = getPressedKey(obj)
-              PressedKey=       get(obj.Viewer.Figure,'CurrentCharacter');
+              PressedKey=       get(obj.Viewer.getFigure,'CurrentCharacter');
           end
           
           function Modifier = getModifier(obj)
-              Modifier =   obj.Viewer.Figure.CurrentModifier;
+              Modifier =   obj.Viewer.getFigure.CurrentModifier;
               
           end
           
@@ -527,11 +522,12 @@ classdef PMMovieLibraryManager < handle
         
         function [obj] =        addCallbacksToTrackingMenu(obj)
             
-            obj.Viewer.TrackingViews.Menu.AutoCellRecognition.MenuSelectedFcn =      @obj.manageAutoCellRecognition;
-            obj.Viewer.TrackingViews.Menu.AutoTracking.MenuSelectedFcn =             @obj.manageTrackingAutoTracking;
-            obj.Viewer.TrackingViews.Menu.EditAndView.MenuSelectedFcn =              @obj.manageTrackingEditAndView;
-            obj.Viewer.TrackingViews.Menu.TrackSegments.MenuSelectedFcn =              @obj.manageTrackSegments;
-            % addlistener(obj.Viewer.MovieControllerViews.Navigation.TimeSlider,'Value','PreSet', @obj.sliderActivity);
+            obj.Viewer = obj.Viewer.setTrackingViewsCallbacks(@obj.manageAutoCellRecognition,...
+                                                                @obj.manageTrackingAutoTracking, ...
+                                                                @obj.manageTrackingEditAndView, ...
+                                                                @obj.manageTrackSegments);
+            
+                                                  
     
         end
         
@@ -729,9 +725,11 @@ classdef PMMovieLibraryManager < handle
           
            
            
-        function [obj] =        showMissingCaptures(obj,~,~)            
-            obj.Viewer.InfoView.List.String =     obj.MovieLibrary.getFileNamesOfUnincorporatedMovies;
-            obj.Viewer.InfoView.List.Value =      min([length(obj.Viewer.InfoView.List.String) obj.Viewer.InfoView.List.Value]);
+        function [obj] =        showMissingCaptures(obj,~,~)   
+            
+            obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getFileNamesOfUnincorporatedMovies);
+            
+            
         end
         
 
@@ -809,7 +807,7 @@ classdef PMMovieLibraryManager < handle
          
            function obj = setEmpyActiveMovieController(obj)
                 obj.ActiveMovieController=      PMMovieController(obj.Viewer);  
-                obj.Viewer.MovieControllerViews.blackOutMovieView;
+                obj.Viewer.getMovieControllerView.blackOutMovieView;
                 obj =                           obj.setViews;
            end
 
@@ -818,14 +816,7 @@ classdef PMMovieLibraryManager < handle
         
     end
     
-    methods (Access = private) % add new movie
-        
-       
-        
-        
-          
-        
-    end
+  
     
     methods (Access = private)
         
@@ -1321,13 +1312,7 @@ classdef PMMovieLibraryManager < handle
        end
         
        
-        function obj = adjustViews(obj) 
-            
-            obj.Viewer = obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
-            
-                obj.Viewer.MovieControllerViews =       obj.Viewer.MovieControllerViews.adjustViews;
-                obj.Viewer.InfoView.List.Position =      [11.5 0.1 21 3.5];
-        end
+       
         
         function obj =  addCallbacksToInteractionManager(obj)
             obj.InteractionsManager =               obj.InteractionsManager.setCallbacks(@obj.interactionsManagerAction, @obj.updateInteractionSettings);
