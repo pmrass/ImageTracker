@@ -82,7 +82,7 @@ classdef PMMovieTrackingMenu
             obj.MovieSettings.Enable=                 'on';
             
             obj.RenameLinkedMovies=                   uimenu(MainMovieMenu);
-            obj.RenameLinkedMovies.Label=             'Rename linke movie files';
+            obj.RenameLinkedMovies.Label=             'Rename linked movie files';
             obj.RenameLinkedMovies.Tag=               'Movies_RenameLinkedMovies';
             obj.RenameLinkedMovies.Enable=            'on';
              obj.RenameLinkedMovies.Separator=        'on';

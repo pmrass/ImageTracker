@@ -2,16 +2,9 @@ classdef PMMovieControllerView
     %PMMOVIECONTROLLERVIEW Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
-
-
-
-
-    end
-    
     properties (Access = private)
         
-        ShowLog = false;
+       ShowLog = false;
        SelectedCentroidPlanePreference = 'OnlyCenter'; % 'AllOverlappingPlanes' 
         
     end
@@ -443,7 +436,6 @@ classdef PMMovieControllerView
         
         
     end
-    
     
     methods % setters
         
@@ -1158,19 +1150,19 @@ classdef PMMovieControllerView
     
     methods (Access = private)
         
-          function obj = CreateNavigationViews(obj, ProjectViews)
+        function obj = CreateNavigationViews(obj, ProjectViews)
             
            
             %% set positions
             
-            TopRowInside =                                                          ProjectViews.StartRowNavigation;
+            TopRowInside =                                                          ProjectViews.getStartRowNavigation;
             
-            ColumnShiftInside =                                                     ProjectViews.ColumnShift;
-            ViewHeightInside =                                                      ProjectViews.ViewHeight;
-            WidthOfFirstColumnInside =                                              ProjectViews.WidthOfFirstColumn;
-            WidthOfSecondColumnInside =                                             ProjectViews.WidthOfSecondColumn;
+            ColumnShiftInside =                                                     ProjectViews.getColumnShift;
+            ViewHeightInside =                                                      ProjectViews.getViewHeight;
+            WidthOfFirstColumnInside =                                              ProjectViews.getWidthOfFirstColumn;
+            WidthOfSecondColumnInside =                                             ProjectViews.getWidthOfSecondColumn;
                
-            RowShiftInside =                                                        ProjectViews.RowShift;
+            RowShiftInside =                                                        ProjectViews.getRowShift;
             LeftColumnStart =                                                       0.8;
            
 
@@ -1272,20 +1264,19 @@ classdef PMMovieControllerView
 
         end
         
-        
         function obj = CreateChannelViews(obj, ProjectViews)
             
             
-            TopRow =                                                    ProjectViews.StartRowChannels;
+            TopRow =                                                    ProjectViews.getStartRowChannels;
             
-            LeftColumnInside =                                          ProjectViews.LeftColumn;
-            ColumnShiftInside =                                         ProjectViews.ColumnShift;
-            ViewHeightInside =                                          ProjectViews.ViewHeight;
+            LeftColumnInside =                                          ProjectViews.getLeftColumn;
+            ColumnShiftInside =                                         ProjectViews.getColumnShift;
+            ViewHeightInside =                                          ProjectViews.getViewHeight;
             
-            WidthOfFirstColumnInside =                                  ProjectViews.WidthOfFirstColumn;
-            WidthOfSecondColumnInside =                                 ProjectViews.WidthOfSecondColumn;
+            WidthOfFirstColumnInside =                                  ProjectViews.getWidthOfFirstColumn;
+            WidthOfSecondColumnInside =                                 ProjectViews.getWidthOfSecondColumn;
             
-            RowShiftInside =                                            ProjectViews.RowShift;
+            RowShiftInside =                                            ProjectViews.getRowShift;
            
             PositionRow0 =                                              TopRow-RowShiftInside*1;
             PositionRow1 =                                              TopRow-RowShiftInside*2;
@@ -1431,7 +1422,6 @@ classdef PMMovieControllerView
             
         end
       
-
         function obj = createMovieView(obj,Input)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
@@ -1442,24 +1432,21 @@ classdef PMMovieControllerView
                     
             
         end
-        
-        
           
-        
         function obj = CreateAnnotationViews(obj, ProjectViews)
             
-              MainWindowNavigationHandle = ProjectViews.Figure;
+              MainWindowNavigationHandle = ProjectViews.getFigure;
              figure(MainWindowNavigationHandle)
    
             %% set positions
-            ColumnShiftInside =                                             ProjectViews.ColumnShift;
-            ViewHeightInside =                                              ProjectViews.ViewHeight;
-            WidthOfFirstColumnInside  =                                     ProjectViews.WidthOfFirstColumn;
-            WidthOfSecondColumnInside  =                                    ProjectViews.WidthOfSecondColumn;
+            ColumnShiftInside =                                             ProjectViews.getColumnShift;
+            ViewHeightInside =                                              ProjectViews.getViewHeight;
+            WidthOfFirstColumnInside  =                                     ProjectViews.getWidthOfFirstColumn;
+            WidthOfSecondColumnInside  =                                    ProjectViews.getWidthOfSecondColumn;
             
-            TopRow =                                                        ProjectViews.StartRowAnnotation;
-            RowShiftInside =                                                      ProjectViews.RowShift;
-            LeftColumnInside =                                                    ProjectViews.LeftColumn;
+            TopRow =                                                        ProjectViews.getStartRowAnnotation;
+            RowShiftInside =                                                      ProjectViews.getRowShift;
+            LeftColumnInside =                                                    ProjectViews.getLeftColumn;
             
             
             TitleRow =                                                  TopRow-RowShiftInside;

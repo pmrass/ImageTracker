@@ -58,6 +58,7 @@ classdef PMMovieLibraryManager < handle
         function obj =          setActiveMovieByNickName(obj, varargin)
 
             switch length(varargin)
+                
                 case 1
                     obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
                     obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
@@ -80,14 +81,14 @@ classdef PMMovieLibraryManager < handle
    
     methods % initialization
         
-              function obj =          PMMovieLibraryManager(varargin)
+        function obj =          PMMovieLibraryManager(varargin)
 
             obj.Viewer =    PMImagingProjectViewer;
             obj.Viewer.MovieControllerViews.blackOutMovieView;
             obj =           obj.adjustViews;
-       
+
             obj =           obj.addCallbacksToFileAndProject;
-            
+
             obj =           obj.addCallbacksToFileMenu;
             obj =           obj.addCallbacksToProjectMenu;
             obj =           obj.addCallbacksToMovieMenu;
@@ -95,28 +96,28 @@ classdef PMMovieLibraryManager < handle
             obj =           obj.addCallbacksToTrackingMenu;
             obj =           obj.addCallbacksToInteractionsMenu;
             obj =           obj.addCallbacksToHelpMenu;
-            
+
             obj.MovieLibrary = PMMovieLibrary();
-            
+
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
-                     myFileName =   obj.getPreviouslyUsedFileName;
+                    myFileName =   obj.getPreviouslyUsedFileName;
                 case 1
                     myFileName =  varargin{1};
                 otherwise
                     error('Wrong number of arguments')
             end
 
-           if isempty(myFileName)
-                    obj =       obj.userLoadsExistingLibrary;
-           else
-                    obj =       obj.changeLibraryToFileName(myFileName);
-           end
-                     
-            
-            
-        end
+            if isempty(myFileName)
+                obj =       obj.userLoadsExistingLibrary;
+            else
+                obj =       obj.changeLibraryToFileName(myFileName);
+            end
+
+
+
+       end
         
         function set.ActiveMovieController(obj, Value)
            assert(isa(Value,  'PMMovieController'), 'Wrong input type.')
@@ -743,15 +744,18 @@ classdef PMMovieLibraryManager < handle
        
            function [obj] =        addCallbacksToFileAndProject(obj)
             
-                obj.Viewer.Figure.WindowKeyPressFcn =                           @obj.keyPressed;
-                obj.Viewer.Figure.WindowButtonDownFcn =                         @obj.mouseButtonPressed;
-                obj.Viewer.Figure.WindowButtonUpFcn =                           @obj.mouseButtonReleased;
-                obj.Viewer.Figure.WindowButtonMotionFcn =                       @obj.mouseMoved;
-
-                obj.Viewer.ProjectViews.FilterForKeywords.Callback =            @obj.callbackForFilterChange;
-                obj.Viewer.ProjectViews.RealFilterForKeywords.Callback =        @obj.callbackForFilterChange;
-                obj.Viewer.ProjectViews.SortMovies.Callback =                   @obj.setViews;
-                obj.Viewer.ProjectViews.ListOfMoviesInProject.Callback =        @obj.movieListClicked;
+               
+           
+                obj.Viewer = obj.Viewer.setCallbacks( ...
+                    @obj.keyPressed, ...
+                    @obj.mouseButtonPressed, ...
+                    @obj.mouseButtonReleased, ...
+                    @obj.mouseMoved, ...
+                    @obj.callbackForFilterChange, ...
+                    @obj.callbackForFilterChange, ...
+                    @obj.setViews, ...
+                    @obj.movieListClicked...
+                    );
             
           end
           
@@ -1318,8 +1322,11 @@ classdef PMMovieLibraryManager < handle
         
        
         function obj = adjustViews(obj) 
-                obj.Viewer.MovieControllerViews = obj.Viewer.MovieControllerViews.adjustViews;
-                obj.Viewer.InfoView.List.Position =                                           [11.5 0.1 21 3.5];
+            
+            obj.Viewer = obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
+            
+                obj.Viewer.MovieControllerViews =       obj.Viewer.MovieControllerViews.adjustViews;
+                obj.Viewer.InfoView.List.Position =      [11.5 0.1 21 3.5];
         end
         
         function obj =  addCallbacksToInteractionManager(obj)

@@ -440,7 +440,7 @@ classdef PMMovieView
                 AnnotationRow =                                 0.2;
 
             if ~ishghandle(Input,'axes') 
-                MovieFigure=                                    Input.Figure;
+                MovieFigure=                                    Input.getFigure;
 
                 obj.ViewMovieAxes=                           axes;
                 obj.ViewMovieAxes.Tag=                       'ImageAxes';

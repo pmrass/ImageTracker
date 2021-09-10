@@ -4,28 +4,19 @@ classdef PMImagingProjectViewer
     
     properties
         
-        
-       
-        
-    end
-    
-    properties (Access = private)
         Figure
-        
         ProjectAxes
-        
-        
         ProjectViews
+        
         MovieControllerViews
         TrackingViews
         
-         InfoView
+        InfoView
+        
         TagForKeywordEditor =           'PMImagingProject_EditKeywordsViewer'
         
+       
     end
-    
-    
-    
     
     properties (Access = private) % menus:
 
@@ -137,9 +128,6 @@ classdef PMImagingProjectViewer
              if obj.InfoView.List.Value == 0
                 obj.InfoView.List.Value = 1; 
              end
-             
-           
-           
              
          end
            
@@ -279,43 +267,27 @@ classdef PMImagingProjectViewer
         end
         
         function row = getViewHeight(obj)
-           row  = obj.ViewHeight; 
+           row  = obj.StartRowTracking; 
         end
         
-        function row = getWidthOfFirstColumn(obj)
-           row  = obj.WidthOfFirstColumn; 
-        end
-        
-        function row = getWidthOfSecondColumn(obj)
-           row  = obj.WidthOfSecondColumn; 
-        end
-        
-        function row = getRowShift(obj)
-           row  = obj.RowShift; 
-        end
-        
-        function row = getStartRowChannels(obj)
-           row = obj.StartRowChannels; 
-        end
-        
-        function row = getStartRowAnnotation(obj)
-           row = obj.StartRowAnnotation; 
+        function row = getStartRowTracking(obj)
+           row  = obj.StartRowTracking; 
         end
         
         
         
+                        FirstColumn =           ProjectViews.;
+                
+                SecondColumn =          FirstColumn +ProjectViews. ;
+                WholeColumn =           ProjectViews.ColumnShift + ProjectViews.WidthOfSecondColumn;
+                Height =                ProjectViews.;
+                FirstColumnWidth =      ProjectViews.WidthOfFirstColumn;
+                SecondColumnWidth =     ProjectViews.WidthOfSecondColumn;
+                RowShiftInternal =      ProjectViews.RowShift;
         
     end
     
     methods % getters
-        
-        function figure = getFigure(obj)
-           figure = obj.Figure; 
-        end
-        
-        function views = getTrackingViews(obj)
-           views = obj.TrackingViews; 
-        end
         
         function view = getMovieControllerView(obj)
            view = obj.MovieControllerViews; 
@@ -337,47 +309,7 @@ classdef PMImagingProjectViewer
 
 
     methods % setters for callbacks
-          
-        
-        function obj =         setTrackingViewsCallbacks(obj, varargin)
-            assert(length(varargin) == 4, 'Wrong input.')
-            obj.TrackingViews.Menu.AutoCellRecognition.MenuSelectedFcn =     varargin{1};
-            obj.TrackingViews.Menu.AutoTracking.MenuSelectedFcn =            varargin{2};
-            obj.TrackingViews.Menu.EditAndView.MenuSelectedFcn =             varargin{3};
-            obj.TrackingViews.Menu.TrackSegments.MenuSelectedFcn =          varargin{4};
-            % addlistener(obj.Viewer.getMovieControllerView.Navigation.TimeSlider,'Value','PreSet', @obj.sliderActivity);
-        
-        end
-        
-        
-        function obj = setCallbacks(obj, varargin)
-            
-            switch length(varargin)
-               
-                case 8
-                    
-                    obj.Figure.WindowKeyPressFcn =                          varargin{1};
-                    obj.Figure.WindowButtonDownFcn =                         varargin{2};
-                    obj.Figure.WindowButtonUpFcn =                           varargin{3};
-                    obj.Figure.WindowButtonMotionFcn =                       varargin{4};
-
-                    obj.ProjectViews.FilterForKeywords.Callback =            varargin{5};
-                    obj.ProjectViews.RealFilterForKeywords.Callback =        varargin{6};
-                    obj.ProjectViews.SortMovies.Callback =                   varargin{7};
-                    obj.ProjectViews.ListOfMoviesInProject.Callback =        varargin{8};
-                    
-                otherwise
-                    error('Wrong input.')
                 
-                
-            end
-            
-           
-
-                
-            
-        end
-        
         function obj = setFileMenuCallbacks(obj, varargin)
         NumberOfArguments = length(varargin);
         switch NumberOfArguments
@@ -733,25 +665,8 @@ classdef PMImagingProjectViewer
         
     end
     
-    methods % setters project views:
-       
-          
-        function obj =  setCurrentCharacter(obj, Value)
-                obj.Viewer.Figure.CurrentCharacter =                  Value;
-        end
-                
-          function obj = adjustViews(obj, Value)
-           
-              obj.MovieControllerViews =       obj.MovieControllerViews.adjustViews;
-                obj.InfoView.List.Position =      Value;
-            
-        end
-        
-    end
-    
     methods (Access = private) % setters project views:
         
-      
         function obj = setImageSourceTypeFilterView(obj, SelectedIndex)
             obj.ProjectViews.FilterForKeywords.Enable=     'on';
             obj.ProjectViews.FilterForKeywords.String=     obj.ProjectFilterList;
@@ -837,7 +752,6 @@ classdef PMImagingProjectViewer
 
         end   
 
-      
                
     end
     

@@ -27,7 +27,7 @@ classdef PMTrackingView
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             
-            FigureHandle  =                                     ProjectViews.Figure;
+            FigureHandle  =                                     ProjectViews.getFigure;
     
             %% tracks menu:
             Tracks_Main=                                        uimenu(FigureHandle);
@@ -126,14 +126,15 @@ classdef PMTrackingView
             
             
 
-                TopRow =               ProjectViews.StartRowTracking;
-                FirstColumn =           ProjectViews.LeftColumn;
-                SecondColumn =          FirstColumn +ProjectViews.ColumnShift ;
-                WholeColumn =           ProjectViews.ColumnShift + ProjectViews.WidthOfSecondColumn;
-                Height =                ProjectViews.ViewHeight;
-                FirstColumnWidth =      ProjectViews.WidthOfFirstColumn;
-                SecondColumnWidth =     ProjectViews.WidthOfSecondColumn;
-                RowShiftInternal =      ProjectViews.RowShift;
+                TopRow =                ProjectViews.getStartRowTracking;
+                FirstColumn =           ProjectViews.getLeftColumn;
+                
+                SecondColumn =          FirstColumn +  ProjectViews.getColumnShift ;
+                WholeColumn =           ProjectViews.getColumnShift + ProjectViews.getWidthOfSecondColumn;
+                Height =                ProjectViews.getViewHeight;
+                FirstColumnWidth =      ProjectViews.getWidthOfFirstColumn;
+                SecondColumnWidth =     ProjectViews.getWidthOfSecondColumn;
+                RowShiftInternal =      ProjectViews.getRowShift;
 
                 FirstRow =              TopRow;
                 SecondRow =             FirstRow-RowShiftInternal;
@@ -141,11 +142,7 @@ classdef PMTrackingView
                 FourthRow =             ThirdRow-RowShiftInternal;
                 FifthRow =              FourthRow-RowShiftInternal;
                 SixthRow =              FifthRow-RowShiftInternal;
-                SeventhRow =            SixthRow-RowShiftInternal;
-                
-                RowForList =              0.005;
-                HeightForList  =            0.23;
-              
+               
 
                 TrackingTitle=                                          uicontrol;
                 TrackingTitle.Tag=                                      'TrackingTitle';
