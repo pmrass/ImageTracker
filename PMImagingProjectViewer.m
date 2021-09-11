@@ -22,6 +22,7 @@ classdef PMImagingProjectViewer
         ProjectMenu
         MovieMenu
         DriftMenu
+        TrackingMenu
         InteractionsMenu
         HelpMenu
 
@@ -49,7 +50,7 @@ classdef PMImagingProjectViewer
      
         ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content'; 'Show content with non-matching channel information'; 'Show all unmapped movies'}; 
     
-        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'InteractionsMenu', 'HelpMenu'};
+        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'TrackingMenu', 'InteractionsMenu', 'HelpMenu'};
           
     end
     
@@ -60,25 +61,15 @@ classdef PMImagingProjectViewer
                 %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
                 %   Detailed explanation goes here
 
-                fprintf('\n@Create PMImagingProjectViewer:\n')
-
                 obj =                        obj.CreateProjectFigure;
 
-
-                obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
-
                 obj.TrackingViews =          PMTrackingView(obj);
-                obj.InteractionsMenu =       PMInteractionsMenu(obj.Figure);
-
+           
                 obj =                        obj.CreateHelpMenu;  
-
                 obj =                        obj.CreateProjectViews;
-
                 obj.MovieControllerViews =   PMMovieControllerView(obj);
                 obj =                        obj.createInfoView;
-            
-
-                
+ 
           end
           
           
@@ -351,16 +342,7 @@ classdef PMImagingProjectViewer
     methods % setters for callbacks
           
         
-        function obj =         setTrackingViewsCallbacks(obj, varargin)
-            assert(length(varargin) == 4, 'Wrong input.')
-            obj.TrackingViews.Menu.AutoCellRecognition.MenuSelectedFcn =     varargin{1};
-            obj.TrackingViews.Menu.AutoTracking.MenuSelectedFcn =            varargin{2};
-            obj.TrackingViews.Menu.EditAndView.MenuSelectedFcn =             varargin{3};
-            obj.TrackingViews.Menu.TrackSegments.MenuSelectedFcn =          varargin{4};
-            % addlistener(obj.Viewer.getMovieControllerView.Navigation.TimeSlider,'Value','PreSet', @obj.sliderActivity);
-        
-        end
-        
+
         
         function obj = setCallbacks(obj, varargin)
             
@@ -413,26 +395,9 @@ classdef PMImagingProjectViewer
 
         end
 
-        function obj = setInteractionsMenuCallbacks(obj, varargin)
-        obj.InteractionsMenu = obj.InteractionsMenu.setCallbacks(varargin{:});
-        end
+    
 
-        function obj = setHelpMenuCallbacks(obj, varargin)
-        NumberOfArguments = length(varargin);
-        switch NumberOfArguments
-         case 2
-             obj.HelpMenu.KeyboardShortcuts.MenuSelectedFcn  =                  varargin{1};
-             obj.HelpMenu.TrackingKeyboardshortcuts.MenuSelectedFcn  =        varargin{2};
-
-
-         otherwise
-             error('Wrong input.')
-
-        end
-
-
-
-        end
+ 
         
     end
     

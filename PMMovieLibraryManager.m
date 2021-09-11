@@ -35,49 +35,7 @@ classdef PMMovieLibraryManager < handle
         FileWithPreviousSettings =         [userpath,'/imans_PreviouslyUsedFile.mat'];
     end
     
-     methods  % movie-list clicked
-        
-        function [obj] =         movieListClicked(obj, ~, ~)
-            fprintf('\nPMMovieLibraryManager: @movieListClicked\n')
-
-            switch obj.Viewer.getMousClickType
-
-                case 'open'
-                    SelectedNicknames =     obj.Viewer.getSelectedNicknames;
-                    if length(SelectedNicknames) == 1
-
-                        obj =      obj.finishOffCurrentLibrary;
-                        obj =        obj.setActiveMovieByNickName(SelectedNicknames{1});
-
-                    end
-            end 
-            
-        end
-
-        function obj =          setActiveMovieByNickName(obj, varargin)
-
-            switch length(varargin)
-                
-                case 1
-                    obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
-                    obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-
-                    obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
-                    obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
-                    obj =                                   obj.addCallbacksToInteractionManager;
-                    obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-                    obj =                                   obj.setInfoTextView;
-
-
-                otherwise
-                    error('Invalid number of arguments')
-            end
-
-
-        end
-
-    end
-   
+    
     methods % initialization
         
         function obj =          PMMovieLibraryManager(varargin)
@@ -91,10 +49,10 @@ classdef PMMovieLibraryManager < handle
             obj =           obj.setFileMenu;
             obj =           obj.setProjectMenu;
             obj =           obj.setMovieMenu;
-            obj =           obj.addCallbacksToDriftMenu;
-            obj =           obj.addCallbacksToTrackingMenu;
-            obj =           obj.addCallbacksToInteractionsMenu;
-            obj =           obj.addCallbacksToHelpMenu;
+            obj =           obj.setDriftMenu;
+            obj =           obj.setTrackingMenu;
+            obj =           obj.setInteractionsMenu;
+            obj =           obj.setHelpMenu;
 
             obj.MovieLibrary = PMMovieLibrary();
 
@@ -127,6 +85,49 @@ classdef PMMovieLibraryManager < handle
         end
         
     end
+    
+     methods  % movie-list clicked
+        
+        function [obj] =         movieListClicked(obj, ~, ~)
+          
+            switch obj.Viewer.getMousClickType
+
+                case 'open'
+                    SelectedNicknames =     obj.Viewer.getSelectedNicknames;
+                    if length(SelectedNicknames) == 1
+
+                        obj =           obj.finishOffCurrentLibrary;
+                        obj =          obj.setActiveMovieByNickName(SelectedNicknames{1});
+
+                    end
+            end 
+            
+        end
+
+        function obj =          setActiveMovieByNickName(obj, varargin)
+
+            switch length(varargin)
+                
+                case 1
+                    obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
+                    obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
+
+                    obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
+                    obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
+                    obj =                                   obj.addCallbacksToInteractionManager;
+                    obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
+                    obj =                                   obj.setInfoTextView;
+
+
+                otherwise
+                    error('Invalid number of arguments')
+            end
+
+
+        end
+
+     end
+   
     
     methods % getter
         
@@ -684,7 +685,7 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % set drift menu:
         
-        function obj =  addCallbacksToDriftMenu(obj)
+        function obj =  setDriftMenu(obj)
                
                 MenuLabels = { 'Apply manual drift correction', 'Erase all drift corrections'};
 
@@ -699,22 +700,48 @@ classdef PMMovieLibraryManager < handle
         
       
         
-        function [obj] =        addCallbacksToTrackingMenu(obj)
-            
-            obj.Viewer = obj.Viewer.setTrackingViewsCallbacks(@obj.manageAutoCellRecognition,...
-                                                                @obj.manageTrackingAutoTracking, ...
-                                                                @obj.manageTrackingEditAndView, ...
-                                                                @obj.manageTrackSegments);
-            
-                                                  
+        function [obj] =        setTrackingMenu(obj)
+              
+                MenuLabels = { 'Autodetection of cells', 'Autotracking', 'View and edit tracks', 'Edit track segments'};
+
+                CallbackList =   {...
+                                @obj.manageAutoCellRecognition,...
+                                @obj.manageTrackingAutoTracking, ...
+                                @obj.manageTrackingEditAndView, ...
+                                @obj.manageTrackSegments ...
+                };
+
+                obj.Viewer =    obj.Viewer.setMenu('TrackingMenu', 'Tracking', MenuLabels, CallbackList);
     
         end
         
-        function obj = addCallbacksToHelpMenu(obj)
-             obj.Viewer =    obj.Viewer.setHelpMenuCallbacks(...
-                @obj.showKeyboardShortcuts, ...
+        function obj = setInteractionsMenu(obj)
+           MenuLabels = { 'Set interaction parameters'};
+
+                CallbackList =   {...
+                                @obj.showInteractionsViewer,...
+                };
+
+                obj.Viewer =    obj.Viewer.setMenu('InteractionsMenu', 'Interactions', MenuLabels, CallbackList);
+                
+   
+       
+            
+            
+        end
+        
+        function obj = setHelpMenu(obj)
+
+              MenuLabels = { 'Show keyboard shortcuts', 'Show keyboard shortcuts for tracking'};
+
+                CallbackList =   {...
+                       @obj.showKeyboardShortcuts, ...
                 @obj.showKeyboardShortcutsForTracking ...
-                ); 
+                };
+
+                obj.Viewer =    obj.Viewer.setMenu('HelpMenu', 'Help', MenuLabels, CallbackList);
+                
+                
         end
         
         
@@ -1339,12 +1366,7 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % interation
         
-          %% addCallbacksToInteractionsMenu:
-       function obj = addCallbacksToInteractionsMenu(obj)
-             obj.Viewer =    obj.Viewer.setInteractionsMenuCallbacks(...
-                @obj.showInteractionsViewer ...
-                );
-       end
+   
         
        function obj = showInteractionsViewer(obj, ~, ~)
            

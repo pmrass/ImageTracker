@@ -22,6 +22,7 @@ classdef PMImagingProjectViewer
         ProjectMenu
         MovieMenu
         DriftMenu
+        TrackingMenu
         InteractionsMenu
         HelpMenu
 
@@ -49,7 +50,7 @@ classdef PMImagingProjectViewer
      
         ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content'; 'Show content with non-matching channel information'; 'Show all unmapped movies'}; 
     
-        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'InteractionsMenu', 'HelpMenu'};
+        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', TrackingMenu'InteractionsMenu', 'HelpMenu'};
           
     end
     
@@ -65,7 +66,6 @@ classdef PMImagingProjectViewer
                 obj =                        obj.CreateProjectFigure;
 
 
-                obj.MovieMenu =              PMMovieTrackingMenu(obj.Figure);
                 obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
 
                 obj.TrackingViews =          PMTrackingView(obj);

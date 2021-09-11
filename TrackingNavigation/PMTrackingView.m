@@ -6,7 +6,7 @@ classdef PMTrackingView
     
     properties
         
-        Menu
+        
         ControlPanels
         
     end
@@ -17,7 +17,7 @@ classdef PMTrackingView
             %PMTRACKINGVIEW Construct an instance of this class
             %   Detailed explanation goes here
             
-            obj =                   obj.createMenu(ProjectViews);
+         
             obj =                   obj.CreateTrackingViews(ProjectViews);
 
         end
@@ -26,37 +26,7 @@ classdef PMTrackingView
         function [obj] = createMenu(obj, ProjectViews)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            
-            FigureHandle  =                                     ProjectViews.getFigure;
-    
-            %% tracks menu:
-            Tracks_Main=                                        uimenu(FigureHandle);
-            Tracks_Main.Label=                                  'Tracking';
-            Tracks_Main.Tag=                                    'Tracks_Main';
-
-             obj.Menu.AutoCellRecognition=                            uimenu(Tracks_Main);
-             obj.Menu.AutoCellRecognition.Label=                     'Autodetection of cells';
-             obj.Menu.AutoCellRecognition.Tag=                       'Tracks_AutoCellRecognition';
-             obj.Menu.AutoCellRecognition.Enable=                   'on';
-             obj.Menu.AutoCellRecognition.Separator=                               'off';
-             
-             obj.Menu.AutoTracking=                            uimenu(Tracks_Main);
-             obj.Menu.AutoTracking.Label=                     'Autotracking';
-             obj.Menu.AutoTracking.Tag=                       'Tracks_TrackingSettings';
-             obj.Menu.AutoTracking.Enable=                   'on';
-            
-
-             obj.Menu.EditAndView=                            uimenu(Tracks_Main);
-            obj.Menu.EditAndView.Label=                     'View and edit tracks';
-            obj.Menu.EditAndView.Tag=                       'Tracks_EditAndView';
-            obj.Menu.EditAndView.Enable=                   'on';
-           
-            obj.Menu.TrackSegments=                            uimenu(Tracks_Main);
-            obj.Menu.TrackSegments.Label=                     'Edit track segments';
-            obj.Menu.TrackSegments.Enable=                   'on';
-           
          
-            
           
           
 %             Masks_AutomatedCentroidConversion.Callback=         'CallbackForAutomatedMaskDetection';
