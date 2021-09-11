@@ -65,7 +65,6 @@ classdef PMImagingProjectViewer
                 obj =                        obj.CreateProjectFigure;
 
 
-                obj.MovieMenu =              PMMovieTrackingMenu(obj.Figure);
                 obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
 
                 obj.TrackingViews =          PMTrackingView(obj);

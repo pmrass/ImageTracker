@@ -90,7 +90,7 @@ classdef PMMovieLibraryManager < handle
 
             obj =           obj.setFileMenu;
             obj =           obj.setProjectMenu;
-            obj =           obj.addCallbacksToMovieMenu;
+            obj =           obj.setMovieMenu;
             obj =           obj.addCallbacksToDriftMenu;
             obj =           obj.addCallbacksToTrackingMenu;
             obj =           obj.addCallbacksToInteractionsMenu;
@@ -429,36 +429,7 @@ classdef PMMovieLibraryManager < handle
                     
        
         
-        function obj =  addCallbacksToDriftMenu(obj)
-             obj.Viewer =    obj.Viewer.setDriftMenuCallbacks(...
-                 @obj.applyManualDriftCorrectionClicked, ...
-                 @obj.eraseAllDriftCorrectionsClicked ...
-         );
-         
      
-
-        end
-        
-      
-        
-        function [obj] =        addCallbacksToTrackingMenu(obj)
-            
-            obj.Viewer = obj.Viewer.setTrackingViewsCallbacks(@obj.manageAutoCellRecognition,...
-                                                                @obj.manageTrackingAutoTracking, ...
-                                                                @obj.manageTrackingEditAndView, ...
-                                                                @obj.manageTrackSegments);
-            
-                                                  
-    
-        end
-        
-        function obj = addCallbacksToHelpMenu(obj)
-             obj.Viewer =    obj.Viewer.setHelpMenuCallbacks(...
-                @obj.showKeyboardShortcuts, ...
-                @obj.showKeyboardShortcutsForTracking ...
-                ); 
-        end
-        
         
         
     end
@@ -670,40 +641,40 @@ classdef PMMovieLibraryManager < handle
   
     end
     
-    methods (Access = private) % callbacks for movie-menu
+    methods (Access = private) % set movie-menu
         
-         function obj =      addCallbacksToMovieMenu(obj)
+         function obj =      setMovieMenu(obj)
 
                 MenuLabels = { 'File settings', 'Rename linked movie files', 'Relink movies', ...
                     'Remap image files', 'Delete image cache', ...
                     'Export active movie into mp4 file', 'Export active image into jpg file', 'Export track coodinates into csv file', 'Export detailed meta-data into txt file',  'Show meta-data summary in info text box'};
           
                 
-            CallbackList =   {...
-                @obj.editMovieSettingsClicked, ...
-                @obj.changeNameOfLinkeMoviesClicked, ...
-                @obj.changeLinkedMoviesClicked, ...
-                @obj.reapplySourceFilesClicked, ...
-                @obj.deleteImageCacheClicked, ...
-                @obj.exportImage, ...
-                @obj.exportMovie, ...
-                @obj.exportTrackCoordinates, ...
-                @obj.exportDetailedMetaDataIntoFile, ...
-                @obj.showMetaDataSummary ...
-        };
-    
-        SeparatorList = {'off', 'off', 'off', ...
-                                  'on', 'off', ...
-                                  'on', 'off', 'off', 'off', 'off'};
-                                  
-                                  
-                                 
-    
-     obj.Viewer =    obj.Viewer.setMenu('MovieMenu', 'Movie', MenuLabels, CallbackList, SeparatorList);
+                    CallbackList =   {...
+                        @obj.editMovieSettingsClicked, ...
+                        @obj.changeNameOfLinkeMoviesClicked, ...
+                        @obj.changeLinkedMoviesClicked, ...
+                        @obj.reapplySourceFilesClicked, ...
+                        @obj.deleteImageCacheClicked, ...
+                        @obj.exportImage, ...
+                        @obj.exportMovie, ...
+                        @obj.exportTrackCoordinates, ...
+                        @obj.exportDetailedMetaDataIntoFile, ...
+                        @obj.showMetaDataSummary ...
+                };
 
-        
-   
-            
+                SeparatorList = {'off', 'off', 'off', ...
+                                          'on', 'off', ...
+                                          'on', 'off', 'off', 'off', 'off'};
+
+
+
+
+             obj.Viewer =    obj.Viewer.setMenu('MovieMenu', 'Movie', MenuLabels, CallbackList, SeparatorList);
+
+
+
+
 
         end
         
@@ -711,6 +682,55 @@ classdef PMMovieLibraryManager < handle
         
     end
     
+    methods (Access = private) % set drift menu:
+        
+           function obj =  addCallbacksToDriftMenu(obj)
+               
+               
+                   MenuLabels = { 'Apply manual drift correction', 'Erase all drift corrections'};
+          
+                
+                    CallbackList =   {...
+                        @obj.applyManualDriftCorrectionClicked, ...
+                 @obj.eraseAllDriftCorrectionsClicked ...
+                };
+
+                    
+      
+             obj.Viewer =    obj.Viewer.setMenu('DriftMenu', 'Drift correction', MenuLabels, CallbackList);
+
+
+             
+             
+     
+     
+
+        end
+        
+      
+        
+        function [obj] =        addCallbacksToTrackingMenu(obj)
+            
+            obj.Viewer = obj.Viewer.setTrackingViewsCallbacks(@obj.manageAutoCellRecognition,...
+                                                                @obj.manageTrackingAutoTracking, ...
+                                                                @obj.manageTrackingEditAndView, ...
+                                                                @obj.manageTrackSegments);
+            
+                                                  
+    
+        end
+        
+        function obj = addCallbacksToHelpMenu(obj)
+             obj.Viewer =    obj.Viewer.setHelpMenuCallbacks(...
+                @obj.showKeyboardShortcuts, ...
+                @obj.showKeyboardShortcutsForTracking ...
+                ); 
+        end
+        
+        
+        
+        
+    end
     
         
     methods % setters project:
