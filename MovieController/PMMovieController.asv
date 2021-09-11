@@ -841,6 +841,12 @@ classdef PMMovieController < handle
             
         end
         
+        function obj = deleteImageAnalysisFile(obj)
+            obj.LoadedMovie = obj.LoadedMovie.deleteFiles;
+        end
+
+        
+        
         
         
         
@@ -1294,10 +1300,10 @@ classdef PMMovieController < handle
 
     methods % image map
         
-       function obj =           unMapMovie(obj)
+       function obj =           resetLoadedMovieFo(obj)
             obj    =            obj.emptyOutLoadedImageVolumes;
-            obj.LoadedMovie =   obj.LoadedMovie.unmap;
-            obj =               obj.blackOutViews;
+            obj.LoadedMovie =   obj.LoadedMovie.resetFromImageFiles;
+       
        end
        
      
@@ -1434,10 +1440,7 @@ classdef PMMovieController < handle
 
         end
 
-        function obj = deleteImageAnalysisFile(obj)
-          obj.LoadedMovie = obj.LoadedMovie.deleteFiles;
-        end
-
+     
 
         function obj = showAutoTrackingController(obj)
              obj.TrackingAutoTrackingController =         obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking, 'ForceDisplay');

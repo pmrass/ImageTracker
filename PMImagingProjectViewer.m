@@ -27,6 +27,8 @@ classdef PMImagingProjectViewer
 
     end
     
+   
+    
 
     properties (Constant, Access = private)
         
@@ -47,8 +49,8 @@ classdef PMImagingProjectViewer
      
         ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content'; 'Show content with non-matching channel information'; 'Show all unmapped movies'}; 
     
-        
-        
+        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'InteractionsMenu', 'HelpMenu'};
+          
     end
     
     
@@ -62,8 +64,7 @@ classdef PMImagingProjectViewer
 
                 obj =                        obj.CreateProjectFigure;
 
-                obj =                        obj.CreateFileMenu;
-                obj =                        obj.CreateProjectMenu;
+
                 obj.MovieMenu =              PMMovieTrackingMenu(obj.Figure);
                 obj.DriftMenu =              PMDriftCorrectionMenu(obj.Figure);
 
@@ -80,11 +81,26 @@ classdef PMImagingProjectViewer
 
                 
           end
+          
+          
         
         
         
     end
 
+    methods (Access = private) % initialize
+        
+        
+        function obj = verifyMenuName(obj, Name)
+            
+            assert(ischar(Name) && max(strcmp(Name, obj.AvailableMenus)), 'Menu not supported')
+            
+        end
+        
+        
+        
+    end
+    
     methods % setters
         
         function obj = setContentTypeFilterTo(obj, Value)
@@ -102,6 +118,11 @@ classdef PMImagingProjectViewer
                     switch Type
                         case 'PMMovieLibrary'
                             MovieLibrary = varargin{1};
+                            
+                            if isempty(MovieLibrary.getMovieObjectSummaries)   
+                                obj.MovieControllerViews.disableAllViews;
+                            end
+                            
                             obj =    obj.setNickNameView(MovieLibrary.getSelectedNickname);
                             obj =    obj.setImageSourceTypeFilterView(MovieLibrary.getFilterSelectionIndex);
                             obj =    obj.setKeywordFilterView(MovieLibrary.getKeyWordList);
@@ -302,7 +323,6 @@ classdef PMImagingProjectViewer
         end
         
         function views = getProjectViews(obj)
-            
             views = obj.ProjectViews;
         end
         
@@ -371,56 +391,9 @@ classdef PMImagingProjectViewer
             
         end
         
-        function obj = setFileMenuCallbacks(obj, varargin)
-        NumberOfArguments = length(varargin);
-        switch NumberOfArguments
-         case 3
-            obj.FileMenu.New.MenuSelectedFcn =                       varargin{1};
-            obj.FileMenu.Save.MenuSelectedFcn =                      varargin{2};
-            obj.FileMenu.Load.MenuSelectedFcn =                      varargin{3};
+ 
 
-
-         otherwise
-             error('Wrong input.')
-
-        end
-
-        end
-
-        function obj = setProjectMenuCallbacks(obj, varargin)
-        NumberOfArguments = length(varargin);
-        switch NumberOfArguments
-         case 15
-              obj.ProjectMenu.ChangeImageAnalysisFolder.MenuSelectedFcn= varargin{1};
-            obj.ProjectMenu.ChangeMovieFolder.MenuSelectedFcn=         varargin{2};
-            obj.ProjectMenu.ChangeExportFolder.MenuSelectedFcn=        varargin{3};
-
-            obj.ProjectMenu.AddCapture.MenuSelectedFcn=                varargin{4};
-            obj.ProjectMenu.AddAllCaptures.MenuSelectedFcn =           varargin{5};
-            obj.ProjectMenu.RemoveCapture.MenuSelectedFcn=             varargin{6};
-            obj.ProjectMenu.DeleteAllEntries.MenuSelectedFcn=         varargin{7};
-
-            obj.ProjectMenu.ShowMissingCaptures.MenuSelectedFcn =      varargin{8};
-
-            obj.ProjectMenu.Mapping.MenuSelectedFcn=                   varargin{9};
-            obj.ProjectMenu.UnMapping.MenuSelectedFcn=                varargin{10};
-            obj.ProjectMenu.DerivativeFiles.MenuSelectedFcn=                varargin{11};
-
-
-            obj.ProjectMenu.UpdateMovieSummary.MenuSelectedFcn=        varargin{12};
-            obj.ProjectMenu.ReplaceKeywords.MenuSelectedFcn=           varargin{13};
-
-            obj.ProjectMenu.Info.MenuSelectedFcn =                varargin{14};
-
-            obj.ProjectMenu.BatchProcessingChannel.MenuSelectedFcn =     varargin{15};
-
-         otherwise
-             error('Wrong input.')
-
-        end
-
-
-        end
+     
 
         function obj = setMovieMenuCallbacks(obj, varargin)
         obj.MovieMenu =    obj.MovieMenu.setCallbacks(varargin{:});
@@ -464,119 +437,70 @@ classdef PMImagingProjectViewer
         
     end
     
+    methods % set menus
+       
+        function obj = setMenu(obj, varargin)
+            
+            switch length(varargin)
+               
+                case 4
+                    MainMenuName =  varargin{1};
+                    MainMenuLabel = varargin{2};
+                    MenuLabels =    varargin{3};
+                    MyCallbacks =   varargin{4};
+                    SeparatorList = repmat({'off'}, length(MenuLabels), 1);
+                    
+                case 5
+                    MainMenuName =  varargin{1};
+                    MainMenuLabel = varargin{2};
+                    MenuLabels =    varargin{3};
+                    MyCallbacks =   varargin{4};
+                    SeparatorList = varargin{5};
+                    
+                otherwise
+                    error('Wrong input')
+                
+                 
+                
+                
+            end
+            
+        
+            
+            obj = obj.verifyMenuName(MainMenuName);
+            assert(ischar(MainMenuLabel), 'Wrong input.')
+            assert(isvector(MenuLabels) && iscellstr(MenuLabels), 'Wrong input.')
+            assert(isvector(MyCallbacks) && iscell(MyCallbacks), 'Wrong input.')
+            assert(isvector(SeparatorList) && iscellstr(SeparatorList), 'Wrong input.')
+            assert(length(MenuLabels) == length(MyCallbacks), 'Wrong input.')
+            assert(length(MenuLabels) == length(SeparatorList), 'Wrong input.')
+            
+            
+            obj.(MainMenuName).Main=            uimenu(obj.Figure);
+            obj.(MainMenuName).Main.Label=      MainMenuLabel;
+
+            for index = 1 : length(MenuLabels)
+                 Name = ['Menu', num2str(index)];
+                obj.(MainMenuName).(Name) =                     uimenu(obj.(MainMenuName).Main);
+                obj.(MainMenuName).(Name).Label =               MenuLabels{index};
+                obj.(MainMenuName).(Name).Enable =              'on';
+                obj.(MainMenuName).(Name).Separator=            SeparatorList{index};
+                obj.(MainMenuName).(Name).MenuSelectedFcn=      MyCallbacks{index};
+
+            end
+                            
+            
+        end
+        
+        
+    end
+    
     methods (Access = private) % create menus:
        
-        function [obj] =       CreateFileMenu(obj)   
-            FileMain=                   uimenu(obj.Figure);
-            FileMain.Label=             'File';
-            FileMain.Tag=               'FileMenu';
+     
 
-            File.New=                   uimenu(FileMain);
-            File.New.Label=             'New';
-            File.New.Tag=               'Project_New';
-
-            File.Load=                  uimenu(FileMain);
-            File.Load.Label=            'Load';
-            File.Load.Tag=              'Project_Load';
-
-            File.Save=                  uimenu(FileMain);
-            File.Save.Label=            'Save';
-            File.Save.Tag=              'Project_Save';
-            File.Save.Enable=           'on';
-
-            obj.FileMenu =              File;
-
-        end
-
-        function [obj] =       CreateProjectMenu(obj)
-
-                ProjectMenuInside=                                            uimenu(obj.Figure);
-                ProjectMenuInside.Label=                                      'Project';
-                ProjectMenuInside.Tag=                                        'ProjectMenuInside';
-
-                obj.ProjectMenu.ChangeImageAnalysisFolder=              uimenu(ProjectMenuInside);
-                obj.ProjectMenu.ChangeImageAnalysisFolder.Label=        'Change image analysis folder';
-                obj.ProjectMenu.ChangeImageAnalysisFolder.Enable=       'on';
-
-                obj.ProjectMenu.ChangeMovieFolder=                      uimenu(ProjectMenuInside);
-                obj.ProjectMenu.ChangeMovieFolder.Label=                'Add movie-folder';
-                obj.ProjectMenu.ChangeMovieFolder.Tag=                  'Project_MovieFolder';
-                obj.ProjectMenu.ChangeMovieFolder.Enable=               'on';
-
-                obj.ProjectMenu.ChangeExportFolder=                              uimenu(ProjectMenuInside);
-                obj.ProjectMenu.ChangeExportFolder.Label=                         'Change export-folder';
-                obj.ProjectMenu.ChangeExportFolder.Tag=                           'Project_ExportFolder';
-                obj.ProjectMenu.ChangeExportFolder.Enable=                        'on';
-
-                obj.ProjectMenu.AddCapture=                  uimenu(ProjectMenuInside);
-                obj.ProjectMenu.AddCapture.Label=            'Add single new entry';
-                obj.ProjectMenu.AddCapture.Enable=           'on';
-                obj.ProjectMenu.AddCapture.Separator=        'on';
-
-
-                obj.ProjectMenu.RemoveCapture=               uimenu(ProjectMenuInside);
-                obj.ProjectMenu.RemoveCapture.Label=         'Delete entry of active movie';
-                obj.ProjectMenu.RemoveCapture.Enable=        'on';
-
-                 obj.ProjectMenu.DeleteAllEntries=                                uimenu(ProjectMenuInside);
-                obj.ProjectMenu.DeleteAllEntries.Label=                          'Delete all entries in library';
-                obj.ProjectMenu.DeleteAllEntries.Enable=                         'on';
-
-
-                obj.ProjectMenu.AddAllCaptures=                       uimenu(ProjectMenuInside);
-                obj.ProjectMenu.AddAllCaptures.Label=                 'Add entries for all images/movies in movie directory';
-                obj.ProjectMenu.AddAllCaptures.Enable=                'on';
-
-
-
-                obj.ProjectMenu.Mapping=                                   uimenu(ProjectMenuInside);
-                obj.ProjectMenu.Mapping.Label=                             'Batch: Map all unmapped images';
-                obj.ProjectMenu.Mapping.Separator=                         'on';
-                obj.ProjectMenu.Mapping.Enable=                            'on';
-
-                obj.ProjectMenu.UnMapping=                uimenu(ProjectMenuInside);
-                obj.ProjectMenu.UnMapping.Label=          'Unmapping all movies';
-                obj.ProjectMenu.UnMapping.Separator=      'off';
-                obj.ProjectMenu.UnMapping.Enable=         'on';
-
-                   obj.ProjectMenu.DerivativeFiles=                uimenu(ProjectMenuInside);
-                obj.ProjectMenu.DerivativeFiles.Label=          'Create derivative files';
-                obj.ProjectMenu.DerivativeFiles.Separator=      'off';
-                obj.ProjectMenu.DerivativeFiles.Enable=         'on';
-
-
-                   obj.ProjectMenu.BatchProcessingChannel=                 uimenu(ProjectMenuInside);
-                obj.ProjectMenu.BatchProcessingChannel.Label=           'Set channels of selected movies by active movie';
-                obj.ProjectMenu.BatchProcessingChannel.Separator=       'off';
-                obj.ProjectMenu.BatchProcessingChannel.Enable=          'on';
-
-                obj.ProjectMenu.ShowMissingCaptures=                       uimenu(ProjectMenuInside);
-                obj.ProjectMenu.ShowMissingCaptures.Label=                 'Show image/movie files that have not yet been imported';
-                obj.ProjectMenu.ShowMissingCaptures.Tag=                   'Movies_ShowMissingCaptures';
-                obj.ProjectMenu.ShowMissingCaptures.Enable=                'on';
-                obj.ProjectMenu.ShowMissingCaptures.Separator=        'on';
-
-
-
-                obj.ProjectMenu.ReplaceKeywords=                  uimenu(ProjectMenuInside);
-                obj.ProjectMenu.ReplaceKeywords.Label=            'Replace keywords';
-                obj.ProjectMenu.ReplaceKeywords.Separator=        'on';
-                obj.ProjectMenu.ReplaceKeywords.Enable=           'on';
-
-
-                obj.ProjectMenu.UpdateMovieSummary=               uimenu(ProjectMenuInside);
-                obj.ProjectMenu.UpdateMovieSummary.Label=         'Update movie summaries from file';
-                obj.ProjectMenu.UpdateMovieSummary.Separator=     'off';
-                obj.ProjectMenu.UpdateMovieSummary.Enable=        'on';
-
-
-
-                obj.ProjectMenu.Info=               uimenu(ProjectMenuInside);
-                obj.ProjectMenu.Info.Label=         'Info';
-                obj.ProjectMenu.Info.Separator=     'on';
-                obj.ProjectMenu.Info.Enable=        'on';
-
-        end
+        
+        
 
         function obj =         CreateHelpMenu(obj)
 
@@ -730,7 +654,7 @@ classdef PMImagingProjectViewer
        
           
         function obj =  setCurrentCharacter(obj, Value)
-                obj.Viewer.Figure.CurrentCharacter =                  Value;
+                obj.Figure.CurrentCharacter =                  Value;
         end
                 
           function obj = adjustViews(obj, Value)

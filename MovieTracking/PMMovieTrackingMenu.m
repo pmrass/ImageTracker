@@ -73,6 +73,7 @@ classdef PMMovieTrackingMenu
 
          function obj = createMovieMenu(obj)
             
+             
             MainMovieMenu=                            uimenu(obj.MainFigure);
             MainMovieMenu.Label=                      'Movie';
 

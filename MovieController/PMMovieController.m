@@ -1300,10 +1300,10 @@ classdef PMMovieController < handle
 
     methods % image map
         
-       function obj =           unMapMovie(obj)
+       function obj =           resetLoadedMovieFromImageFiles(obj)
             obj    =            obj.emptyOutLoadedImageVolumes;
-            obj.LoadedMovie =   obj.LoadedMovie.unmap;
-            obj =               obj.blackOutViews;
+            obj.LoadedMovie =   obj.LoadedMovie.resetFromImageFiles;
+       
        end
        
      
@@ -2450,11 +2450,11 @@ classdef PMMovieController < handle
             % sets numerouse views including centroid-visibility, tracking views, movie-view, track-visibility and save-status;
 
              if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
-                    obj  =           obj.updateControlElements;
-
+                 
+                    obj  =          obj.updateControlElements;
                     obj.Views =     setCentroidVisibility(obj.Views, obj.LoadedMovie.getCentroidVisibility);
                     obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
-                    obj.Views =     obj.Views.updateMovieViewWith(  obj.LoadedMovie, obj.getRbgImage);
+                    obj.Views =     obj.Views.updateMovieViewWith( obj.LoadedMovie, obj.getRbgImage);
                     obj.Views =     updateTrackVisibilityWith(obj.Views, obj.LoadedMovie);
                     obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
                     obj =           obj.updateSaveStatusView;

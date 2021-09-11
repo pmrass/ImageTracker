@@ -236,10 +236,6 @@ classdef PMMovieLibrary
         end
         
         function obj = clearContentsOfLibraryIndex(obj, index)
-            assert(isvector(index) && isnumeric(index), 'Wrong input.')
-            cellfun(@(x) assert(mod(x, 1) == 0, 'Wrong input.'), index)
-            assert(min(index) >= 1 && max(index) <= obj.getNumberOfMovies, 'Wrong input.')
-
             obj.ListhWithMovieObjects(index, :)=          [];
             obj.ListWithMovieObjectSummary(index, :)=     [];
             obj.FilterList(index, :)=                     [];
@@ -252,6 +248,17 @@ classdef PMMovieLibrary
     
     methods % switch active movie
        
+        function obj = setAllMovies(obj)
+            ListWithNickNames = obj.getAllNicknames;
+            
+            for index = 1 : length(ListWithNickNames)
+                obj = obj.switchActiveMovieByNickName(ListWithNickNames{index});
+                
+            end 
+            
+        end
+        
+        
           function obj = switchActiveMovieByNickName(obj, Value, varargin)
               
                 assert(sum(obj.getRowForNickName(Value)) == 1, 'Chosen nickname is not unique')
@@ -397,9 +404,12 @@ classdef PMMovieLibrary
            
         end
         
-        function value = checkForUseOfNickName(obj, Value)
+        
+        
+        
+        function value = checkWheterNickNameAlreadyExists(obj, Value)
             
-            [SelectedRow] =                    obj.getRowForNickName(Value);
+            SelectedRow =                    obj.getRowForNickName(Value);
             if sum(SelectedRow) >= 1
                 value = true;
             else
@@ -412,7 +422,7 @@ classdef PMMovieLibrary
         function [SelectedRow] =                    getRowForNickName(obj, NickNameString)
             assert(ischar(NickNameString), 'Wrong input.')
             SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
-            assert(sum(SelectedRow) == 1, 'Non-unique nickname chosen.')
+
         end
         
      
@@ -517,8 +527,10 @@ classdef PMMovieLibrary
         end
         
         function obj = loadMovieIntoListhWithMovieObjects(obj, NickName)
+            MyRow = obj.getRowForNickName(NickName);
+            assert(isscalar(MyRow), 'Wrong input.')
                 MovieStructure.NickName =                       NickName;
-                obj.ListhWithMovieObjects{obj.getRowForNickName(NickName), 1} =      PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1);  
+                obj.ListhWithMovieObjects{MyRow, 1} =      PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1);  
         end
 
         
@@ -568,9 +580,12 @@ classdef PMMovieLibrary
     methods % summary lists
         
         function obj = updateMovieSummariesFromFiles(obj)
-            for MovieIndex=1:obj.getNumberOfMovies
-                MovieStructure.NickName =                         obj.ListWithMovieObjectSummary{MovieIndex,1}.getNickName;
-                obj.ListWithMovieObjectSummary{MovieIndex,1} =    PMMovieTrackingSummary(PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1));
+            
+            for MovieIndex = 1 : obj.getNumberOfMovies
+               
+                CurrentNickName =                                   obj.ListWithMovieObjectSummary{MovieIndex,1}.getNickName;
+                MyMovieTracking =                                   PMMovieTracking(obj.getPathForImageAnalysis, CurrentNickName).load;
+                obj.ListWithMovieObjectSummary{MovieIndex,1} =      PMMovieTrackingSummary(MyMovieTracking);
             end
 
         end
@@ -591,11 +606,7 @@ classdef PMMovieLibrary
             fprintf('There are %i elements in ListhWithMovieObjects.\n', length(obj.ListhWithMovieObjects))
             fprintf('There are %i elements in ListWithLoadedImageData.\n', length(obj.ListWithLoadedImageData))
             fprintf('There are additional properties that are not listed here that are relevant for filtering and sorting of entries.\n')
-
     
-      
-            
-            
         end
         
         
@@ -652,7 +663,6 @@ classdef PMMovieLibrary
         end
         
          function mainFolder =           getPathForImageAnalysis(obj)
-             
              
              if isempty(obj.PathForImageAnalysis)
                  error('Path for image analysis not specified.')
@@ -712,8 +722,8 @@ classdef PMMovieLibrary
         
         function names = getAllAttachedMovieFileNames(obj)
             allPaths = obj.getAllAttachedMoviePaths;
-                [~, file, ext]  =                cellfun(@(x) fileparts(x), allPaths, 'UniformOutput', false);
-                names =          cellfun(@(x,y) [x, y], file, ext, 'UniformOutput', false);   
+            [~, file, ext]  =                cellfun(@(x) fileparts(x), allPaths, 'UniformOutput', false);
+            names =          cellfun(@(x,y) [x, y], file, ext, 'UniformOutput', false);   
         end
         
           function files = getAllAttachedMoviePaths(obj)
@@ -734,17 +744,31 @@ classdef PMMovieLibrary
         end
         
       
-        
-        
-        
         function [namesOfAvailableFiles] =  getFileNamesOfUnincorporatedMovies(obj)
             namesOfAvailableFiles =    PMFileManagement(obj.getMovieFolder).getFileNames;
+            
+            ListWithPaths = cellfun(@(x) [ obj.getMovieFolder, '/', x], namesOfAvailableFiles, 'UniformOutput', false);
+            
+            for index = 1 : length(ListWithPaths)
+                
+                try
+                     ImageFileIndices(index, 1) = PMImageFiles({ListWithPaths{index}}).supportedFileType;;
+                catch
+                    ImageFileIndices(index, 1) = false;
+                end
+                
+            end
+            
+            
+            namesOfAvailableFiles(~ImageFileIndices) = [];
+            
+            
             alreadyAddedFileNames =     obj.getAllAttachedMovieFileNames;
             if isempty(alreadyAddedFileNames)
                 
             else
-                MatchingRows=                    cellfun(@(x) max(strcmp(x, alreadyAddedFileNames)), namesOfAvailableFiles);
-                namesOfAvailableFiles(MatchingRows,:)=    [];
+                MatchingRows=                               cellfun(@(x) max(strcmp(x, alreadyAddedFileNames)), namesOfAvailableFiles);
+                namesOfAvailableFiles(MatchingRows,:)=      [];
             end
             
         end
@@ -760,8 +784,7 @@ classdef PMMovieLibrary
     
     methods %setters
             
-          
-            %% setMovieFolders
+
         function obj = setMovieFolders(obj, Value)
            obj.PathOfMovieFolder =  Value;
            obj =                    obj.setMovieFolderInMovieObjectSummaries; 
@@ -904,6 +927,9 @@ classdef PMMovieLibrary
         
         function [obj] =                updateFilterList(obj)
             
+            
+                obj = obj.setAllMovies;
+            
               switch obj.FilterSelectionString
                   case 'Show all movies'
                       obj.FilterList =        obj.getIndicesOfMovies;
@@ -925,23 +951,20 @@ classdef PMMovieLibrary
                      obj.FilterList =      min([FilterMovies FilterTracking], [], 2); 
                      
                  case 'Show all movies with drift correction'   
-                     obj.FilterList =                       cellfun(@(x) x.DriftCorrectionWasPerformed, obj.ListWithMovieObjectSummary);
+                     obj.FilterList =                       cellfun(@(x) x.testForExistenceOfDriftCorrection, obj.ListhWithMovieObjects);
                      
                  case 'Show entire content'
                         obj.FilterList =                        cellfun(@(x) true, obj.ListWithMovieObjectSummary);             
            
                   case 'Show all unmapped movies'
-                        obj.FilterList =                       cellfun(@(x) ~x.MappingWasPerformed, obj.ListWithMovieObjectSummary);
+                        obj.FilterList =                       cellfun(@(x) ~x.isMapped, obj.ListhWithMovieObjects);
 
                   case 'Show content with non-matching channel information'
                       obj.FilterList =                       cellfun(@(x) ~x.ChannelSettingsAreOk, obj.ListWithMovieObjectSummary);
 
               end
-              
               obj =         obj.applyKeywordsToFilter;
               
-            
-  
         end
         
         

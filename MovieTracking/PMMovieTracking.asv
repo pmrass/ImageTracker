@@ -4,10 +4,12 @@ classdef PMMovieTracking < PMChannels
  
     properties (Access = private) % crucial to save these data:
 
+         AnnotationFolder =          ''   % folder that contains files with annotation information added by user;
         NickName
+        
         MovieFolder                      % movie folder:
         AttachedFiles =             cell(0,1) % list files that contain movie-information;
-        AnnotationFolder =          ''   % folder that contains files with annotation information added by user;
+       
 
         DriftCorrection =           PMDriftCorrection
         Interactions      
@@ -77,15 +79,31 @@ classdef PMMovieTracking < PMChannels
                 case 0
                     
                 case 1
-                    if isa(varargin{1}, 'PMMovieTrackingSummary')
-                            obj.NickName =       varargin{1}.getNickName;
-                            obj.MovieFolder =         varargin{1}.getMovieFolder; 
-                            obj.AttachedFiles =  varargin{1}.getAttachedFiles;
-                            obj.Keywords =       varargin{1}.getKeywords;
-
-                    else
-                        obj.NickName =          varargin{1};
+                    
+                    switch class(varargin{1})
+                       
+                        case 'PMMovieTrackingSummary'
+                            obj.NickName =          varargin{1}.getNickName;
+                            obj.MovieFolder =       varargin{1}.getMovieFolder; 
+                            obj.AttachedFiles =     varargin{1}.getAttachedFiles;
+                            obj.Keywords =          varargin{1}.getKeywords;
+                            
+                        case 'char'
+                             obj.NickName =          varargin{1};
+                            
+                        otherwise
+                            error('Wrong input.')
+                        
+                        
+                        
                     end
+                    
+                case 2
+                    
+                     obj.AnnotationFolder =        varargin{1};
+                    obj.NickName =        varargin{2};
+        
+              
                     
                 case 3
                     StructureOrNickName =  varargin{1};
@@ -189,16 +207,12 @@ classdef PMMovieTracking < PMChannels
                     
                     assert(strcmp(varargin{5}, 'Initialize'), 'Wrong input.')
                     
-                    
-                
-                    
+
                     obj.NickName = varargin{1};
                     obj.MovieFolder        = varargin{2};  
                     obj.AttachedFiles =    varargin{3}; 
                     obj.AnnotationFolder =   varargin{4};
 
-      
-        
                     obj = obj.setPropertiesFromImageFiles;
                     
                     
@@ -212,8 +226,16 @@ classdef PMMovieTracking < PMChannels
                 obj.Interactions = PMInteractionsCapture;
             end
 
-         end
+        end
         
+         
+        function obj = set.ImageMapPerFile(obj, Value)
+            
+            assert(isvector(Value) && length(Value) == obj.getNumberOfLinkedMovieFiles, 'Wrong input')
+            cellfun(@(x) PMImageMap(x), Value) % run this simply to provoke an error if input is wrong;
+            obj.ImageMapPerFile = Value;
+            
+        end
         function obj = set.AttachedFiles(obj, Value)
             assert(iscellstr(Value), 'Invalid argument type.')
             obj.AttachedFiles = Value;
@@ -841,6 +863,70 @@ classdef PMMovieTracking < PMChannels
         
         
         
+        %% setDriftCorrectionTo
+         function obj =      setDriftCorrectionTo(obj,OnOff)
+            obj.DriftCorrection = obj.DriftCorrection.setDriftCorrectionActive(OnOff);
+         end
+        
+        %% getDriftCorrectionStatus
+         function value = getDriftCorrectionStatus(obj) 
+             value = obj.DriftCorrection.getDriftCorrectionActive;
+         end
+         
+       
+         
+        
+    
+          function DriftCorrectionWasPerformed =             testForExistenceOfDriftCorrection(obj)
+               if isempty(obj.DriftCorrection)
+                    DriftCorrectionWasPerformed =           false;
+               else
+                    DriftCorrectionWasPerformed=            obj.DriftCorrection.testForExistenceOfDriftCorrection;
+               end
+          end
+        
+ 
+          function obj = applyManualDriftCorrection(obj)
+             obj.DriftCorrection =  obj.DriftCorrection.updateByManualDriftCorrection;
+          end
+         
+
+         function myDriftCorrection = getDriftCorrection(obj)
+            myDriftCorrection = obj.DriftCorrection;
+         end
+         
+         function obj = setDriftCorrection(obj, Value)
+            obj.DriftCorrection = Value;
+            obj.Tracking =  obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
+         end
+         
+        
+        
+   
+         function Coordinates = getActiveCoordinatesOfManualDriftCorrection(obj)
+                ManualDriftCorrectionValues =   obj.DriftCorrection.getManualDriftCorrectionValues;
+                ActiveFrame =                   obj.getActiveFrames;
+                xWithoutDrift =                 ManualDriftCorrectionValues(ActiveFrame, 2);
+                yWithoutDrift =                 ManualDriftCorrectionValues(ActiveFrame, 3);
+                planeWithoutDrift =             ManualDriftCorrectionValues(ActiveFrame, 4);
+                [xWithDrift, yWithDrift, zWithDrift ] =           obj.addDriftCorrection(xWithoutDrift, yWithoutDrift, planeWithoutDrift);
+
+                Coordinates =   [xWithDrift, yWithDrift, zWithDrift ];
+             
+         end
+         
+     
+     
+
+        function obj =  setDriftDependentParameters(obj)
+            obj.DriftCorrection =       obj.DriftCorrection.setNavigation(obj.Navigation);
+              obj.Tracking =      obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
+            % obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.getDriftCorrection);
+            % % this really slow and not necessary I think;
+
+        end
+        
+        
         
     end
     
@@ -1115,6 +1201,36 @@ classdef PMMovieTracking < PMChannels
     
     methods% derivative data
        
+         
+          function obj = saveDerivativeData(obj)
+              
+              if obj.isMapped
+                  
+              else
+                   obj =   obj.setPropertiesFromImageFiles;
+              end
+
+            TrackingAnalysis =      obj.getTrackingAnalysis;
+            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
+            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
+            TrackCell_Metric =      TrackingAnalysis.getTrackCell;
+            TrackCell_Metric =      cellfun(@(x) x(:, 1 : 5), TrackCell_Metric, 'UniformOutput', false);
+
+            SavePath = obj.getPathForTrackCell;
+            save(SavePath, 'TrackCell_Metric')
+
+            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('pixels');
+            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('frames');
+            TrackCell_Pixels =      TrackingAnalysis.getTrackCell;
+            TrackCell_Pixels =      cellfun(@(x) x(:, 1 : 5), TrackCell_Pixels, 'UniformOutput', false);
+
+            SavePath = obj.getPathForTrackCell('TrackCell_Pixels');
+            save(SavePath, 'TrackCell_Pixels')
+  
+          end
+          
+          
+        
         function TrackingAnalysis =     getTrackingAnalysis(obj)
             TrackingAnalysis =  PMTrackingAnalysis(obj.Tracking, obj.DriftCorrection, obj.SpaceCalibration, obj.TimeCalibration);
         end
@@ -1146,37 +1262,7 @@ classdef PMMovieTracking < PMChannels
     
     methods (Access = private) % derivative data
         
-        
-          function obj = saveDerivativeData(obj)
-              
-              if obj.isMapped
-                  
-              else
-                   obj =   obj.setPropertiesFromImageFiles;
-              end
-              
-             
-              
-            TrackingAnalysis =      obj.getTrackingAnalysis;
-            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
-            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
-            TrackCell_Metric =      TrackingAnalysis.getTrackCell;
-            TrackCell_Metric =      cellfun(@(x) x(:, 1 : 5), TrackCell_Metric, 'UniformOutput', false);
-
-            SavePath = obj.getPathForTrackCell;
-            save(SavePath, 'TrackCell_Metric')
-
-            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('pixels');
-            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('frames');
-            TrackCell_Pixels =      TrackingAnalysis.getTrackCell;
-            TrackCell_Pixels =      cellfun(@(x) x(:, 1 : 5), TrackCell_Pixels, 'UniformOutput', false);
-
-            SavePath = obj.getPathForTrackCell('TrackCell_Pixels');
-            save(SavePath, 'TrackCell_Pixels')
-
-              
-          end
-          
+       
         function fileName =     getPathForTrackCell(obj, varargin)
 
             if isempty(varargin)
@@ -1215,11 +1301,8 @@ classdef PMMovieTracking < PMChannels
         end
         
         function exist = verifyExistenceOfAnnotationPaths(obj)
-            
            exist =  ~isempty(obj.AnnotationFolder) &&  ~isempty(obj.NickName);
-           
-         
-           
+  
         end
         
  
@@ -1304,6 +1387,16 @@ classdef PMMovieTracking < PMChannels
          function linkeFiles = getLinkedMovieFileNames(obj)
               linkeFiles =  obj.AttachedFiles;  
          end
+         
+           function test = isMapped(obj)
+                test(1) = ~isempty(obj.ImageMapPerFile);
+
+                test(2) = isa(obj.TimeCalibration, 'PMTimeCalibrationSeries');
+                test(3) = isa(obj.SpaceCalibration, 'PMSpaceCalibrationSeries');
+                test(4) = obj.checkCompletenessOfNavigation;
+                test = min(test);
+
+        end
         
     end
     
@@ -1323,15 +1416,7 @@ classdef PMMovieTracking < PMChannels
 
      
 
-        function test = isMapped(obj)
-            test(1) = ~isempty(obj.ImageMapPerFile);
-
-            test(2) = isa(obj.TimeCalibration, 'PMTimeCalibrationSeries');
-            test(3) = isa(obj.SpaceCalibration, 'PMSpaceCalibrationSeries');
-            test(4) = obj.checkCompletenessOfNavigation;
-            test = min(test);
-
-        end
+      
  
     end
     
@@ -1720,27 +1805,33 @@ classdef PMMovieTracking < PMChannels
         end
     
         
-      end
+    end
   
+      
+    methods % image map
+        
+         function obj = unmap(obj)
+             error('Not allowed to unmap. Only remapping allowed. Use resetFromImageFiles.')
+                obj.ImageMapPerFile =                   [];
+         end
+         
+         function obj = resetFromImageFiles(obj)
+             
+            obj = obj.setPropertiesFromImageFiles;
+             
+         end
+        
+        
+    end
+    
     methods (Access = private) % image map
         
-          function obj =    replaceImageMapPaths(obj)
-             
-              PointerColumn =                     3;
-                ListWithPathsToImageFiles = obj.getPathsOfImageFiles;
-                for CurrentMapIndex = 1 : obj.getNumberOfLinkedMovieFiles
-                    obj.ImageMapPerFile{CurrentMapIndex, 1}( 2 : end, PointerColumn) =       {ListWithPathsToImageFiles{CurrentMapIndex}};
-                end
-             
-          end
+
          
         function Value = getImageMapsPerFile(obj)
             Value = obj.ImageMapPerFile; 
         end
         
-         function obj = unmap(obj)
-                obj.ImageMapPerFile =                   [];
-         end
         
         
         
@@ -1942,68 +2033,6 @@ classdef PMMovieTracking < PMChannels
        
         
         
-        %% setDriftCorrectionTo
-         function obj =      setDriftCorrectionTo(obj,OnOff)
-            obj.DriftCorrection = obj.DriftCorrection.setDriftCorrectionActive(OnOff);
-         end
-        
-        %% getDriftCorrectionStatus
-         function value = getDriftCorrectionStatus(obj) 
-             value = obj.DriftCorrection.getDriftCorrectionActive;
-         end
-         
-       
-         
-        
-        %% testForExistenceOfDriftCorrection:
-          function DriftCorrectionWasPerformed =             testForExistenceOfDriftCorrection(obj)
-               if isempty(obj.DriftCorrection)
-                    DriftCorrectionWasPerformed =           false;
-               else
-                    DriftCorrectionWasPerformed=            obj.DriftCorrection.testForExistenceOfDriftCorrection;
-               end
-          end
-        
-          %% applyManualDriftCorrection:
-          function obj = applyManualDriftCorrection(obj)
-             obj.DriftCorrection =  obj.DriftCorrection.updateByManualDriftCorrection;
-          end
-         
-          %% drift correction accessors:
-         function myDriftCorrection = getDriftCorrection(obj)
-            myDriftCorrection = obj.DriftCorrection;
-         end
-         
-         function obj = setDriftCorrection(obj, Value)
-            obj.DriftCorrection = Value;
-            obj.Tracking =  obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
-         end
-         
-        
-        
-         %% getActiveCoordinatesOfManualDriftCorrection
-         function Coordinates = getActiveCoordinatesOfManualDriftCorrection(obj)
-                ManualDriftCorrectionValues =   obj.DriftCorrection.getManualDriftCorrectionValues;
-                ActiveFrame =                   obj.getActiveFrames;
-                xWithoutDrift =                 ManualDriftCorrectionValues(ActiveFrame, 2);
-                yWithoutDrift =                 ManualDriftCorrectionValues(ActiveFrame, 3);
-                planeWithoutDrift =             ManualDriftCorrectionValues(ActiveFrame, 4);
-                [xWithDrift, yWithDrift, zWithDrift ] =           obj.addDriftCorrection(xWithoutDrift, yWithoutDrift, planeWithoutDrift);
-
-                Coordinates =   [xWithDrift, yWithDrift, zWithDrift ];
-             
-         end
-         
-     
-     
-        %% setDriftDependentParameters
-        function obj =  setDriftDependentParameters(obj)
-            obj.DriftCorrection =       obj.DriftCorrection.setNavigation(obj.Navigation);
-              obj.Tracking =      obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
-            % obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.getDriftCorrection);
-            % % this really slow and not necessary I think;
-
-        end
         
         %% mediate tracking
         function obj = performTrackingMethod(obj, Value)
@@ -2528,6 +2557,20 @@ classdef PMMovieTracking < PMChannels
 
                   end  
             end
+
+            function obj =    replaceImageMapPaths(obj)
+
+             
+                PointerColumn =                     3;
+                ListWithPathsToImageFiles = obj.getPathsOfImageFiles;
+                for CurrentMapIndex = 1 : obj.getNumberOfLinkedMovieFiles
+                    obj.ImageMapPerFile{CurrentMapIndex, 1}( 2 : end, PointerColumn) =       {ListWithPathsToImageFiles{CurrentMapIndex}};
+                end
+
+                
+                 
+            end
+          
             
             
          function AllConnectionsOk = checkWhetherAllImagePathsCanBeLinked(obj)
