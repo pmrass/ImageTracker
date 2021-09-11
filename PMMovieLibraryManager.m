@@ -684,26 +684,16 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % set drift menu:
         
-           function obj =  addCallbacksToDriftMenu(obj)
+        function obj =  addCallbacksToDriftMenu(obj)
                
-               
-                   MenuLabels = { 'Apply manual drift correction', 'Erase all drift corrections'};
-          
-                
-                    CallbackList =   {...
-                        @obj.applyManualDriftCorrectionClicked, ...
-                 @obj.eraseAllDriftCorrectionsClicked ...
+                MenuLabels = { 'Apply manual drift correction', 'Erase all drift corrections'};
+
+                CallbackList =   {...
+                @obj.applyManualDriftCorrectionClicked, ...
+                @obj.eraseAllDriftCorrectionsClicked ...
                 };
 
-                    
-      
-             obj.Viewer =    obj.Viewer.setMenu('DriftMenu', 'Drift correction', MenuLabels, CallbackList);
-
-
-             
-             
-     
-     
+                obj.Viewer =    obj.Viewer.setMenu('DriftMenu', 'Drift correction', MenuLabels, CallbackList);
 
         end
         

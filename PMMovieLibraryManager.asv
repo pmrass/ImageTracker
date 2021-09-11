@@ -5,7 +5,6 @@ classdef PMMovieLibraryManager < handle
     properties (Access = private)
 
         Viewer
-        MainProjectFolder =                userpath; %not in use right now
         MovieLibrary 
         ActiveMovieController =            PMMovieController()
         MovieTrackingFileController =      PMMovieTrackingFileController
@@ -89,9 +88,9 @@ classdef PMMovieLibraryManager < handle
 
             obj =           obj.addCallbacksToFileAndProject;
 
-            obj =           obj.addCallbacksToFileMenu;
+            obj =           obj.setFileMenu;
             obj =           obj.setProjectMenu;
-            obj =           obj.addCallbacksToMovieMenu;
+            obj =           obj.setMovieMenu;
             obj =           obj.addCallbacksToDriftMenu;
             obj =           obj.addCallbacksToTrackingMenu;
             obj =           obj.addCallbacksToInteractionsMenu;
@@ -392,11 +391,23 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % callbacks file menu
         
-          function obj = addCallbacksToFileMenu(obj)
-              obj.Viewer =    obj.Viewer.setFileMenuCallbacks(...
+          function obj = setFileMenu(obj)
+              
+                 
+   
+                              MenuLabels = { 'File', 'New', 'Save'};
+                     
+                     
+              CallbackList = {...
                             @obj.newProjectClicked, ...
                             @obj.saveProjectClicked, ...
-                            @obj.loadProjectClicked);
+                            @obj.loadProjectClicked...
+                            };
+                        
+                        
+              obj.Viewer =    obj.Viewer.setMenu('FileMenu', 'File', MenuLabels, CallbackList);
+              
+              
           end
           
              function [obj] =    newProjectClicked(obj,~,~)
@@ -416,33 +427,273 @@ classdef PMMovieLibraryManager < handle
             obj =   obj.userLoadsExistingLibrary;
         end
                     
-        function obj =      addCallbacksToMovieMenu(obj)
-
-            obj.Viewer =    obj.Viewer.setMovieMenuCallbacks(...
-                @obj.editMovieSettingsClicked, ...
-                @obj.changeNameOfLinkeMoviesClicked, ...
-                @obj.changeLinkedMoviesClicked, ...
-                @obj.reapplySourceFilesClicked, ...
-                @obj.deleteImageCacheClicked, ...
-                @obj.exportImage, ...
-                @obj.exportMovie, ...
-                @obj.exportTrackCoordinates, ...
-                @obj.exportDetailedMetaDataIntoFile, ...
-                @obj.showMetaDataSummary ...
-        );
+       
         
-   
-            
+     
+        
+        
+    end
+    
+    methods (Access = private) % add calbbacks for project menu
+             
+        function obj = setProjectMenu(obj)
+
+            MenuLabels = {...
+                 'Change image analysis folder'; ...
+                 'Add movie-folder'; ...
+                 'Change export-folder'; ...
+                 'Add single new entry'; ...
+                 'Add entries for all images/movies in movie directory'; ...
+                 'Delete entry of active movie'; ...
+                 'Delete all entries in library'; ...
+                 'Batch: Map all unmapped images'; ...
+                 'Unmapping all movies'; ...
+                 'Create derivative files'; ...
+                 'Set channels of selected movies by active movie'; ...
+                 'Show image/movie files that have not yet been imported'; ...
+                 'Replace keywords'; ...
+                 'Update movie summaries from file'; ...
+                 'Info'...
+                 };
+
+
+        CallbackList = {...
+                    @obj.setPathForImageAnalysis, ...
+                    @obj.changeMovieFolderClicked, ...
+                    @obj.changeExportFolderClicked,...
+                    @obj.addMovieClicked,...
+                    @obj.addAllMissingCaptures,...
+                    @obj.removeMovieClicked,...
+                    @obj.removeAllMoviesClicked,...
+                    @obj.mapUnMappedMovies,...
+                    @obj.unmapAllMovies,...
+                    @obj.createDerivativeFiles,...
+                    @obj.batchProcessingChannel...
+                    @obj.updateMovieSummaryFromFiles,...
+                    @obj.showMissingCaptures,...
+                    @obj.replaceKeywords,...
+                    @obj.toggleProjectInfo,...
+                    };
+
+                SeparatorList = {'off', 'off', 'off', ...
+                                  'on', 'off', 'off', 'off', ...
+                                  'on', 'off', 'off', 'off', 'off', ...
+                                  'on', 'off', 'off'};
+
+
+        obj.Viewer =    obj.Viewer.setMenu('ProjectMenu', 'Project', MenuLabels, CallbackList, SeparatorList);
+
+        end
+
+        function obj =    setPathForImageAnalysis(obj, ~, ~)
+
+        NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select tracking folder',...
+        'NumFiles', 1, 'Output', 'char');
+
+        if isempty(NewPath) || ~ischar(NewPath)
+        else
+        obj = obj.setImageAnalysisPath(NewPath);
+
+        end
+
+        end
+
+        function obj =    changeMovieFolderClicked(obj,~,~)
+        NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select movie folder',...
+        'NumFiles', 1, 'Output', 'char');
+        if isempty(NewPath) || ~ischar(NewPath)
+        else
+        obj = obj.addMovieFolder(NewPath);
+        end
+        end
+
+        function obj =    changeExportFolderClicked(obj,~,~)
+        UserSelectedFolder=            uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select export folder',...
+        'NumFiles', 1, 'Output', 'char');
+        if isempty(UserSelectedFolder) || ~ischar(UserSelectedFolder)
+        else
+          obj = obj.setExportFolder(UserSelectedFolder);
+        end
+
+        end
+
+        function obj =    addMovieClicked(obj,~,~)
+        obj = obj.letUserAddNewMovie;
+        end
+
+        function obj =    addAllMissingCaptures(obj,~,~)
+        missingFiles =                          obj.MovieLibrary.getFileNamesOfUnincorporatedMovies;
+        for FileIndex= 1:size(missingFiles,1)
+            CurrentFileName =   missingFiles{FileIndex,1};
+            obj =     obj.addNewMovie(obj.convertFileNameIntoNickName(CurrentFileName), {CurrentFileName});
+        end
+        end
+
+        function nickName = convertFileNameIntoNickName(~, FileName)
+        nickName =  FileName(1:end-4);
+        end
+
+        function obj =  removeMovieClicked(obj,~,~)
+            obj =                           obj.removeActiveEntry;   
+        end
+
+        function obj = removeActiveEntry(obj)
+            obj.ActiveMovieController =     obj.ActiveMovieController.deleteImageAnalysisFile;
+            obj.MovieLibrary =              obj.MovieLibrary.removeActiveMovieFromLibrary;
+            obj =                           obj.callbackForFilterChange;
+            obj =                           obj.setEmpyActiveMovieController;  
+        end
+
+        function obj = removeAllMoviesClicked(obj, ~, ~)
+
+        answer = questdlg(['Are you sure you remove all entries from the library?  Al linked data (tracking, drift correction etc.) will also be deleted. This is irreversible.'], ...
+        'Project menu', 'Yes',   'No','No');
+        switch answer
+        case 'Yes'
+            AllNickNames = obj.MovieLibrary.getAllNicknames;
+            for index = 1:length(AllNickNames)
+                obj = obj.removeEntryWithNickName(AllNickNames{index});
+            end
+        end
+
+        end
+
+        function obj = removeEntryWithNickName(obj, Value)
+        obj =           obj.setActiveMovieByNickName(Value);
+        obj =           obj.removeActiveEntry;
+        end
+
+        function obj =  mapUnMappedMovies(obj,~,~)
+        obj.Viewer =       obj.Viewer.setContentTypeFilterTo('Show all unmapped movies');
+        obj =              obj.callbackForFilterChange;
+        obj =              obj.batchProcessingOfNickNames(obj.MovieLibrary.getAllFilteredNicknames, 'MapImages');
+        end
+
+        function obj = unmapAllMovies(obj,~,~)
+        obj.Viewer =      obj.Viewer.setContentTypeFilterTo('Show all unmapped movies');
+        obj =             obj.callbackForFilterChange;
+        obj =             obj.batchProcessingOfNickNames(obj.MovieLibrary.getAllNicknames,'UnMapImages');
+        end
+
+        function obj =  showMissingCaptures(obj,~,~)   
+
+        obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getFileNamesOfUnincorporatedMovies);
+
+
+        end
+
+        function obj = updateMovieSummaryFromFiles(obj,~,~)
+        obj.MovieLibrary = obj.MovieLibrary.updateMovieSummariesFromFiles;
+        end
+
+        function obj = replaceKeywords(obj,~,~)
+
+        function [KeywordManagerSelection] = DoneField_KeywordManager(KeywordManagerHandles)
+            %DONEFIELD_KEYWORDMANAGER Summary of this function goes here
+            %   Detailed explanation goes here
+             if ~isvalid(KeywordManagerHandles.SelectFilterTypeSource)
+                 KeywordManagerSelection.SourceKeywordType =    'Cancel';
+                 return
+             end
+
+             KeywordManagerSelection.SourceKeywordType =        GetFieldname(KeywordManagerHandles.SelectFilterTypeSource.String{KeywordManagerHandles.SelectFilterTypeSource.Value});
+             KeywordManagerSelection.SourceKeyword =            KeywordManagerHandles.ListWithFilterWordsSource.String{KeywordManagerHandles.ListWithFilterWordsSource.Value};
+
+             KeywordManagerSelection.TargetKeywordType =        GetFieldname(KeywordManagerHandles.SelectFilterTypeTarget.String{KeywordManagerHandles.SelectFilterTypeTarget.Value});
+             KeywordManagerSelection.TargetKeyword =            KeywordManagerHandles.ListWithFilterWordsTarget.String{KeywordManagerHandles.ListWithFilterWordsTarget.Value};
+
+             close(KeywordManagerHandles.FigureHandle)
+
+
+        end
+
+        function FieldName = GetFieldname(String)
+        switch String
+            case 'Keywords'
+               FieldName =  'Keyword';
+            case 'Technical'
+                    FieldName =  'TechnicalComments';
+            case 'Conceptual'
+                FieldName =  'ConceptualComments';
+            case 'Delete'
+                FieldName =  'Delete';
+        end
+        end
+
+
+        KeywordChangeViewer =                                       obj.Viewer.createKeywordEditorView;
+        KeywordChangeViewer.ListWithFilterWordsTarget.String =      obj.MovieLibrary.getKeyWordList;
+        KeywordChangeViewer.ListWithFilterWordsSource.String =      obj.MovieLibrary.getKeyWordList;
+        waitfor(KeywordChangeViewer.DoneField,'Value')
+
+        KeywordManagerSelection = DoneField_KeywordManager(KeywordChangeViewer);
+        if strcmp(KeywordManagerSelection.SourceKeywordType, 'Cancel')
+        else
+            obj.MovieLibrary =              obj.MovieLibrary.replaceKeywords(KeywordManagerSelection.SourceKeyword, KeywordManagerSelection.TargetKeyword);
+            obj.Viewer =    obj.Viewer.updateWith(obj.MovieLibrary);
+            obj =                           obj.callbackForFilterChange;
+            obj =                           obj.setInfoTextView;
+        end
+
+
+
+        end
+  
+    end
+    
+    methods (Access = private) % set movie-menu
+        
+         function obj =      setMovieMenu(obj)
+
+                MenuLabels = { 'File settings', 'Rename linked movie files', 'Relink movies', ...
+                    'Remap image files', 'Delete image cache', ...
+                    'Export active movie into mp4 file', 'Export active image into jpg file', 'Export track coodinates into csv file', 'Export detailed meta-data into txt file',  'Show meta-data summary in info text box'};
+          
+                
+                    CallbackList =   {...
+                        @obj.editMovieSettingsClicked, ...
+                        @obj.changeNameOfLinkeMoviesClicked, ...
+                        @obj.changeLinkedMoviesClicked, ...
+                        @obj.reapplySourceFilesClicked, ...
+                        @obj.deleteImageCacheClicked, ...
+                        @obj.exportImage, ...
+                        @obj.exportMovie, ...
+                        @obj.exportTrackCoordinates, ...
+                        @obj.exportDetailedMetaDataIntoFile, ...
+                        @obj.showMetaDataSummary ...
+                };
+
+                SeparatorList = {'off', 'off', 'off', ...
+                                          'on', 'off', ...
+                                          'on', 'off', 'off', 'off', 'off'};
+
+
+
+
+             obj.Viewer =    obj.Viewer.setMenu('MovieMenu', 'Movie', MenuLabels, CallbackList, SeparatorList);
+
+
+
+
 
         end
         
+        
+        
+    end
+    
+    methods (Access = private) % set drift menu:
+        
         function obj =  addCallbacksToDriftMenu(obj)
-             obj.Viewer =    obj.Viewer.setDriftMenuCallbacks(...
-                 @obj.applyManualDriftCorrectionClicked, ...
-                 @obj.eraseAllDriftCorrectionsClicked ...
-         );
-         
-     
+               
+                MenuLabels = { 'Apply manual drift correction', 'Erase all drift corrections'};
+
+                CallbackList =   {...
+                @obj.applyManualDriftCorrectionClicked, ...
+                @obj.eraseAllDriftCorrectionsClicked ...
+                };
+
+                obj.Viewer =    obj.Viewer.setMenu('DriftMenu', 'Drift correction', MenuLabels, CallbackList);
 
         end
         
@@ -468,240 +719,8 @@ classdef PMMovieLibraryManager < handle
         
         
         
-    end
-    
-    methods (Access = private) % add calbbacks for project menu
-       
-            
-          function obj = setProjectMenu(obj)
-              
-                    MenuLabels = {...
-                         'Change image analysis folder'; ...
-                         'Add movie-folder'; ...
-                         'Change export-folder'; ...
-                         'Add single new entry'; ...
-                         'Add entries for all images/movies in movie directory'; ...
-                         'Delete entry of active movie'; ...
-                         'Delete all entries in library'; ...
-                         'Batch: Map all unmapped images'; ...
-                         'Unmapping all movies'; ...
-                         'Create derivative files'; ...
-                         'Set channels of selected movies by active movie'; ...
-                         'Show image/movie files that have not yet been imported'; ...
-                         'Replace keywords'; ...
-                         'Update movie summaries from file'; ...
-                         'Info'...
-                         };
-                     
-                     
-              CallbackList = {...
-                            @obj.setPathForImageAnalysis, ...
-                            @obj.changeMovieFolderClicked, ...
-                            @obj.changeExportFolderClicked,...
-                            @obj.addMovieClicked,...
-                            @obj.addAllMissingCaptures,...
-                            @obj.removeMovieClicked,...
-                            @obj.removeAllMoviesClicked,...
-                            @obj.mapUnMappedMovies,...
-                            @obj.unmapAllMovies,...
-                            @obj.createDerivativeFiles,...
-                            @obj.batchProcessingChannel...
-                            @obj.updateMovieSummaryFromFiles,...
-                            @obj.showMissingCaptures,...
-                            @obj.replaceKeywords,...
-                            @obj.toggleProjectInfo,...
-                            };
-                        
-                        SeparatorList = {'off', 'off', 'off', ...
-                                          'on', 'off', 'off', 'on',
-         
-              
-              obj.Viewer =    obj.Viewer.setMenu('ProjectMenu', MenuLabels, CallbackList, SeparatorList);
-              
-          end
-          
-          
-        function obj =           setPathForImageAnalysis(obj, ~, ~)
-
-             NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select tracking folder',...
-            'NumFiles', 1, 'Output', 'char');
-
-            if isempty(NewPath) || ~ischar(NewPath)
-            else
-                obj = obj.setImageAnalysisPath(NewPath);
-
-            end
-            
-        end
-
-     
-
-        function obj =        changeMovieFolderClicked(obj,~,~)
-            NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select movie folder',...
-            'NumFiles', 1, 'Output', 'char');
-            if isempty(NewPath) || ~ischar(NewPath)
-            else
-                obj = obj.addMovieFolder(NewPath);
-            end
-        end
-
-       
-        
-         
-        function [obj] =        changeExportFolderClicked(obj,~,~)
-                UserSelectedFolder=            uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select export folder',...
-                'NumFiles', 1, 'Output', 'char');
-                if isempty(UserSelectedFolder) || ~ischar(UserSelectedFolder)
-                else
-                  obj = obj.setExportFolder(UserSelectedFolder);
-                end
-
-        end
-        
-        
-    
-        
-
-        function [obj] =        addMovieClicked(obj,~,~)
-            obj = obj.letUserAddNewMovie;
-        end
-        
-
-           function [obj] =        addAllMissingCaptures(obj,~,~)
-                missingFiles =                          obj.MovieLibrary.getFileNamesOfUnincorporatedMovies;
-                for FileIndex= 1:size(missingFiles,1)
-                    CurrentFileName =   missingFiles{FileIndex,1};
-                    obj =     obj.addNewMovie(obj.convertFileNameIntoNickName(CurrentFileName), {CurrentFileName});
-                end
-           end
-           
-           function nickName = convertFileNameIntoNickName(~, FileName)
-              nickName =  FileName(1:end-4);
-           end
-        
-
-        function [obj] =        removeMovieClicked(obj,~,~)
-            obj =                           obj.removeActiveEntry;   
-
-        end
-        
-        function obj = removeActiveEntry(obj)
-                obj.ActiveMovieController =     obj.ActiveMovieController.deleteImageAnalysisFile;
-                obj.MovieLibrary =              obj.MovieLibrary.removeActiveMovieFromLibrary;
-                obj =                           obj.callbackForFilterChange;
-                obj =                           obj.setEmpyActiveMovieController;  
-        end
-        
-        function obj = removeAllMoviesClicked(obj, ~, ~)
-            
-            answer = questdlg(['Are you sure you remove all entries from the library?  Al linked data (tracking, drift correction etc.) will also be deleted. This is irreversible.'], ...
-            'Project menu', 'Yes',   'No','No');
-            switch answer
-                case 'Yes'
-                    AllNickNames = obj.MovieLibrary.getAllNicknames;
-                    for index = 1:length(AllNickNames)
-                        obj = obj.removeEntryWithNickName(AllNickNames{index});
-                    end
-            end
-            
-        end
-        
-        function obj = removeEntryWithNickName(obj, Value)
-            obj =           obj.setActiveMovieByNickName(Value);
-            obj =           obj.removeActiveEntry;
-        end
-        
-         
-        function [obj] =           mapUnMappedMovies(obj,~,~)
-            obj.Viewer =       obj.Viewer.setContentTypeFilterTo('Show all unmapped movies');
-            obj =              obj.callbackForFilterChange;
-            obj =              obj.batchProcessingOfNickNames(obj.MovieLibrary.getAllFilteredNicknames, 'MapImages');
-        end
-        
-    
-        function obj = unmapAllMovies(obj,~,~)
-            obj.Viewer =      obj.Viewer.setContentTypeFilterTo('Show all unmapped movies');
-            obj =             obj.callbackForFilterChange;
-            obj =             obj.batchProcessingOfNickNames(obj.MovieLibrary.getAllNicknames,'UnMapImages');
-        end
-          
-           
-           
-        function [obj] =        showMissingCaptures(obj,~,~)   
-            
-            obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getFileNamesOfUnincorporatedMovies);
-            
-            
-        end
- 
-        function obj = updateMovieSummaryFromFiles(obj,~,~)
-            obj.MovieLibrary = obj.MovieLibrary.updateMovieSummariesFromFiles;
-        end
-        
-             function obj = replaceKeywords(obj,~,~)
-            
-            function [KeywordManagerSelection] = DoneField_KeywordManager(KeywordManagerHandles)
-                    %DONEFIELD_KEYWORDMANAGER Summary of this function goes here
-                    %   Detailed explanation goes here
-                     if ~isvalid(KeywordManagerHandles.SelectFilterTypeSource)
-                         KeywordManagerSelection.SourceKeywordType =    'Cancel';
-                         return
-                     end
-
-                     KeywordManagerSelection.SourceKeywordType =        GetFieldname(KeywordManagerHandles.SelectFilterTypeSource.String{KeywordManagerHandles.SelectFilterTypeSource.Value});
-                     KeywordManagerSelection.SourceKeyword =            KeywordManagerHandles.ListWithFilterWordsSource.String{KeywordManagerHandles.ListWithFilterWordsSource.Value};
-
-                     KeywordManagerSelection.TargetKeywordType =        GetFieldname(KeywordManagerHandles.SelectFilterTypeTarget.String{KeywordManagerHandles.SelectFilterTypeTarget.Value});
-                     KeywordManagerSelection.TargetKeyword =            KeywordManagerHandles.ListWithFilterWordsTarget.String{KeywordManagerHandles.ListWithFilterWordsTarget.Value};
-
-                     close(KeywordManagerHandles.FigureHandle)
-
-
-            end
-
-            function FieldName = GetFieldname(String)
-                switch String
-                    case 'Keywords'
-                       FieldName =  'Keyword';
-                    case 'Technical'
-                            FieldName =  'TechnicalComments';
-                    case 'Conceptual'
-                        FieldName =  'ConceptualComments';
-                    case 'Delete'
-                        FieldName =  'Delete';
-                end
-            end
-
-            
-            KeywordChangeViewer =                                       obj.Viewer.createKeywordEditorView;
-            KeywordChangeViewer.ListWithFilterWordsTarget.String =      obj.MovieLibrary.getKeyWordList;
-            KeywordChangeViewer.ListWithFilterWordsSource.String =      obj.MovieLibrary.getKeyWordList;
-            waitfor(KeywordChangeViewer.DoneField,'Value')
-            
-            KeywordManagerSelection = DoneField_KeywordManager(KeywordChangeViewer);
-             if strcmp(KeywordManagerSelection.SourceKeywordType, 'Cancel')
-             else
-                    obj.MovieLibrary =              obj.MovieLibrary.replaceKeywords(KeywordManagerSelection.SourceKeyword, KeywordManagerSelection.TargetKeyword);
-                    obj.Viewer =    obj.Viewer.updateWith(obj.MovieLibrary);
-                    obj =                           obj.callbackForFilterChange;
-                    obj =                           obj.setInfoTextView;
-             end
-             
-            
-              
-             end
-        
-        
-        
-        
-        
-
-           
-
         
     end
-    
-    
     
         
     methods % setters project:
