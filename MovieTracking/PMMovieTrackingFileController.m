@@ -7,21 +7,30 @@ classdef PMMovieTrackingFileController
         View
     end
     
-    
-    methods
+    methods % initialize
         
         function obj =      PMMovieTrackingFileController
             %PMMOVIETRACKINGCONTROLLER Construct an instance of this class
             %   Detailed explanation goes here
         end
         
-        function obj =      setView(obj)
-            obj.View =      PMMovieTrackingFileView;
+        function obj = set.View(obj, Value)
+            assert(isa(Value, 'PMMovieTrackingFileView') && isscalar(Value), 'Invalid argument type.')
+            obj.View =      Value;
         end
         
-        function obj = set.View(obj, Value)
-            assert(isa(Value, 'PMMovieTrackingFileView'), 'Invalid argument type.')
-            obj.View =      Value;
+        function obj = set.Model(obj, Value)
+            assert(isa(Value, 'PMMovieTracking') && isscalar(Value), 'Invalid argument type.')
+            obj.Model =      Value;
+        end
+         
+    end
+    
+    
+    methods
+        
+        function obj =      setView(obj)
+            obj.View =      PMMovieTrackingFileView;
         end
         
         function obj =      resetView(obj)
@@ -61,7 +70,6 @@ classdef PMMovieTrackingFileController
                  figure(obj.View.getFigure)
                  obj.View =     obj.View.updateWith(obj.Model);
                  
-                
             end
            
            

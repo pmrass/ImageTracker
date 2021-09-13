@@ -2,12 +2,7 @@ classdef PMMovieTrackingFileView
     %PMMOVIETRACKINGSETTINGS Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
-        
 
-        
-    end
-    
     properties (Access = private)
         
         MainFigure 
@@ -50,7 +45,6 @@ classdef PMMovieTrackingFileView
             %PMMOVIETRACKINGSETTINGS Construct an instance of this class
             %   Detailed explanation goes here
             
-            %% define dimensions and create figure
             obj =       obj.setMainFigure;
             obj =       obj.setPanels;
               
@@ -62,25 +56,40 @@ classdef PMMovieTrackingFileView
         
         function obj = updateWith(obj, Value)
             
-                obj.NickName.Value =                   Value.getNickName;
-                if ~isempty(Value.getKeywords)
-                    % this shows only the first keyword; in a future version
-                    % there should be options to show and change more than first keyword;
-                    obj.Keywords.Value =               Value.getKeywords{1}; 
-                else
-                    obj.Keywords.Value =         '';
-                end
-                obj.Folder.Items =               {Value.getMovieFolder};
-                obj.FolderAnnotation.Items =     {Value.getPathOfMovieTrackingFile};
-                obj.AttachedFiles.Items =        Value.getLinkedMovieFileNames;
-                obj.ListWithPaths.Items =        Value.getPathsOfImageFiles;
-                obj.PointersPerFile.Items =      cellfun(@(x) x, Value.getPathsOfImageFiles, 'UniformOutput', false);
+            assert(isscalar(Value), 'Wrong input.')
+            
+            switch class(Value)
+               
+                case 'PMMovieTracking'
+                    
+                        obj.NickName.Value =                   Value.getNickName;
+                    if ~isempty(Value.getKeywords)
+                        % this shows only the first keyword; in a future version
+                        % there should be options to show and change more than first keyword;
+                        obj.Keywords.Value =               Value.getKeywords{1}; 
+                    else
+                        obj.Keywords.Value =         '';
+                    end
+                    obj.Folder.Items =               {Value.getMovieFolder};
+                    obj.FolderAnnotation.Items =     {Value.getPathOfMovieTrackingForSingleFile};
+                    obj.AttachedFiles.Items =        Value.getLinkedMovieFileNames;
+                    obj.ListWithPaths.Items =        Value.getPathsOfImageFiles;
+                    obj.PointersPerFile.Items =      cellfun(@(x) x, Value.getPathsOfImageFiles, 'UniformOutput', false);
 
-                obj.TrackNumber.Text =           num2str(Value.getNumberOfTracks);
-                obj.DriftCorrectionPerformed.Value =     Value.testForExistenceOfDriftCorrection;
-                obj.MetaData.Items =               Value.getMetaDataInfoText;
-                obj.ImageMap.Data =                Value.getSimplifiedImageMapForDisplay;
+                    obj.TrackNumber.Text =           num2str(Value.getNumberOfTracks);
+                    obj.DriftCorrectionPerformed.Value =     Value.testForExistenceOfDriftCorrection;
+                    obj.MetaData.Items =               Value.getMetaDataInfoText;
+                    obj.ImageMap.Data =                Value.getSimplifiedImageMapForDisplay;
 
+                    
+                    
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+            
+            
             
             
         end

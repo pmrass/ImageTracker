@@ -247,7 +247,7 @@ classdef PMMovieTracking < PMChannels
         end
 
         function obj = set.Keywords(obj, Value)
-            assert(iscellstr(Value), 'Invalid argument type.')
+            assert(iscellstr(Value) && isvector(Value), 'Invalid argument type.')
             obj.Keywords =   Value;
         end
         
@@ -1395,7 +1395,16 @@ classdef PMMovieTracking < PMChannels
                 test(4) = obj.checkCompletenessOfNavigation;
                 test = min(test);
 
-        end
+           end
+        
+            function extension = getMovieFileExtension(obj)
+               [~, ~, NickNames] = cellfun(@(x) fileparts(x), obj.AttachedFiles, 'UniformOutput', false);
+               extension = unique(NickNames);
+               assert(length(extension) == 1, 'Cannot process diverse extensions.')
+               extension = extension{1};
+            end
+
+        
         
     end
     
@@ -1405,18 +1414,21 @@ classdef PMMovieTracking < PMChannels
            number = length(obj.getLinkedMovieFileNames);
         end
 
-        function extension = getMovieFileExtension(obj)
-           [~, ~, NickNames] = cellfun(@(x) fileparts(x), obj.AttachedFiles, 'UniformOutput', false);
-           extension = unique(NickNames);
-           assert(length(extension) == 1, 'Cannot process diverse extensions.')
-           extension = extension{1};
-        end
-
+       
 
      
 
       
  
+    end
+    
+    
+    methods % ANNOTATION FILE GETTERS
+         function fileName =     getPathOfMovieTrackingForSingleFile(obj)
+            obj = obj.verifyAnnotationPaths;
+            fileName = [obj.AnnotationFolder '/' obj.NickName  '.mat'];
+        end
+        
     end
     
     methods (Access = private) % ANNOTATION FILE GETTERS
@@ -1438,10 +1450,7 @@ classdef PMMovieTracking < PMChannels
 
         end
 
-        function fileName =     getPathOfMovieTrackingForSingleFile(obj)
-            obj = obj.verifyAnnotationPaths;
-            fileName = [obj.AnnotationFolder '/' obj.NickName  '.mat'];
-        end
+       
 
         function fileName =     getPathOfMovieTrackingForSmallFile(obj)
             obj = obj.verifyAnnotationPaths;
@@ -1461,11 +1470,33 @@ classdef PMMovieTracking < PMChannels
     methods % FILE IMPORT
         
       
+        
+        function value = canConnectToSourceFile(obj)
+            
+              version = obj.detectVersionFromFileFormat;
+              
+              if ~isempty(version)
+                  
+                  value = true;
+              else
+                  value = false;
+                  
+                  
+              end
+            
+        end
+        
+        
         function obj = load(obj)
 
             version = obj.detectVersionFromFileFormat;
 
+            
+            
             switch version
+                
+                case ''
+                    error('File does not exist or has row version.')
 
                 case 'BeforeAugust2021'
                     OriginalAnnotationFolder = obj.AnnotationFolder;
@@ -1510,7 +1541,7 @@ classdef PMMovieTracking < PMChannels
             elseif exist(obj.getPathOfMovieTrackingForSingleFile) == 2
                 version = 'BeforeAugust2021';
             else
-                error('Could not detect valid format')
+                version = '';
 
             end
 
@@ -1815,8 +1846,8 @@ classdef PMMovieTracking < PMChannels
          end
          
          function obj = resetFromImageFiles(obj)
-             
-            obj = obj.setPropertiesFromImageFiles;
+             error('Not supported anymore. Use setPropertiesFromImageFiles instead.')
+        
              
          end
         

@@ -64,8 +64,7 @@ classdef PMImagingProjectViewer
                 obj =                        obj.CreateProjectFigure;
 
                 obj.TrackingViews =          PMTrackingView(obj);
-           
-                obj =                        obj.CreateHelpMenu;  
+
                 obj =                        obj.CreateProjectViews;
                 obj.MovieControllerViews =   PMMovieControllerView(obj);
                 obj =                        obj.createInfoView;
@@ -144,125 +143,7 @@ classdef PMImagingProjectViewer
            
     end
     
-    methods % create subviews
-        
-            function [KeywordManagerHandles]=       createKeywordEditorView(obj)
-
-
-                FirstColumnFilter =                 0.1;
-                SecondColumnFilter =                0.5;
-
-                FirstRowFilter =                    0.9;
-                SecondRowFilter =                   0.8;
-                ThirdRowFilter =                    0.1;
-
-                FilterOptions =                     {'Keywords'};
-
-                FigureHandle=                          findobj('Tag', obj.TagForKeywordEditor);
-                if isempty(FigureHandle)
-                    FigureHandle=                                                               figure;
-                else
-                    clf(FigureHandle)
-                end
-
-                figure(FigureHandle)
-                FigureHandle.Units=                                                             'normalized';
-                FigureHandle.Position=                                                          [0.05 0.2  0.6 0.7];
-                FigureHandle.MenuBar=                                                           'none';
-                FigureHandle.Tag=                                                              obj.TagForKeywordEditor;
-
-                DoneField=                              uicontrol;
-                DoneField.Style=                        'checkbox';
-                DoneField.String=                       'Done';
-                DoneField.Value =                       0;
-                DoneField.Units=                        'normalized';
-                DoneField.Position=                     [0.8 0.85  0.1 0.15];
-
-                SelectFilterTypeSource=                                           uicontrol;
-                SelectFilterTypeSource.Style=                                    'popupmenu';
-                SelectFilterTypeSource.String=                                    FilterOptions;
-                SelectFilterTypeSource.Units=                                     'normalized';
-                SelectFilterTypeSource.HorizontalAlignment=                       'left';	
-
-
-
-                SelectFilterTypeSource.Position=                                  [FirstColumnFilter  FirstRowFilter 0.15 0.05];
-
-
-
-                PreFilterSource=                                          uicontrol;
-                PreFilterSource.Style=                                  'edit';
-                PreFilterSource.String=                                  '';
-                PreFilterSource.Units=                                            'normalized';
-                PreFilterSource.HorizontalAlignment=                                  'left';	
-                PreFilterSource.Position=                                             [FirstColumnFilter  SecondRowFilter 0.29 0.05];
-
-
-                ListWithFilterWordsSource=                                           uicontrol;
-                ListWithFilterWordsSource.Style=                                     'listbox';
-                ListWithFilterWordsSource.String=                                    '';
-                ListWithFilterWordsSource.Units=                                     'normalized';
-                ListWithFilterWordsSource.Min=                                       0;
-                ListWithFilterWordsSource.Max=                                       1;
-                ListWithFilterWordsSource.HorizontalAlignment=                       'left';	
-                ListWithFilterWordsSource.Position=                                  [FirstColumnFilter  ThirdRowFilter 0.29 0.4];
-
-
-                SelectFilterTypeTarget=                                           uicontrol;
-                SelectFilterTypeTarget.Style=                                    'popupmenu';
-                SelectFilterTypeTarget.String=                                    ['Delete', FilterOptions];
-                SelectFilterTypeTarget.Units=                                     'normalized';
-                SelectFilterTypeTarget.HorizontalAlignment=                       'left';	
-
-                SelectFilterTypeTarget.Value = 2;
-
-                SelectFilterTypeTarget.Position=                                  [SecondColumnFilter  FirstRowFilter 0.15 0.05];
-
-
-
-                PreFilterTarget=                                                    uicontrol;
-                PreFilterTarget.Style=                                                  'edit';
-                PreFilterTarget.String=                                                 '';
-                PreFilterTarget.Units=                                                  'normalized';
-                PreFilterTarget.HorizontalAlignment=                                    'left';	
-
-
-
-                PreFilterTarget.Position=                                             [SecondColumnFilter  SecondRowFilter 0.29 0.05];
-
-
-                ListWithFilterWordsTarget=                                           uicontrol;
-                ListWithFilterWordsTarget.Style=                                     'listbox';
-                ListWithFilterWordsTarget.String=                                    '';
-                ListWithFilterWordsTarget.Units=                                     'normalized';
-                ListWithFilterWordsTarget.Min=                                       0;
-                ListWithFilterWordsTarget.Max=                                       1;
-                ListWithFilterWordsTarget.HorizontalAlignment=                       'left';	
-
-
-                ListWithFilterWordsTarget.Position=                                  [SecondColumnFilter  ThirdRowFilter 0.29 0.4];
-
-
-                KeywordManagerHandles.FigureHandle =                                  FigureHandle;
-                KeywordManagerHandles.DoneField =                                    DoneField;
-
-                KeywordManagerHandles.SelectFilterTypeSource =                        SelectFilterTypeSource;
-                KeywordManagerHandles.PreFilterSource =                               PreFilterSource;
-                KeywordManagerHandles.ListWithFilterWordsSource =                     ListWithFilterWordsSource;
-
-                KeywordManagerHandles.SelectFilterTypeTarget =                                  SelectFilterTypeTarget;
-                KeywordManagerHandles.PreFilterTarget =                               PreFilterTarget;
-                KeywordManagerHandles.ListWithFilterWordsTarget =                     ListWithFilterWordsTarget;
-
-            end
-
-     
-            
-          
-        
-        
-    end
-    
+ 
     methods % getters positioning
         
         function row = getStartRowTracking(obj)
@@ -466,22 +347,7 @@ classdef PMImagingProjectViewer
         
         
 
-        function obj =         CreateHelpMenu(obj)
-
-            HelpMenuInside=                       uimenu(obj.Figure);
-            HelpMenuInside.Label=                 'Help';
-
-            obj.HelpMenu.KeyboardShortcuts=              uimenu(HelpMenuInside);
-            obj.HelpMenu.KeyboardShortcuts.Label=        'Show keyboard shortcuts';
-            obj.HelpMenu.KeyboardShortcuts.Tag=          'KeyboardShortcuts';
-            obj.HelpMenu.KeyboardShortcuts.Enable=       'on';
-
-            obj.HelpMenu.TrackingKeyboardshortcuts=         uimenu(HelpMenuInside);
-            obj.HelpMenu.TrackingKeyboardshortcuts.Label=   'Show keyboard shortcuts for tracking';
-            obj.HelpMenu.TrackingKeyboardshortcuts.Enable=  'on';
-
-
-        end
+    
         
     end
     

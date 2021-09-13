@@ -27,9 +27,7 @@ classdef PMMovieLibrary
     
     properties (Access = private) % filter:
         
-         FilterList =                                        true
-
-        ListWithFilteredNicknames
+        FilterList =                                        true
 
         FilterSelectionIndex
         FilterSelectionString =                             ''
@@ -38,7 +36,6 @@ classdef PMMovieLibrary
         KeywordFilterSelectionString =                      'Ignore keywords';
 
         SortIndex =                                         1;
-     
 
     end
     
@@ -127,6 +124,10 @@ classdef PMMovieLibrary
     
     methods % setters
         
+        function obj = setNewNickname(obj, Value)
+            obj.SelectedNickname =      Value;
+        end
+
         function obj = setExportFolder(obj, Value)
             obj.PathForExport = Value; 
         end
@@ -162,8 +163,6 @@ classdef PMMovieLibrary
             end   
         end
 
-   
-
         function obj = setPathForImageAnalysis(obj, Value)
             obj.PathForImageAnalysis =      Value;
             obj =              obj.saveMovieLibraryToFile;
@@ -174,10 +173,6 @@ classdef PMMovieLibrary
              obj = obj.addNewEntryIntoLibraryInternal(NickName, AttachedFilenames);
         end
 
-          
-    
-    
-          %% replace keywords:
         function obj = replaceKeywords(obj, SourceKeyword, TargetKeyword)
             % REPLACEKEYWORDS: replaces keywords in movie-library entries;
             % takes two arguments: 1: source keyword 2: target keyword that should be used as a replacement;
@@ -185,14 +180,14 @@ classdef PMMovieLibrary
             % if this is the case: change movie summaries, movie objects and also load and store the revised files (this means that for large files the process could be slow);
             for MovieIndex = 1 : obj.getNumberOfMovies
 
-                CurrentKeywords =      obj.ListWithMovieObjectSummary{MovieIndex,1}.getKeywords;
-                if isempty(CurrentKeywords)
-                    CurrentKeyword = '';
+                OriginalKeywords =      obj.ListWithMovieObjectSummary{MovieIndex,1}.getKeywords;
+                if isempty(OriginalKeywords)
+                    OriginalKeyword = '';
                 else
-                    CurrentKeyword = CurrentKeywords{1,1};
+                    OriginalKeyword = OriginalKeywords{1,1};
                 end
                 
-                if  ~isempty(CurrentKeyword) && strcmp(CurrentKeyword, SourceKeyword) 
+                if  ~isempty(OriginalKeyword) && strcmp(OriginalKeyword, SourceKeyword) 
 
                     obj.ListWithMovieObjectSummary{MovieIndex,1} =  obj.ListWithMovieObjectSummary{MovieIndex,1}.setKeywords(TargetKeyword);
                      if ~isempty(obj.ListhWithMovieObjects{MovieIndex,1})
@@ -209,17 +204,12 @@ classdef PMMovieLibrary
             end
             
         end
-        
-      
-         %% delete all entries:          
+          
         function obj = deleteAllEntriesFromLibrary(obj)
              obj =                       obj.clearContentsOfLibraryIndex(1:obj.getNumberOfMovies);
              obj.SelectedNickname =      '';
         end
-        
-        
-        
-         
+   
     end
     
     methods % remove active entry:
@@ -246,247 +236,120 @@ classdef PMMovieLibrary
         
     end
     
-    methods % switch active movie
-       
-        function obj = setAllMovies(obj)
-            ListWithNickNames = obj.getAllNicknames;
-            
-            for index = 1 : length(ListWithNickNames)
-                obj = obj.switchActiveMovieByNickName(ListWithNickNames{index});
-                
-            end 
-            
-        end
-        
-        
-          function obj = switchActiveMovieByNickName(obj, Value, varargin)
-              
-                assert(sum(obj.getRowForNickName(Value)) == 1, 'Chosen nickname is not unique')
-                obj =                   obj.setNewNickname(Value);
-
-                if isempty(varargin)
-                    myMovieTracking=        obj.getFinalizedMovieTrackingOfActiveMovie;
-                    myMovieTracking =       myMovieTracking.setNickName(Value);
-                    myMovieTracking =       myMovieTracking.setMovieFolder(obj.getMovieFolder);
-                    
-                elseif strcmp(varargin{1}, 'DoNotLoadSourceData')
-                    myMovieTracking =       obj.getInitializedMovieTracking;
-
-                else
-                    error('Input not supported')
-                end
-
-                 assert((isa(myMovieTracking, 'PMMovieTracking')) && isscalar(myMovieTracking), 'Wrong input.')
-
-                 obj.ListhWithMovieObjects{obj.getIndexOfSelectedMovie, 1} =        myMovieTracking;
-
-          end
-         
-      
-        
-         
-        
-        
-    end
-    
     methods % get movie-controller of active movie:
         
-        function myMovieController = getActiveMovieController(obj, varargin)
-            fprintf('PMMovieLibraryManager:@getActiveMovieController: ')
+        function myMovieController =    getActiveMovieController(obj, varargin)
+        fprintf('PMMovieLibraryManager:@getActiveMovieController: ')
 
-            assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')  
-            switch length(varargin)
-               
-                case 0
-                    myMovieController =     PMMovieController(obj.getFinalizedMovieTrackingOfActiveMovie);
-                case 1
-                    myMovieController =     PMMovieController(varargin{1}, obj.getFinalizedMovieTrackingOfActiveMovie);
-                    
-                otherwise
-                    error('Wrong input.')
-                
-            end
-            
-            myMovieController =     myMovieController.setLoadedImageVolumes(obj.getLoadedImageDataOfActiveMovie); 
-            myMovieController =     myMovieController.setExportFolder(obj.getExportFolder);
-            myMovieController =     myMovieController.setInteractionsFolder(obj.getInteractionFolder);
-            myMovieController =     myMovieController.initializeViews;
-           
-        end
-         
-       function [myMovieTracking]=     getFinalizedMovieTrackingOfActiveMovie(obj)
-            
-            myMovieTracking =           obj.ListhWithMovieObjects{obj.getSelectedRowInLibrary,1};
-            if isempty(myMovieTracking)
-                myMovieTracking =   obj.getInitializedMovieTracking;
-                myMovieTracking =   myMovieTracking.load;
-            end
-                 
-        end
-        
-          function myMovieTracking = getInitializedMovieTracking(obj)
-                % GETINITIALIZEDMOVIETRACKING get a simple PMMovieTracking object with all the filenames, nicknames etc. set correctly;
-                % does not load the complete data to save time; gives user the opportunity to get direct access to derivative data;
-                obj =                   obj.verifyThatAllFoldersAreSpecified;
-                
-                myMovieTracking =       PMMovieTracking;
-                myMovieTracking =       myMovieTracking.setNickName(obj.getNickNameOfActiveMovie);
-                myMovieTracking =       myMovieTracking.setNamesOfMovieFiles(obj.getAttachedImageSourceOfActiveMovie);
+        assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')  
+        switch length(varargin)
 
-                myMovieTracking =       myMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
-                myMovieTracking =       myMovieTracking.setMovieFolder(obj.getMovieFolder);
-                myMovieTracking =       myMovieTracking.setKeywords(obj.getKeywordsOfActiveMovie); 
-              
-          end
-          
-        
-    
-        
-        
+        case 0
+        myMovieController =     PMMovieController(obj.getFinalizedMovieTrackingOfActiveMovie);
+        case 1
+        myMovieController =     PMMovieController(varargin{1}, obj.getFinalizedMovieTrackingOfActiveMovie);
+
+        otherwise
+        error('Wrong input.')
+
+        end
+
+        myMovieController =     myMovieController.setLoadedImageVolumes(obj.getLoadedImageDataOfActiveMovie); 
+        myMovieController =     myMovieController.setExportFolder(obj.getExportFolder);
+        myMovieController =     myMovieController.setInteractionsFolder(obj.getInteractionFolder);
+        myMovieController =     myMovieController.initializeViews;
+
+        end
+
+        function myMovieTracking=       getFinalizedMovieTrackingOfActiveMovie(obj)
+
+        myMovieTracking =           obj.ListhWithMovieObjects{obj.getSelectedRowInLibrary,1};
+        if isempty(myMovieTracking)
+        myMovieTracking =   obj.getInitializedMovieTracking;
+        myMovieTracking =   myMovieTracking.load;
+        end
+
+        end
+
+        function myMovieTracking =      getInitializedMovieTracking(obj)
+        % GETINITIALIZEDMOVIETRACKING get a simple PMMovieTracking object with all the filenames, nicknames etc. set correctly;
+        % does not load the complete data to save time; gives user the opportunity to get direct access to derivative data;
+        obj =                   obj.verifyThatAllFoldersAreSpecified;
+
+        myMovieTracking =       PMMovieTracking;
+        myMovieTracking =       myMovieTracking.setNickName(obj.getNickNameOfActiveMovie);
+        myMovieTracking =       myMovieTracking.setNamesOfMovieFiles(obj.getAttachedImageSourceOfActiveMovie);
+
+        myMovieTracking =       myMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
+        myMovieTracking =       myMovieTracking.setMovieFolder(obj.getMovieFolder);
+        myMovieTracking =       myMovieTracking.setKeywords(obj.getKeywordsOfActiveMovie); 
+
+        end
+
     end
     
     methods % getters
-        
-        
-        function test = allPropertiesAreValid(obj)
-            
-            FileNameTest = ~isempty(obj.FileName);
-            ImageAnalysisTest = ~isempty(obj.PathForImageAnalysis);
-            PathOfMovieFolderTest = ~isempty(obj.PathOfMovieFolder);
-            PathForExporTest = ~isempty(obj.PathForExport);
 
-            % other
-            SelectedNicknameTest = ~isempty(obj.SelectedNickname); 
-            
-            test = FileNameTest && ImageAnalysisTest && PathOfMovieFolderTest && PathForExporTest && SelectedNicknameTest;
-            
-        end
         
-        
-         function path = getExportFolder(obj)
-              path = obj.PathForExport;
-         end
-        
-        function list = getMovieObjectSummaries(obj)
-            list = obj.ListWithMovieObjectSummary;
-            
-        end
-        
-        function nick = getSelectedNickname(obj)
-           nick = obj.SelectedNickname; 
-        end
-        
-        function check = testThatPathForImageAnalysisExists(obj)
-            check = ~isempty( obj.getPathForImageAnalysis);
-        end
-        
-        function rowInLibrary = getIndexOfSelectedMovie(obj)
-            rowInLibrary =     obj.getRowForNickName(obj.SelectedNickname);
-        end
-        
-        function [SelectedRow] =                    getRowForNewOrExistingNickName(obj, NickNameString)
-            assert(ischar(NickNameString), 'Wrong input.')
-            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
-            
-            switch sum(SelectedRow)
-               
-                case 1
-                    
-                case 0
-                    SelectedRow = obj.getNumberOfMovies + 1;
-                otherwise
-                    
-                    error('Nickname does not work.')
-                
-                
-            end
-            
-           
-        end
-        
-        
-        
-        
-        function value = checkWheterNickNameAlreadyExists(obj, Value)
-            
-            SelectedRow =                    obj.getRowForNickName(Value);
-            if sum(SelectedRow) >= 1
-                value = true;
-            else
-                value = false;
-                
-            end
-        end
-        
-        
-        function [SelectedRow] =                    getRowForNickName(obj, NickNameString)
-            assert(ischar(NickNameString), 'Wrong input.')
-            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
 
-        end
-        
-     
-         
-        function obj = setNewNickname(obj, Value)
-            obj.SelectedNickname =      Value;
-        end
-
-        function check = testForPreciselyOneNickNameMatchForString(obj, String)
-            numberOfMatches = obj.getNumberOfNickNameMatchesForString(String);
-             if numberOfMatches == 1
-                check = true;
-            else
-               check = false; 
-             end
-             
-        end
-        
-        function numberOfMatches = getNumberOfNickNameMatchesForString(obj, String)
-            assert(ischar(String), 'Wrong argument type.')
-            NickNames = obj.getAllNicknames;
-            if isempty(NickNames)
-                numberOfMatches = 0;
-            else
-                numberOfMatches =   sum(strcmp(String, NickNames));
-            end
+        function movieControllers = getListOfUnLoadedMovieTrackingObjects(obj)
+            movieControllers = cellfun(@(x) PMMovieTracking(obj.getPathForImageAnalysis, x), obj.getAllNickNames);
         end
 
         function [NickNames] =          getAllNicknames(obj)
             NickNames =       cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);      
         end
 
-        function    listWithAllWantedNickNames =       getAllFilteredNicknames(obj)
-            listWithAllNicknames =              obj.getAllNicknames;
-            listWithAllWantedNickNames =        listWithAllNicknames(obj.getFilterList,:); 
+        function test = allPropertiesAreValid(obj)
+
+        FileNameTest = ~isempty(obj.FileName);
+        ImageAnalysisTest = ~isempty(obj.PathForImageAnalysis);
+        PathOfMovieFolderTest = ~isempty(obj.PathOfMovieFolder);
+        PathForExporTest = ~isempty(obj.PathForExport);
+
+        % other
+        SelectedNicknameTest = ~isempty(obj.SelectedNickname); 
+
+        test = FileNameTest && ImageAnalysisTest && PathOfMovieFolderTest && PathForExporTest && SelectedNicknameTest;
+
         end
 
-         function value = getFileName(obj)
-             value = obj.FileName;
-         end
-   
-     
-        
-   
+        function path = getExportFolder(obj)
+          path = obj.PathForExport;
+        end
 
-         
-         
-    
-         function MovieTracking = getMovieTrackingForNickNames(obj, NickNames)
-                MyRows =            obj.getLibraryRowsOfNicknames(NickNames);
-                MovieTracking =     obj.ListhWithMovieObjects(MyRows,:);
-         end
-         
-           function rows = getLibraryRowsOfNicknames(obj, Nicknames)
-                ListWithAllNickNamesInternal =                 getAllNicknames(obj);
-                rows =       cellfun(@(x) find(strcmp(ListWithAllNickNamesInternal, x)), Nicknames); 
-           end
-        
-           
-         
-      
-     
-        
-        %% get keywords:
+        function list = getMovieObjectSummaries(obj)
+        list = obj.ListWithMovieObjectSummary;
+
+        end
+
+        function nick = getSelectedNickname(obj)
+            nick = obj.SelectedNickname; 
+        end
+
+        function check = testThatPathForImageAnalysisExists(obj)
+            check = ~isempty( obj.getPathForImageAnalysis);
+        end
+
+        function rowInLibrary = getIndexOfSelectedMovie(obj)
+            rowInLibrary =     obj.getRowForNickName(obj.SelectedNickname);
+        end
+
+       
+        function value = getFileName(obj)
+         value = obj.FileName;
+        end
+
+        function MovieTracking = getMovieTrackingForNickNames(obj, NickNames)
+            MyRows =            obj.getLibraryRowsOfNicknames(NickNames);
+            MovieTracking =     obj.ListhWithMovieObjects(MyRows,:);
+        end
+
+        function rows = getLibraryRowsOfNicknames(obj, Nicknames)
+            ListWithAllNickNamesInternal =                 getAllNicknames(obj);
+            rows =       cellfun(@(x) find(strcmp(ListWithAllNickNamesInternal, x)), Nicknames); 
+        end
+
          function KeywordList =          getKeyWordList(obj)
              % GETKEYWORDLIST: get list of keywords that are used in library;
               ListWithKeywords =               cellfun(@(x) x.getKeywords, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
@@ -526,13 +389,7 @@ classdef PMMovieLibrary
             Movie  =      obj.ListhWithMovieObjects{strcmp(obj.getAllNicknames, Nickname)};    
         end
         
-        function obj = loadMovieIntoListhWithMovieObjects(obj, NickName)
-            MyRow = obj.getRowForNickName(NickName);
-            assert(isscalar(MyRow), 'Wrong input.')
-                MovieStructure.NickName =                       NickName;
-                obj.ListhWithMovieObjects{MyRow, 1} =      PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1);  
-        end
-
+    
         
         function [obj] =                sortByNickName(obj)
             AllNicknames =         cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
@@ -568,51 +425,9 @@ classdef PMMovieLibrary
     
       
        
-        function FilterSelectionIndex = getFilterSelectionIndex(obj)
-           FilterSelectionIndex = obj.FilterSelectionIndex; 
-        end
-        
        
-   
-           
-    end
-    
-    methods % summary lists
         
-        function obj = updateMovieSummariesFromFiles(obj)
-            
-            for MovieIndex = 1 : obj.getNumberOfMovies
-                MovieStructure.NickName =                         obj.ListWithMovieObjectSummary{MovieIndex,1}.getNickName;
-                obj.ListWithMovieObjectSummary{MovieIndex,1} =    PMMovieTrackingSummary(PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1));
-            end
-
-        end
-          
-    end
-    
-    methods %getters
-        
-        function obj = showSummary(obj)
-            
-            fprintf('\n*** This PMMovieLibrary object manages access to images and tracking data of a list of image-sequences.\n')
-            fprintf('Its data are stored in the file "%s".', obj.FileName)
-            fprintf('Movie specific annotations are stored in the following folder: "%s".\n', obj.PathForImageAnalysis)
-            fprintf('The actual movies are stored in the following folder: "%s".\n', obj.getMovieFolder)
-            fprintf('By default, exports are stored in the following folder: "%s".\n', obj.PathForExport)
-            fprintf('The selected nickname is: "%s". Unless specified otherwise, this is the movie that the library will use.\n', obj.SelectedNickname)
-            fprintf('There are %i elements for the movie summary.\n', length(obj.ListWithMovieObjectSummary))
-            fprintf('There are %i elements in ListhWithMovieObjects.\n', length(obj.ListhWithMovieObjects))
-            fprintf('There are %i elements in ListWithLoadedImageData.\n', length(obj.ListWithLoadedImageData))
-            fprintf('There are additional properties that are not listed here that are relevant for filtering and sorting of entries.\n')
-
-    
-      
-            
-            
-        end
-        
-        
-        function movies = getIndicesOfMovies(obj)
+           function movies = getIndicesOfMovies(obj)
             movies =        cellfun(@(x) strcmp(x.getDataType, 'Movie'), obj.ListWithMovieObjectSummary);
         end
         
@@ -628,26 +443,9 @@ classdef PMMovieLibrary
                ListWithAllNickNamesInternal =              cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
             
         end
-        
-        
-        
-        
-           %% getFilterList:
-        function FilterList = getFilterList(obj)
-           FilterList = obj.FilterList; 
-        end
-        
-        
-        function ListWithFilteredNicknames = getListWithFilteredNicknames(obj)
-           ListWithFilteredNicknames = obj.ListWithFilteredNicknames; 
-        end
-        
-        
-        
-        
-          
-          
-           function numberOfMovies =       getNumberOfMovies(obj)
+
+     
+        function numberOfMovies =       getNumberOfMovies(obj)
             numberOfMovies =            size(obj.ListWithMovieObjectSummary,1);
         end
         
@@ -665,7 +463,6 @@ classdef PMMovieLibrary
         end
         
          function mainFolder =           getPathForImageAnalysis(obj)
-             
              
              if isempty(obj.PathForImageAnalysis)
                  error('Path for image analysis not specified.')
@@ -690,8 +487,366 @@ classdef PMMovieLibrary
          
          
           
+         
+        
+       
+   
+           
+    end
+    
+    methods % setters movie list
+        
+        
+        function obj =      setAllMovies(obj)
+            ListWithNickNames = obj.getAllNicknames;
+
+            for index = 1 : length(ListWithNickNames)
+                obj = obj.switchActiveMovieByNickName(ListWithNickNames{index});
+
+            end 
+
+        end
+
+        function obj =      switchActiveMovieByNickName(obj, Value, varargin)
+
+            assert(sum(obj.getRowForNickName(Value)) == 1, 'Chosen nickname is not unique')
+            obj =                   obj.setNewNickname(Value);
+
+            if isempty(varargin)
+                myMovieTracking=        obj.getFinalizedMovieTrackingOfActiveMovie;
+                myMovieTracking =       myMovieTracking.setNickName(Value);
+                myMovieTracking =       myMovieTracking.setMovieFolder(obj.getMovieFolder);
+
+            elseif strcmp(varargin{1}, 'DoNotLoadSourceData')
+                myMovieTracking =       obj.getInitializedMovieTracking;
+
+            else
+                error('Input not supported')
+            end
+
+             assert((isa(myMovieTracking, 'PMMovieTracking')) && isscalar(myMovieTracking), 'Wrong input.')
+
+             obj.ListhWithMovieObjects{obj.getIndexOfSelectedMovie, 1} =        myMovieTracking;
+
+        end
+
+        function obj =      loadMovieIntoListhWithMovieObjects(obj, NickName)
+            MyRow = obj.getRowForNickName(NickName);
+            assert(isscalar(MyRow), 'Wrong input.')
+                MovieStructure.NickName =                       NickName;
+                obj.ListhWithMovieObjects{MyRow, 1} =      PMMovieTracking(MovieStructure, {obj.getMovieFolder, obj.getPathForImageAnalysis},1);  
+        end
+
+        function obj =      addNewEntryIntoLibraryInternal(obj, NickName, AttachedFilenames)
+
+        error('Do not use this. Use updateMovieListWithMovieController instead.')
+        newMovieTrackingSummary =   obj.getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(NickName, AttachedFilenames); 
+
+        index =                     obj.getNumberOfMovies + 1;
+
+        newMovieTracking =          PMMovieTracking(newMovieTrackingSummary);
+        newMovieTracking =          newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
+        newMovieTracking =          newMovieTracking.setPropertiesFromImageFiles;
+
+        newMovieTracking =          newMovieTracking.save;
+
+        obj.ListhWithMovieObjects{index, 1}=            newMovieTracking;
+        obj.ListWithMovieObjectSummary{index, 1}=       newMovieTrackingSummary;
+        obj.FilterList(index, 1)=                       true;
+        obj.ListWithLoadedImageData{index, 1} =         '';
+
+        end
+
+        function obj =      updateMovieListWithMovieController(obj, ActiveMovieController)
+
+            MyLoadedMovie =                ActiveMovieController.getLoadedMovie;
+            NickNameOfLoadedMovie =        MyLoadedMovie.getNickName;
+            LinkedFilesOfLoadedMovie =     MyLoadedMovie.getLinkedMovieFileNames;
+            MyLoadedImageVolumes =         ActiveMovieController.getLoadedImageVolumes;
+
+            assert(isa(MyLoadedMovie, 'PMMovieTracking'), 'Movie controller has no LoadedMovie attached.')
+            assert(ischar(NickNameOfLoadedMovie), 'LoadedMovie has no nickname.')
+            assert(~isempty(LinkedFilesOfLoadedMovie), 'LoadedMovie has no filenames for image files attached.')
+
+            SelectedRow =                                       obj.getRowForNewOrExistingNickName(NickNameOfLoadedMovie);
+
+            obj.ListWithMovieObjectSummary{SelectedRow,1} =     PMMovieTrackingSummary(MyLoadedMovie);
+            obj.ListhWithMovieObjects{SelectedRow,1} =          MyLoadedMovie;
+            obj.ListWithLoadedImageData{SelectedRow,1} =        MyLoadedImageVolumes;
+            obj.FilterList(SelectedRow, 1)=                     true;
+
+
+        end
+
+
+
+        
+        
+    end
+    
+    methods % getters movie list
+        
+        function value = allMovieAnnotationsAreSet(obj)
+            value = min(cellfun(@(x) isa(x, 'PMMovieTracking') && isscalar(x), obj.ListhWithMovieObjects));
+        end
+        
+        
+    end
+    
+    methods % getters filters
+        
+         function FilterSelectionIndex = getFilterSelectionIndex(obj)
+           FilterSelectionIndex = obj.FilterSelectionIndex; 
+         end
+        
+        function FilterList = getFilterList(obj)
+           FilterList = obj.FilterList; 
+        end
+        
+        function ListWithFilteredNicknames = getListWithFilteredNicknames(obj)
+            ListWithAllNickNamesInternal =  obj.getAllNickNames;
+            ListWithFilteredNicknames=      ListWithAllNickNamesInternal(obj.FilterList,:);
+        end
+ 
+   end
+    
+    methods % filter setters
+
+        function obj =                updateFilterSettingsFromPopupMenu(obj, PopupMenu, PopUpMenuTwo)
+            obj =       obj.setMovieTypeFilter(PopupMenu); 
+            obj =       obj.setKeywordFilter(PopUpMenuTwo);
+            if ~(obj.allMovieAnnotationsAreSet)
+                obj =       obj.setAllMovies;
+            end
+
+            obj =       obj.addMovieTypeFilter;
+            obj =       obj.addAppropriateKeywordFilter;
+
+        end
+
+    end
+
+    methods (Access = private) % movie type filter
+        
+        function obj = setMovieTypeFilter(obj, PopupMenu)
+             if isempty(PopupMenu.Value)
+                PopupMenu.Value = 1; 
+             end
+             
+            if ischar(PopupMenu.String)
+                SelectedString =  PopupMenu.String;
+            else
+                SelectedString =  PopupMenu.String{PopupMenu.Value};                                           
+            end
+            
+            obj.FilterSelectionString =            SelectedString;
+            obj.FilterSelectionIndex =             PopupMenu.Value;
+   
+          end
+        
+        function obj = addMovieTypeFilter(obj)
+            
+            switch obj.FilterSelectionString
+                case 'Show all movies'
+                    obj.FilterList =        obj.getIndicesOfMovies;
+
+                case 'Show all Z-stacks'
+                    obj.FilterList =       obj.getIndicesOfZStacks;
+
+                case 'Show all snapshots'
+                    obj.FilterList =       cellfun(@(x) strcmp(x.getDataType, 'Snapshot'), obj.ListWithMovieObjectSummary);
+
+                case 'Show all tracked movies'
+                    FilterMovies =            obj.getIndicesOfMovies;
+                    FilterTracking =         cellfun(@(x) x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
+                    obj.FilterList =         min([FilterMovies FilterTracking], [], 2); 
+
+                case 'Show all untracked movies'
+                    FilterMovies =         obj.getIndicesOfMovies;
+                    FilterTracking =      cellfun(@(x) ~x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
+                    obj.FilterList =      min([FilterMovies FilterTracking], [], 2); 
+
+                case 'Show all movies with drift correction'   
+                    obj.FilterList =         cellfun(@(x) x.testForExistenceOfDriftCorrection, obj.ListhWithMovieObjects);
+
+                case 'Show entire content'
+                    obj.FilterList =      cellfun(@(x) true, obj.ListWithMovieObjectSummary);             
+
+                case 'Show all unmapped movies'
+                    obj.FilterList =      cellfun(@(x) ~x.isMapped, obj.ListhWithMovieObjects);
+
+                case 'Show content with non-matching channel information'
+                    obj.FilterList =        cellfun(@(x) ~x.ChannelSettingsAreOk, obj.ListWithMovieObjectSummary);
+
+            end
+        end
+             
+    end
+    
+    methods (Access = private) % keywords filter
+        
+            function obj =      setKeywordFilter(obj, PopUpMenuTwo)
+                if ischar(PopUpMenuTwo.String)
+                    SelectedString =  PopUpMenuTwo.String;
+                else
+                    SelectedString = PopUpMenuTwo.String{PopUpMenuTwo.Value};                                           
+                end
+                obj.KeywordFilterSelectionIndex =               PopUpMenuTwo.Value;
+                obj.KeywordFilterSelectionString =              SelectedString;
+
+            end
+
+            function obj =      addAppropriateKeywordFilter(obj)
+
+                switch obj.KeywordFilterSelectionString
+                    case 'Ignore keywords'
+                    case 'Movies with no keyword'
+                        obj =          obj.addFilterForMoviesWithNoKeyword;
+                    otherwise
+                        obj =          obj.addKeywordFilter;
+                end
+                
+            end
+
+            function obj =      addFilterForMoviesWithNoKeyword(obj)
+
+                function check = keyWordCheck(keywords)
+                    if isempty(keywords) 
+                        check = false;
+                    elseif isempty(keywords{1,1})
+                        check = false;
+                    else
+                        check = true;
+                    end
+                end
+
+                rowsThatHaveNoKeyword =        cellfun(@(x) ~keyWordCheck(x.getKeywords), obj.ListhWithMovieObjects);
+                obj.FilterList  =              min([obj.FilterList rowsThatHaveNoKeyword], [], 2);
+
+            end
+
+            function obj =      addKeywordFilter(obj)
+
+                rowsThatHaveNoKeyword =                           cellfun(@(x) isempty(x.getKeywords), obj.ListhWithMovieObjects);
+                KeywordFilterList =                               cellfun(@(x) max(strcmp(x.getKeywords, obj.KeywordFilterSelectionString)), obj.ListhWithMovieObjects, 'UniformOutput', false);
+                KeywordFilterList(rowsThatHaveNoKeyword,:) =      {false};
+
+                KeywordFilterList =                 cell2mat(KeywordFilterList);
+                obj.FilterList =                    min([obj.FilterList,logical(KeywordFilterList)], [], 2);
+
+            end
+     
+    end
+  
+    methods % getters nicknames
+       
+        
+         function [SelectedRow] =   getRowForNewOrExistingNickName(obj, NickNameString)
+            assert(ischar(NickNameString), 'Wrong input.')
+            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
+
+            switch sum(SelectedRow)
+
+                case 1
+
+                case 0
+                    SelectedRow = obj.getNumberOfMovies + 1;
+                otherwise
+
+                    error('Nickname does not work.')
+
+
+            end
+
+
+        end
+
+        function value = checkWheterNickNameAlreadyExists(obj, Value)
+
+            SelectedRow =                    obj.getRowForNickName(Value);
+            if sum(SelectedRow) >= 1
+                value = true;
+            else
+                value = false;
+
+            end
+            end
+
+            function [SelectedRow] =   getRowForNickName(obj, NickNameString)
+            assert(ischar(NickNameString), 'Wrong input.')
+            SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
+
+        end
+
+        function check = testForPreciselyOneNickNameMatchForString(obj, String)
+        numberOfMatches = obj.getNumberOfNickNameMatchesForString(String);
+         if numberOfMatches == 1
+            check = true;
+        else
+           check = false; 
+         end
+
+        end
+
+        function numberOfMatches = getNumberOfNickNameMatchesForString(obj, String)
+        assert(ischar(String), 'Wrong argument type.')
+        NickNames = obj.getAllNicknames;
+        if isempty(NickNames)
+            numberOfMatches = 0;
+        else
+            numberOfMatches =   sum(strcmp(String, NickNames));
+        end
+        end
+
+        function    listWithAllWantedNickNames =       getAllFilteredNicknames(obj)
+        listWithAllNicknames =              obj.getAllNicknames;
+        listWithAllWantedNickNames =        listWithAllNicknames(obj.getFilterList,:); 
+        end
+
+        
+        
+        
+    end
+    
+    methods % summary lists
+        
+        function obj = updateMovieSummariesFromFiles(obj)
+            
+            for MovieIndex = 1 : obj.getNumberOfMovies
+                CurrentNickName =                                   obj.ListWithMovieObjectSummary{MovieIndex,1}.getNickName;
+                MyMovieTracking =                                   PMMovieTracking(obj.getPathForImageAnalysis, CurrentNickName).load;
+                obj.ListWithMovieObjectSummary{MovieIndex,1} =      PMMovieTrackingSummary(MyMovieTracking);
+            end
+
+        end
           
-             %% get info text:   
+    end
+    
+    methods % summary 
+        
+        function obj = showSummary(obj)
+            
+            fprintf('\n*** This PMMovieLibrary object manages access to images and tracking data of a list of image-sequences.\n')
+            fprintf('Its data are stored in the file "%s".', obj.FileName)
+            fprintf('Movie specific annotations are stored in the following folder: "%s".\n', obj.PathForImageAnalysis)
+            fprintf('The actual movies are stored in the following folder: "%s".\n', obj.getMovieFolder)
+            fprintf('By default, exports are stored in the following folder: "%s".\n', obj.PathForExport)
+            fprintf('The selected nickname is: "%s". Unless specified otherwise, this is the movie that the library will use.\n', obj.SelectedNickname)
+            fprintf('There are %i elements for the movie summary.\n', length(obj.ListWithMovieObjectSummary))
+            fprintf('There are %i elements in ListhWithMovieObjects.\n', length(obj.ListhWithMovieObjects))
+            fprintf('There are %i elements in ListWithLoadedImageData.\n', length(obj.ListWithLoadedImageData))
+            fprintf('\nThe library has filter settings:\n')
+            fprintf('It will filter by movie type for "%s".\n', obj.FilterSelectionString)
+            fprintf('It will filter for keyword "%s".\n', obj.KeywordFilterSelectionString)
+            fprintf('Currently the following nicknames pass the filter:\n')
+            cellfun(@(x) fprintf('"%s\n", x), obj.getListWithFilteredNicknames)
+  
+             
+            
+            fprintf('There are additional properties that are not listed here that are relevant for filtering and sorting of entries.\n')
+    
+        end
+        
         function InfoText = getProjectInfoText(obj)
             FileNameOfProject{1,1}=             'Filename of current project:';
             FileNameOfProject{2,1}=             obj.FileName;
@@ -783,10 +938,47 @@ classdef PMMovieLibrary
           
         
     end
-    
-    
+
     methods %setters
             
+        function obj = testIntactnessOfLibrary(obj)
+
+             movieTrackingList =    obj.getListOfUnLoadedMovieTrackingObjects;
+
+
+            MyNickNames = obj.getAllNicknames;
+             fprintf('The library contains the following nicknames:\n')
+             cellfun(@(x) fprintf('%s\n', x), MyNickNames);
+
+             CouldConnect =         arrayfun(@(x) x.canConnectToSourceFile, movieTrackingList);
+
+               fprintf('The following nicknames could be connected:\n')
+             cellfun(@(x) fprintf('%s\n', x), MyNickNames(CouldConnect));
+
+
+             if min(CouldConnect) == 1
+                fprintf('\nAll movie-tracking files could be found.\n') 
+             else
+
+                 Text{1,1 } = 'Do you want to delete the entries that could not be connected?';
+                 Text = [Text; MyNickNames(~CouldConnect)];
+                 Text = [Text; 'If you do not say yes, the program will crash.'];
+
+                 Answer = questdlg(Text);
+
+                 if strcmp(Answer, 'Yes')
+                       obj =                       obj.clearContentsOfLibraryIndex(~CouldConnect);
+                        obj.SelectedNickname =      '';
+                 else
+                     error('Movie library cannot access files from its movie list.')
+                 end
+
+
+
+             end
+
+        end
+        
 
         function obj = setMovieFolders(obj, Value)
            obj.PathOfMovieFolder =  Value;
@@ -888,165 +1080,10 @@ classdef PMMovieLibrary
         
         
     end
-    
-    methods % filter
-        
-        function [obj] =                updateFilterSettingsFromPopupMenu(obj, PopupMenu, PopUpMenuTwo)
-            obj =       obj.setMainFilterWith(PopupMenu); 
-            obj =       obj.setKeywordFilterWith(PopUpMenuTwo);
-            obj =       obj.updateFilterList;
-        end
-        
-         function obj = setMainFilterWith(obj, PopupMenu)
-             if isempty(PopupMenu.Value)
-                PopupMenu.Value = 1; 
-             end
-             
-            if ischar(PopupMenu.String)
-                SelectedString =  PopupMenu.String;
-            else
-                SelectedString =  PopupMenu.String{PopupMenu.Value};                                           
-            end
-            obj.FilterSelectionString =            SelectedString;
-            obj.FilterSelectionIndex =             PopupMenu.Value;
    
-        end
-        
-        function obj = setKeywordFilterWith(obj, PopUpMenuTwo)
-            if ischar(PopUpMenuTwo.String)
-                SelectedString =  PopUpMenuTwo.String;
-            else
-                SelectedString = PopUpMenuTwo.String{PopUpMenuTwo.Value};                                           
-            end
-            obj.KeywordFilterSelectionIndex =               PopUpMenuTwo.Value;
-            obj.KeywordFilterSelectionString =              SelectedString;
-            
-        end
-        
-
-        
-            
-        
-        
-        function [obj] =                updateFilterList(obj)
-            
-            
-                obj = obj.setAllMovies;
-            
-              switch obj.FilterSelectionString
-                  case 'Show all movies'
-                      obj.FilterList =        obj.getIndicesOfMovies;
-                      
-                  case 'Show all Z-stacks'
-                       obj.FilterList =       obj.getIndicesOfZStacks;
-                       
-                  case 'Show all snapshots'
-                       obj.FilterList =       cellfun(@(x) strcmp(x.getDataType, 'Snapshot'), obj.ListWithMovieObjectSummary);
-                       
-                 case 'Show all tracked movies'
-                     FilterMovies =            obj.getIndicesOfMovies;
-                     FilterTracking =         cellfun(@(x) x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
-                     obj.FilterList =         min([FilterMovies FilterTracking], [], 2); 
-    
-                  case 'Show all untracked movies'
-                     FilterMovies =         obj.getIndicesOfMovies;
-                     FilterTracking =      cellfun(@(x) ~x.getTrackingWasPerformed, obj.ListWithMovieObjectSummary);
-                     obj.FilterList =      min([FilterMovies FilterTracking], [], 2); 
-                     
-                 case 'Show all movies with drift correction'   
-                     obj.FilterList =                       cellfun(@(x) x.testForExistenceOfDriftCorrection, obj.ListhWithMovieObjects);
-                     
-                 case 'Show entire content'
-                        obj.FilterList =                        cellfun(@(x) true, obj.ListWithMovieObjectSummary);             
-           
-                  case 'Show all unmapped movies'
-                        obj.FilterList =                       cellfun(@(x) ~x.isMapped, obj.ListhWithMovieObjects);
-
-                  case 'Show content with non-matching channel information'
-                      obj.FilterList =                       cellfun(@(x) ~x.ChannelSettingsAreOk, obj.ListWithMovieObjectSummary);
-
-              end
-              obj =         obj.applyKeywordsToFilter;
-              
-        end
-        
-        
-        
-        
-         function obj =  applyKeywordsToFilter(obj)
-            ListWithAllNickNamesInternal =     obj.getAllNickNames;
-            obj.ListWithFilteredNicknames=     ListWithAllNickNamesInternal(obj.FilterList,:);
-                switch obj.KeywordFilterSelectionString
-                    case 'Ignore keywords'
-                    case 'Movies with no keyword'
-                        obj =          obj.filterMoviesWithNoKeyWord;
-                    otherwise
-                        obj =          obj.addKeywordFilter;
-                end
-         end
-        
-         
-          function [obj] =                filterMoviesWithNoKeyWord(obj)
-            
-            function check = keyWordCheck(keywords)
-                if isempty(keywords) 
-                    check = false;
-                elseif isempty(keywords{1,1})
-                    check = false;
-                else
-                    check = true;
-                end
-            end
-
-            rowsThatHaveNoKeyword =        cellfun(@(x) ~keyWordCheck(x.getKeywords), obj.ListWithMovieObjectSummary);
-            obj.FilterList  =              min([obj.FilterList rowsThatHaveNoKeyword], [], 2);
-
-            ListWithAllNickNamesInternal =   cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
-            obj.ListWithFilteredNicknames=   ListWithAllNickNamesInternal(obj.FilterList,:);
-
-        end
-        
-        
-        function [obj] =                addKeywordFilter(obj)
-
-            rowsThatHaveNoKeyword =                                cellfun(@(x) isempty(x.getKeywords), obj.ListWithMovieObjectSummary);
-            KeywordFilterList =                                     cellfun(@(x) max(strcmp(x.getKeywords, obj.KeywordFilterSelectionString)), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
-            KeywordFilterList(rowsThatHaveNoKeyword,:) =            {false};
-            
-            KeywordFilterList =                                     cell2mat(KeywordFilterList);
-            obj.FilterList =                                        min([obj.FilterList,logical(KeywordFilterList)], [], 2);
-            ListWithAllNickNamesInternal =                                  cellfun(@(x) x.getNickName, obj.ListWithMovieObjectSummary, 'UniformOutput', false);
-            obj.ListWithFilteredNicknames=                          ListWithAllNickNamesInternal(obj.FilterList,:);
-           
-
-            
-        end
-        
-        
-    end
-    
     methods % movie-list
     
-         function [obj] =           updateMovieListWithMovieController(obj, ActiveMovieController)
-            
-            MyLoadedMovie =                ActiveMovieController.getLoadedMovie;
-            NickNameOfLoadedMovie =        MyLoadedMovie.getNickName;
-            LinkedFilesOfLoadedMovie =     MyLoadedMovie.getLinkedMovieFileNames;
-            MyLoadedImageVolumes =         ActiveMovieController.getLoadedImageVolumes;
-
-            assert(isa(MyLoadedMovie, 'PMMovieTracking'), 'Movie controller has no LoadedMovie attached.')
-            assert(ischar(NickNameOfLoadedMovie), 'LoadedMovie has no nickname.')
-            assert(~isempty(LinkedFilesOfLoadedMovie), 'LoadedMovie has no filenames for image files attached.')
-
-            SelectedRow =                                       obj.getRowForNewOrExistingNickName(NickNameOfLoadedMovie);
-
-            obj.ListWithMovieObjectSummary{SelectedRow,1} =     PMMovieTrackingSummary(MyLoadedMovie);
-            obj.ListhWithMovieObjects{SelectedRow,1} =          MyLoadedMovie;
-            obj.ListWithLoadedImageData{SelectedRow,1} =        MyLoadedImageVolumes;
-            obj.FilterList(SelectedRow, 1)=                       true;
-
-
-         end
+ 
         
         
         
@@ -1055,106 +1092,63 @@ classdef PMMovieLibrary
     
     methods (Access = private)
         
-        
-       
-        
-        
-        
         function [SelectedRow] =                    getSelectedRowInLibrary(obj)
             ListWithAllNickNamesInternal =                 getAllNicknames(obj);   
             SelectedRow =                           strcmp(ListWithAllNickNamesInternal, obj.SelectedNickname);
         end
         
-          %% addNewEntryIntoLibraryInternal
-          function obj = addNewEntryIntoLibraryInternal(obj, NickName, AttachedFilenames)
-              
-              error('Do not use this. Use updateMovieListWithMovieController instead.')
-                newMovieTrackingSummary =   obj.getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(NickName, AttachedFilenames); 
+         
+     
 
-                index =                     obj.getNumberOfMovies + 1;
-
-                newMovieTracking =          PMMovieTracking(newMovieTrackingSummary);
-                newMovieTracking =          newMovieTracking.setImageAnalysisFolder(obj.getPathForImageAnalysis);
-                newMovieTracking =          newMovieTracking.setPropertiesFromImageFiles;
-
-                newMovieTracking =          newMovieTracking.save;
-
-                obj.ListhWithMovieObjects{index, 1}=            newMovieTracking;
-                obj.ListWithMovieObjectSummary{index, 1}=       newMovieTrackingSummary;
-                obj.FilterList(index, 1)=                       true;
-                obj.ListWithLoadedImageData{index, 1} =         '';
-              
-          end
-          
-            function myMovieTrackingSummary = getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(obj, NickName, AttachedFilenames)
-                assert(obj.verifyStringIsNotUsedAsNickName(NickName) && obj.testForExistenceOfMovieFiles(AttachedFilenames), 'Invalid content for movie entry.')
-                myMovieTrackingSummary =        PMMovieTrackingSummary;
-                myMovieTrackingSummary =        myMovieTrackingSummary.setMovieFolder(obj.getMovieFolder);                
-                myMovieTrackingSummary =        myMovieTrackingSummary.setNickName(NickName);               
-                myMovieTrackingSummary =        myMovieTrackingSummary.setNamesOfMovieFiles(AttachedFilenames);
-            end
+        function myMovieTrackingSummary = getInitializedMovieTrackingSummaryWithNickNameAndAttachedFiles(obj, NickName, AttachedFilenames)
+            assert(obj.verifyStringIsNotUsedAsNickName(NickName) && obj.testForExistenceOfMovieFiles(AttachedFilenames), 'Invalid content for movie entry.')
+            myMovieTrackingSummary =        PMMovieTrackingSummary;
+            myMovieTrackingSummary =        myMovieTrackingSummary.setMovieFolder(obj.getMovieFolder);                
+            myMovieTrackingSummary =        myMovieTrackingSummary.setNickName(NickName);               
+            myMovieTrackingSummary =        myMovieTrackingSummary.setNamesOfMovieFiles(AttachedFilenames);
+        end
 
         function check = verifyStringIsNotUsedAsNickName(obj, String)
-            numberOfMatches = obj.getNumberOfNickNameMatchesForString(String);
-            if numberOfMatches == 0
-                check = true;
-            else
-               check = false; 
-            end
+        numberOfMatches = obj.getNumberOfNickNameMatchesForString(String);
+        if numberOfMatches == 0
+            check = true;
+        else
+           check = false; 
+        end
 
         end
-        
+
         function check = testForExistenceOfMovieFiles(obj, Files)
-            assert(iscellstr(Files), 'Wrong argument type.')
+        assert(iscellstr(Files), 'Wrong argument type.')
 
-            NumberOfFiles =     length(Files);
-            checks = zeros(NumberOfFiles, 1);
-            for FileIndex = 1:NumberOfFiles
-                checks(FileIndex) = fopen([obj.getMovieFolder '/' Files{FileIndex}]);
-            end
+        NumberOfFiles =     length(Files);
+        checks = zeros(NumberOfFiles, 1);
+        for FileIndex = 1:NumberOfFiles
+            checks(FileIndex) = fopen([obj.getMovieFolder '/' Files{FileIndex}]);
+        end
 
-            result = min(checks);
-            if result == -1
-                check = false;
-            else
-                check = true;
-            end
+        result = min(checks);
+        if result == -1
+            check = false;
+        else
+            check = true;
+        end
 
         end
-        
-        function newMovieTracking = getMovieTrackingForMovieTrackingSummary(obj, newMovieTrackingSummary)
-           
-        end
-          
-        
-     
-            
-       
 
         function obj = setMovieFolderInMovieObjectSummaries(obj)
-            obj.ListWithMovieObjectSummary =    cellfun(@(x) x.setMovieFolder(obj.getMovieFolder), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
+        obj.ListWithMovieObjectSummary =    cellfun(@(x) x.setMovieFolder(obj.getMovieFolder), obj.ListWithMovieObjectSummary, 'UniformOutput', false);
         end
-        
-        
-        
-        
-         %% save and synchronize MovieTracking
-       
-         
 
-        
-          
-        
+        function obj = verifyThatAllFoldersAreSpecified(obj)
 
-          function obj = verifyThatAllFoldersAreSpecified(obj)
-         
 
-               if isempty( obj.getNickNameOfActiveMovie)
-                   error('Nickname empty.')
-               end
-          end
-          
-       
+           if isempty( obj.getNickNameOfActiveMovie)
+               error('Nickname empty.')
+           end
+        end
+
+
          
         
     end

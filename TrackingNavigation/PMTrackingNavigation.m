@@ -744,37 +744,52 @@ classdef PMTrackingNavigation
         function [TrackingCell, TrackingCellDrift] = getTrackingCellForTimeForFrames(obj, Frames)
 
             obj.testNanScalarOrNumVector(Frames);
-            if isnan(Frames)
-                TrackingCell = obj.TrackingCellForTime;
-                if isempty(obj.TrackingCellForTimeWithDrift)
-                    TrackingCellDrift = cell(0, 1);
-                else
-                    TrackingCellDrift = obj.TrackingCellForTimeWithDrift;
-                end
+            
+            if isempty(obj.TrackingCellForTime)
                 
+                    TrackingCellDrift = obj.getEmptySegmentation;
+                    TrackingCell = obj.getEmptySegmentation;
                 
-            elseif isscalar(Frames)
-                
-                if isempty(obj.TrackingCellForTime)
-                    TrackingCellDrift = cell(0, 7);
-                    TrackingCell = cell(0,7);
-                else
-                        TrackingCell = obj.TrackingCellForTime{Frames};
-                 if isempty(obj.TrackingCellForTimeWithDrift)
-                     TrackingCellDrift = cell(0, 7);
-                 else
-                    TrackingCellDrift = obj.TrackingCellForTimeWithDrift{Frames};
-                 end
-                    
-                end
-                
-             
-                            
             else
-                error('Not yest supported.')
+                
+                    if isnan(Frames)
+                        
+                        TrackingCell = obj.TrackingCellForTime;
+                        if isempty(obj.TrackingCellForTimeWithDrift)
+                            TrackingCellDrift = obj.getEmptySegmentation;
+                        else
+                            TrackingCellDrift = obj.TrackingCellForTimeWithDrift;
+                        end
 
+
+                    elseif isscalar(Frames)
+
+                         
+                        TrackingCell = obj.TrackingCellForTime{Frames};
+                        if isempty(obj.TrackingCellForTimeWithDrift)
+                            TrackingCellDrift = obj.getEmptySegmentation;
+                        else
+                            TrackingCellDrift = obj.TrackingCellForTimeWithDrift{Frames};
+                        end
+
+
+                    else
+                        error('Input not supported.')
+
+                    end
+
+                
+                
             end
+                
+           
 
+            
+                
+                
+                
+            
+          
         end
 
         function Segmentation = getTrackingSegmentationForFrameRowColumn(obj, Frame, Row, Column)
@@ -819,11 +834,20 @@ classdef PMTrackingNavigation
 
             assert(iscell(obj.getTrackingCellForTimeForFrames(NaN)), 'Wrong format.')
 
+            if isempty(obj.TrackingCellForTime)
+               obj.TrackingCellForTime =  obj.getEmptySegmentation;
+            end
+            
             pooledData =          vertcat(obj.TrackingCellForTime{:});
             if isempty(pooledData)
                 pooledData =         obj.getEmptySegmentation;
             end
 
+             if isempty(obj.TrackingCellForTimeWithDrift)
+               obj.TrackingCellForTimeWithDrift =  obj.getEmptySegmentation;
+            end
+            
+            
             pooledDataWithDrift =       vertcat(obj.TrackingCellForTimeWithDrift{:});   
             if isempty(pooledDataWithDrift)
                 pooledData =         obj.getEmptySegmentation;
@@ -835,7 +859,10 @@ classdef PMTrackingNavigation
              
              if DriftCorrection.getDriftCorrectionActive
                  noDrift =                  obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
-                 segmentation =             obj.TrackingCellForTimeWithDrift{Frame,1};
+                 
+                 [~, segmentation] = obj.getTrackingCellForTimeForFrames(Frame);
+                 
+                
                  segmentation(:, 6) =       noDrift(:, 6);
 
              else
@@ -1933,7 +1960,7 @@ classdef PMTrackingNavigation
             %% removeRedundantData:
             function obj = removeRedundantData(obj)
             
-                obj.TrackingCellForTimeWithDrift = cell(0, obj.NumberOfColumns);
+                obj.TrackingCellForTimeWithDrift = obj.getEmptySegmentation;
                 obj.TrackingAnalysis =              '';    
                 obj.TrackImages =                   '';
                 if ~isempty(obj.AutomatedCellRecognition)
@@ -1957,7 +1984,7 @@ classdef PMTrackingNavigation
                      ConciseList =          obj.getEmptySegmentation;
                  else
                      List =                 obj.removeNanTracksFromSegmentation(obj.getTrackingCellForTimeForFrames(FrameNumber));
-                     ConciseList =         obj.convertObjectListIntoConciseObjectList(List);
+                     ConciseList =          obj.convertObjectListIntoConciseObjectList(List);
                  end
             end
             

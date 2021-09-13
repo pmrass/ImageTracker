@@ -220,7 +220,7 @@ classdef PMMovieController < handle
         
         function obj = exportCurrentFrameAsImage(obj)
                 Image =         frame2im(getframe(obj.getViews.getMovieAxes));
-                obj =           exportImageToExportFolder(obj, Image);
+                exportImageToExportFolder(obj, Image);
             
         end
         
@@ -796,6 +796,11 @@ classdef PMMovieController < handle
            obj.ExportFolder = Value; 
         end
         
+        function folder = getExportFolder(obj)
+            
+           folder = obj.ExportFolder; 
+        end
+        
         function obj = setInteractionsFolder(obj, Value)
            obj.InteractionsFolder = Value; 
         end
@@ -835,8 +840,8 @@ classdef PMMovieController < handle
         function obj = exportTrackCoordinates(obj)
              [file,path] =                   uiputfile([obj.LoadedMovie.getNickName, '.csv']);
             TrackingAnalysisCopy =         obj.LoadedMovie.getTrackingAnalysis;
-            TrackingAnalysisCopy =         TrackingAnalysisCopy.convertDistanceUnitsIntoUm;
-            TrackingAnalysisCopy =         TrackingAnalysisCopy.convertTimeUnitsIntoSeconds;
+            TrackingAnalysisCopy =         TrackingAnalysisCopy.setSpaceUnits('µm');
+            TrackingAnalysisCopy =         TrackingAnalysisCopy.setTimeUnits('minutes');
             TrackingAnalysisCopy.exportTracksIntoCSVFile([path, file], obj.LoadedMovie.getNickName)
             
         end
@@ -1302,17 +1307,14 @@ classdef PMMovieController < handle
         
        function obj =           resetLoadedMovieFromImageFiles(obj)
             obj    =            obj.emptyOutLoadedImageVolumes;
-            obj.LoadedMovie =   obj.LoadedMovie.resetFromImageFiles;
-       
+            obj.LoadedMovie =   obj.LoadedMovie.setPropertiesFromImageFiles;
+            obj =               obj.updateMovieViewImage;
        end
        
      
 
        function obj =           manageResettingOfImageMap(obj)
-            assert(~isempty(obj.LoadedMovie), 'Loaded movie not set')
-            obj.LoadedMovie =        obj.LoadedMovie.setImageMapFromFiles;
-            obj    =                 obj.emptyOutLoadedImageVolumes;
-            obj =           obj.updateMovieViewImage;
+            error('Not supported anymore. Use resetLoadedMovieFromImageFiles instead.')
        end
 
 
@@ -1557,7 +1559,6 @@ classdef PMMovieController < handle
     methods (Access = private) % drift correction
         
         
-            %% resetDriftCorrectionByManualClicks
             function obj =         resetDriftCorrectionByManualClicks(obj)
                 obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.setByManualDriftCorrection);
                 obj =                  obj.resetDriftDependentParameters;
@@ -1568,18 +1569,11 @@ classdef PMMovieController < handle
                 obj =                     obj.resetViewsForCurrentDriftCorrection; 
             end 
 
-          
-
-            %% resetDriftCorrectionToNoDrift;
             function obj =         resetDriftCorrectionToNoDrift(obj)
-                obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.eraseDriftCorrection);
+                obj.LoadedMovie =     obj.LoadedMovie.setDriftCorrection(obj.LoadedMovie.getDriftCorrection.setBlankDriftCorrection);
                 obj =                 obj.resetDriftDependentParameters;   
             end
-
-  
         
-                
-                
         function obj  =        setDriftCorrectionTo(obj, state)
             obj.LoadedMovie =   obj.LoadedMovie.setDriftCorrectionTo(state); % the next function should be incoroporated into this function
             obj =               obj.resetDriftDependentParameters;
@@ -2454,14 +2448,29 @@ classdef PMMovieController < handle
                     obj  =          obj.updateControlElements;
                     obj.Views =     setCentroidVisibility(obj.Views, obj.LoadedMovie.getCentroidVisibility);
                     obj.Views =     setTrackingViewsWith(obj.Views, obj.LoadedMovie);
-                    obj.Views =     obj.Views.updateMovieViewWith( obj.LoadedMovie, obj.getRbgImage);
+                    % ERROR: THIS LINE SHOULD WORK BUT CAUSES AN ERROR
+                 %   obj.Views =     obj.Views.updateMovieViewWith( obj.LoadedMovie, obj.getRbgImage);
+                     obj.Views =   updateMovieViewWith(  obj.Views, obj.LoadedMovie, obj.getRbgImage);
                     obj.Views =     updateTrackVisibilityWith(obj.Views, obj.LoadedMovie);
                     obj.Views =     setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
                     obj =           obj.updateSaveStatusView;
             
              end
 
+         end
+        
+              function obj =      updateMovieViewImage(obj)
+             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+           obj.Views =     setMovieImagePixels(obj.Views, obj.getRbgImage);
+             end
+              end
+        
+                 function obj = blackOutViews(obj)
+            if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
+                obj.Views=          blackOutMovieView(obj.Views); 
+            end
         end
+        
         
     end
     
@@ -2469,12 +2478,7 @@ classdef PMMovieController < handle
 
        
         
-        function obj = blackOutViews(obj)
-            if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
-                obj.Views=          blackOutMovieView(obj.Views); 
-            end
-        end
-        
+     
         function obj = activateViews(obj)
              if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
            obj.Views = enableAllViews(obj.Views);
@@ -2518,17 +2522,13 @@ classdef PMMovieController < handle
 
         end
 
-        function obj =      updateMovieViewImage(obj)
-             if ~isempty(obj.Views) && isvalid(getFigure(obj.Views))
-           obj.Views =     setMovieImagePixels(obj.Views, obj.getRbgImage);
-             end
-        end
+   
         
         function obj =      resetViewsForCurrentDriftCorrection(obj)
 
             obj.Views =     setLimitsOfMovieViewWith(obj.Views, obj.LoadedMovie); % reset applied cropping limit (dependent on drift correction)
             obj.Views =     updateDriftWith(obj.Views, obj.LoadedMovie);
-            obj  =    obj.updateControlElements; % plane number may change
+            obj  =          obj.updateControlElements; % plane number may change
             obj =           obj.setCroppingRectangle;% crop position may change
 
             obj =           obj.setNavigationControls;
