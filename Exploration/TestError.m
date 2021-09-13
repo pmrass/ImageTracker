@@ -10,7 +10,7 @@ function TestError
     
     assert(FileExists == 2, 'Please change path of MyFile so that it works for your system.')
 
-    myLib =     PMMovieLibraryManager();
+    myLib =     PMMovieLibraryManager(MyFile);
     myLib =     myLib.openSelectedMovie;
 
 end

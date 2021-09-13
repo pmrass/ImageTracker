@@ -66,14 +66,13 @@ classdef PMMovieLibraryManager < handle
                     error('Wrong number of arguments')
             end
 
-            if isempty(myFileName)
-                obj =       obj.userLoadsExistingLibrary;
-            else
-                
-                  obj =                   obj.finishOffCurrentLibrary;
-                obj.MovieLibrary =      PMMovieLibrary(myFileName);
-                obj =       obj.changeLibraryToFileName;
-            end
+            assert(~isempty(myFileName) && ischar(myFileName), 'Wrong input.')
+               
+      
+            
+            obj =                   obj.finishOffCurrentLibrary;
+            obj.MovieLibrary =      PMMovieLibrary(myFileName);
+            obj =       obj.changeLibraryToFileName;
 
        end
         
