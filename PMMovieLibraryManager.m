@@ -22,8 +22,8 @@ classdef PMMovieLibraryManager < handle
     
     properties (Access = private) % default settings for some advanced analysis
        
-        XYLimitForNeighborArea = 50;
-        ZLimitsForNeighborArea =  8;
+        XYLimitForNeighborArea =                50;
+        ZLimitsForNeighborArea =                8;
         
         StopDistanceLimit =                     15;
         MaxStopDurationForGoSegment =           5;
@@ -96,16 +96,23 @@ classdef PMMovieLibraryManager < handle
             switch obj.Viewer.getMousClickType
 
                 case 'open'
-                    SelectedNicknames =     obj.Viewer.getSelectedNicknames;
+                  
+            end 
+            
+        end
+        
+        function obj = openSelectedMovie(obj)
+            
+              SelectedNicknames =     obj.Viewer.getSelectedNicknames;
                     if length(SelectedNicknames) == 1
 
                         obj =           obj.finishOffCurrentLibrary;
                         obj =          obj.setActiveMovieByNickName(SelectedNicknames{1});
 
                     end
-            end 
-            
+                    
         end
+        
 
         function obj =          setActiveMovieByNickName(obj, varargin)
 

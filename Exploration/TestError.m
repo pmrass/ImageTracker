@@ -2,14 +2,9 @@ function TestError
 %TESTMOVIE Summary of this function goes here
 %   Detailed explanation goes here
 
-    Path = '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary'; % UPDATE FOLDER FOR YOUR SYSTEM
 
     myLib =     PMMovieLibraryManager('/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary/MyLibrary.mat');
-    myLib =     myLib.setImageAnalysisPath(Path);
- %   myLib =     myLib.addMovieFolder(Path);
-    myLib =     myLib.setExportFolder(Path);
-
-    myLib.addNewMovie('NickNameTest', {'TestMovie.czi'});
+    myLib =     myLib.openSelectedMovie;
 
 end
 
