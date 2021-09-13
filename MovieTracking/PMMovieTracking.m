@@ -704,6 +704,30 @@ classdef PMMovieTracking < PMChannels
             fprintf('Cell were added into the database!\n')
         end
         
+          function [obj] =             resetActivePixelListWith(obj, SegmentationCapture)
+            
+            if isnan(obj.getIdOfActiveTrack)
+                warning('No valid active track. Therefore no action taken.')
+                
+            else
+                
+               % obj.Tracking =
+               % obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
+               % % this is done somewhere else now; otherwise too slow;
+               % check if this is ok now;
+                try 
+                    obj.Tracking =      obj.Tracking.addSegmentation(SegmentationCapture);
+                catch E
+                    throw(E) 
+                end
+                
+                obj =               obj.setSavingStatus(true);
+                
+            end
+                
+          end
+        
+        
         
            
           %% mergeTracksWithinDistance
@@ -2063,268 +2087,6 @@ classdef PMMovieTracking < PMChannels
        
         
         
-        
-        %% mediate tracking
-        function obj = performTrackingMethod(obj, Value)
-            try
-                if ismethod(obj.Tracking, Value)
-                     obj.Tracking =      obj.Tracking.(Value);
-                end
-            
-               
-             catch ME
-                throw(ME)
-            end
-        end
-        
-        function obj = setTrackingAnalysis(obj)
-            obj.Tracking =      obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
-        end
-        
-        function obj = deleteAllTracks(obj)
-             obj.Tracking =     PMTrackingNavigation(0,0);
-                obj.Tracking =     obj.Tracking.fillEmptySpaceOfTrackingCellTime(obj.getMaxFrame);
-        end
-        
-        function obj = performAutoTrackingOfExistingMasks(obj)
-             obj.Tracking =     obj.Tracking.autTrackingProcedure(obj.getTrackingAnalysis);
-        end
-        
-        
-        %% mergeActiveTrackWithTrack
-        function obj = mergeActiveTrackWithTrack(obj, IDOfTrackToMerge)
-            obj.Tracking =      obj.Tracking.splitTrackAtFrame(obj.getActiveFrames-1, obj.getIdOfActiveTrack, obj.Tracking.generateNewTrackID);
-            obj.Tracking =      obj.Tracking.mergeTracks([obj.getIdOfActiveTrack,    IDOfTrackToMerge]);
-        end
-        
-     
-        
-    
-        function obj = setNavigation(obj, Value)
-            obj.Navigation =        Value;
-            obj.DriftCorrection =   obj.DriftCorrection.setNavigation(Value);
-        end
-        
-        function obj = set.Navigation(obj,Value)
-             assert(isa(Value,'PMNavigationSeries') && length(Value) == 1, 'Wrong input format.')
-            obj.Navigation =  Value;
-        end
-        
-        function thresholds = getDefaultThresholdsForAllPlanes(obj)
-            thresholds(1: obj.getMaxPlane, 1) = 30;
-            
-        end
-        
-        
-        
-        %% testForExistenceOfTracking
-        function Tracking =             testForExistenceOfTracking(obj)
-           if isempty(obj.Tracking)
-                Tracking =           false;
-           else
-                Tracking=            obj.Tracking.testForExistenceOfTracks;
-           end
-        end
-          
-       %% minimizeMasksOfActiveTrackAtFrame
-       function obj = minimizeMasksOfActiveTrackAtFrame(obj, FrameIndex)
-           
-           obj.Tracking =       obj.Tracking.minimizeActiveTrack;
-           
-           
-          
-            obj =               obj.setFrameTo(SourceFrames(FrameIndex));
-            obj =               obj.setFocusOnActiveTrack;
-            
-                 
-       end
-       
-       
-       
-    
-           
-        %% getTrackingAnalysis:
-      
-        
-        %% updateMaskOfActiveTrackByAdding:
-        function [obj] =                                updateMaskOfActiveTrackByAdding(obj, yList, xList, plane)
-            if isempty(yList) || isempty(xList)
-            else
-                pixelListToAdd =              [yList,xList];
-                pixelListToAdd(:,3) =         plane;
-                pixelList_AfterAdding =       unique([obj.Tracking.getPixelsOfActiveMaskFromFrame(obj.getActiveFrames); pixelListToAdd], 'rows');
-                mySegementationCapture =      PMSegmentationCapture(pixelList_AfterAdding, 'Manual');
-                obj =                        obj.resetActivePixelListWith(mySegementationCapture);
-            end
-            
-        end
-     
-        function [obj] =             resetActivePixelListWith(obj, SegmentationCapture)
-            
-            if isnan(obj.getIdOfActiveTrack)
-                warning('No valid active track. Therefore no action taken.')
-                
-            else
-                
-               % obj.Tracking =
-               % obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
-               % % this is done somewhere else now; otherwise too slow;
-               % check if this is ok now;
-                try 
-                    obj.Tracking =      obj.Tracking.addSegmentation(SegmentationCapture);
-                catch E
-                    throw(E) 
-                end
-                
-                obj =               obj.setSavingStatus(true);
-                
-            end
-                
-        end
-        
-        function obj = setPreventDoubleTracking(obj, Value, Value2)
-            obj.Tracking = obj.Tracking.setPreventDoubleTracking(Value, Value2);
-        end
-        
-        
-        
-        %% getPixelsFromActiveMaskAfterRemovalOf:
-        
-          function pixelList_Modified =        getPixelsFromActiveMaskAfterRemovalOf(obj, pixelListToRemove)
-            
-              if ~(isempty(pixelListToRemove(:,1)) || isempty(pixelListToRemove(:,2)))  
-                    pixelList_Original =        obj.Tracking.getPixelsOfActiveMaskFromFrame(obj.getActiveFrames);
-                    deleteRows =             ismember(pixelList_Original(:,1:2), [pixelListToRemove(:,1) pixelListToRemove(:,2)], 'rows');
-                    pixelList_Modified =        pixelList_Original;
-                    pixelList_Modified(deleteRows,:) =               [];
-              end
-        end
-  
-        function numberOfFrames =       getUniqueFrameNumberFromImageMap(obj, ImageMap)
-            ColumnWithTime =       10;
-            numberOfFrames =       length(unique(cell2mat(ImageMap(2:end,ColumnWithTime))));   
-        end
-
-        
-      
-        
-        
-        %% get segmentation of active track:
-        function [segmentationOfTrack] =                    getUnfilteredSegmentationOfTrack(obj, TrackID)
-            segmentationOfTrack =       obj.Tracking.getSegmentationOfAllWithTrackID(TrackID);   
-        end
-        
-     
-     
-
-       
-
-      
-
-        %% getGapFrames
-          function [GapFrames] =                  getGapFrames(obj, Parameter)
-              
-                switch Parameter
-                    case 'forward'
-                    
-                        GapFrames =    obj.getActiveFrames + 1 : obj.getLastUntrackedFrameAfterActiveFrame;
-                        fprintf('Looking for gap immediately after active frame %i.', obj.getActiveFrames)
-                        if isempty(GapFrames)
-                            fprintf('There is no gap.\n')
-                        else
-                            fprintf('There is a gap between frames %i and %i.\n', min(GapFrames), max(GapFrames))
-                        end
-                             
-                    case 'backward'
-                        GapFrames =      obj.getActiveFrames - 1 : -1 : obj.firstUntrackedFrame;
-                        fprintf('Looking for gap immediately before active frame %i.', obj.getActiveFrames)
-                        if isempty(GapFrames)
-                            fprintf('There is no gap.\n')
-                        else
-                            fprintf('There is a gap between frames %i and %i.\n', max(GapFrames), min(GapFrames))
-                        end
-                end
-                
-                  
-                            
-          end
-          
-          
-         function lastUntrackedFrame = getLastUntrackedFrameAfterActiveFrame(obj)
-
-            FramesOfActiveTrack  =          obj.Tracking.getFramesOfActiveTrack;
-
-            Index = find(FramesOfActiveTrack > obj.getActiveFrames,  1, 'first');
-            if isempty(Index)
-                lastUntrackedFrame =        obj.Navigation.getMaxFrame;
-            elseif FramesOfActiveTrack(Index) == obj.getActiveFrames + 1
-                lastUntrackedFrame = zeros(0, 1);
-            else
-                lastUntrackedFrame =        FramesOfActiveTrack(Index) - 1;
-            end
-
-        end
-        
-            
-        function [firstUntrackedFrame, lastUntrackedFrame] =                getFirstLastContiguousUntrackedFrame(obj)
-              lastUntrackedFrame = obj.getLastUntrackedFrameAfterActiveFrame;
-              firstUntrackedFrame = obj.firstUntrackedFrame;
-        end
-          
-
-     
-        
-         function firstUntrackedFrame = firstUntrackedFrame(obj)
-             
-             
-            FramesOfActiveTrack  =              obj.Tracking.getFramesOfActiveTrack;
-            % get first untracked frame:
-            BeforeFirstUntrackedFrame =             find(FramesOfActiveTrack < obj.getActiveFrames,  1, 'last');
-            if isempty(BeforeFirstUntrackedFrame)
-                firstUntrackedFrame =          1;
-            else
-                firstUntrackedFrame =          FramesOfActiveTrack(BeforeFirstUntrackedFrame) + 1;
-            end
-             
-         end
-        
-        
-        
-      
-   
-           
-        %% get track ID where next frame has no mask:
-        
-        function trackIDsWithNoFollowUp =                                 getTrackIDsWhereNextFrameHasNoMask(obj)
-
-            if obj.getActiveFrames >= obj.Navigation.getMaxFrame 
-                trackIDsWithNoFollowUp =                                  zeros(0,1);
-            else                
-                TrackIDsOfNextFrame =                                   obj.Tracking.getTrackIDsOfFrame(obj.getActiveFrames + 1);
-                trackIDsWithNoFollowUp =                                setdiff(obj.getTrackIDsOfCurrentFrame, TrackIDsOfNextFrame);
-            end
-            
-        end
-        
-        function trackIDs =                 getTrackIDsOfCurrentFrame(obj)
-            TrackDataOfCurrentFrame =       obj.getTrackDataOfCurrentFrame;
-            trackIDs =                      obj.Tracking.getTrackIDsFromSegmentationList(TrackDataOfCurrentFrame);
-        end
-        
-        function TrackDataOfCurrentFrame =                  getTrackDataOfCurrentFrame(obj)
-                TrackDataOfCurrentFrame =       obj.getTrackDataOfFrame(obj.getActiveFrames);
-        end
-          
-        function segmentationOfCurrentFrame =              getTrackDataOfFrame(obj, FrameNumber)   
-                segmentationOfCurrentFrame = obj.Tracking.getSegmentationOfFrame(FrameNumber);
-        end
-
-        %% unmap:
-       
-        
-         %%
-         
-      
          
         %% meta-data:
         function summary = getMetaDataSummary(obj)
@@ -2500,6 +2262,253 @@ classdef PMMovieTracking < PMChannels
          
        
          
+    end
+    
+    methods % tracking
+        
+        
+        
+        %% mediate tracking
+        function obj = performTrackingMethod(obj, Value)
+            try
+                if ismethod(obj.Tracking, Value)
+                     obj.Tracking =      obj.Tracking.(Value);
+                end
+            
+               
+             catch ME
+                throw(ME)
+            end
+        end
+        
+        function obj = setTrackingAnalysis(obj)
+            obj.Tracking =      obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
+        end
+        
+        function obj = deleteAllTracks(obj)
+             obj.Tracking =     PMTrackingNavigation();
+                obj.Tracking =     obj.Tracking.initializeWithDrifCorrectionAndFrame(obj.DriftCorrection, obj.getMaxFrame);
+        end
+        
+        function obj = performAutoTrackingOfExistingMasks(obj)
+             obj.Tracking =     obj.Tracking.autTrackingProcedure(obj.getTrackingAnalysis);
+        end
+        
+        
+        %% mergeActiveTrackWithTrack
+        function obj = mergeActiveTrackWithTrack(obj, IDOfTrackToMerge)
+            obj.Tracking =      obj.Tracking.splitTrackAtFrame(obj.getActiveFrames-1, obj.getIdOfActiveTrack, obj.Tracking.generateNewTrackID);
+            obj.Tracking =      obj.Tracking.mergeTracks([obj.getIdOfActiveTrack,    IDOfTrackToMerge]);
+        end
+        
+     
+        
+    
+        function obj = setNavigation(obj, Value)
+            obj.Navigation =        Value;
+            obj.DriftCorrection =   obj.DriftCorrection.setNavigation(Value);
+        end
+        
+        function obj = set.Navigation(obj,Value)
+             assert(isa(Value,'PMNavigationSeries') && length(Value) == 1, 'Wrong input format.')
+            obj.Navigation =  Value;
+        end
+        
+        function thresholds = getDefaultThresholdsForAllPlanes(obj)
+            thresholds(1: obj.getMaxPlane, 1) = 30;
+            
+        end
+        
+        
+        
+        %% testForExistenceOfTracking
+        function Tracking =             testForExistenceOfTracking(obj)
+           if isempty(obj.Tracking)
+                Tracking =           false;
+           else
+                Tracking=            obj.Tracking.testForExistenceOfTracks;
+           end
+        end
+          
+       %% minimizeMasksOfActiveTrackAtFrame
+       function obj = minimizeMasksOfActiveTrackAtFrame(obj, FrameIndex)
+           
+           obj.Tracking =       obj.Tracking.minimizeActiveTrack;
+           
+           
+          
+            obj =               obj.setFrameTo(SourceFrames(FrameIndex));
+            obj =               obj.setFocusOnActiveTrack;
+            
+                 
+       end
+       
+       
+       
+    
+           
+        %% getTrackingAnalysis:
+      
+        
+        %% updateMaskOfActiveTrackByAdding:
+        function [obj] =                                updateMaskOfActiveTrackByAdding(obj, yList, xList, plane)
+            if isempty(yList) || isempty(xList)
+            else
+                pixelListToAdd =              [yList,xList];
+                pixelListToAdd(:,3) =         plane;
+                pixelList_AfterAdding =       unique([obj.Tracking.getPixelsOfActiveMaskFromFrame(obj.getActiveFrames); pixelListToAdd], 'rows');
+                mySegementationCapture =      PMSegmentationCapture(pixelList_AfterAdding, 'Manual');
+                obj =                        obj.resetActivePixelListWith(mySegementationCapture);
+            end
+            
+        end
+     
+      
+        
+        function obj = setPreventDoubleTracking(obj, Value, Value2)
+            obj.Tracking = obj.Tracking.setPreventDoubleTracking(Value, Value2);
+        end
+        
+        
+        
+        %% getPixelsFromActiveMaskAfterRemovalOf:
+        
+          function pixelList_Modified =        getPixelsFromActiveMaskAfterRemovalOf(obj, pixelListToRemove)
+            
+              if ~(isempty(pixelListToRemove(:,1)) || isempty(pixelListToRemove(:,2)))  
+                    pixelList_Original =        obj.Tracking.getPixelsOfActiveMaskFromFrame(obj.getActiveFrames);
+                    deleteRows =             ismember(pixelList_Original(:,1:2), [pixelListToRemove(:,1) pixelListToRemove(:,2)], 'rows');
+                    pixelList_Modified =        pixelList_Original;
+                    pixelList_Modified(deleteRows,:) =               [];
+              end
+        end
+  
+        function numberOfFrames =       getUniqueFrameNumberFromImageMap(obj, ImageMap)
+            ColumnWithTime =       10;
+            numberOfFrames =       length(unique(cell2mat(ImageMap(2:end,ColumnWithTime))));   
+        end
+
+        
+      
+        
+        
+        %% get segmentation of active track:
+        function [segmentationOfTrack] =                    getUnfilteredSegmentationOfTrack(obj, TrackID)
+            segmentationOfTrack =       obj.Tracking.getSegmentationOfAllWithTrackID(TrackID);   
+        end
+        
+     
+     
+
+       
+
+      
+
+        %% getGapFrames
+          function [GapFrames] =                  getGapFrames(obj, Parameter)
+              
+                switch Parameter
+                    case 'forward'
+                    
+                        GapFrames =    obj.getActiveFrames + 1 : obj.getLastUntrackedFrameAfterActiveFrame;
+                        fprintf('Looking for gap immediately after active frame %i.', obj.getActiveFrames)
+                        if isempty(GapFrames)
+                            fprintf('There is no gap.\n')
+                        else
+                            fprintf('There is a gap between frames %i and %i.\n', min(GapFrames), max(GapFrames))
+                        end
+                             
+                    case 'backward'
+                        GapFrames =      obj.getActiveFrames - 1 : -1 : obj.firstUntrackedFrame;
+                        fprintf('Looking for gap immediately before active frame %i.', obj.getActiveFrames)
+                        if isempty(GapFrames)
+                            fprintf('There is no gap.\n')
+                        else
+                            fprintf('There is a gap between frames %i and %i.\n', max(GapFrames), min(GapFrames))
+                        end
+                end
+                
+                  
+                            
+          end
+          
+          
+         function lastUntrackedFrame = getLastUntrackedFrameAfterActiveFrame(obj)
+
+            FramesOfActiveTrack  =          obj.Tracking.getFramesOfActiveTrack;
+
+            Index = find(FramesOfActiveTrack > obj.getActiveFrames,  1, 'first');
+            if isempty(Index)
+                lastUntrackedFrame =        obj.Navigation.getMaxFrame;
+            elseif FramesOfActiveTrack(Index) == obj.getActiveFrames + 1
+                lastUntrackedFrame = zeros(0, 1);
+            else
+                lastUntrackedFrame =        FramesOfActiveTrack(Index) - 1;
+            end
+
+        end
+        
+            
+        function [firstUntrackedFrame, lastUntrackedFrame] =                getFirstLastContiguousUntrackedFrame(obj)
+              lastUntrackedFrame = obj.getLastUntrackedFrameAfterActiveFrame;
+              firstUntrackedFrame = obj.firstUntrackedFrame;
+        end
+          
+
+     
+        
+         function firstUntrackedFrame = firstUntrackedFrame(obj)
+             
+             
+            FramesOfActiveTrack  =              obj.Tracking.getFramesOfActiveTrack;
+            % get first untracked frame:
+            BeforeFirstUntrackedFrame =             find(FramesOfActiveTrack < obj.getActiveFrames,  1, 'last');
+            if isempty(BeforeFirstUntrackedFrame)
+                firstUntrackedFrame =          1;
+            else
+                firstUntrackedFrame =          FramesOfActiveTrack(BeforeFirstUntrackedFrame) + 1;
+            end
+             
+         end
+        
+        
+        
+      
+   
+           
+        %% get track ID where next frame has no mask:
+        
+        function trackIDsWithNoFollowUp =                                 getTrackIDsWhereNextFrameHasNoMask(obj)
+
+            if obj.getActiveFrames >= obj.Navigation.getMaxFrame 
+                trackIDsWithNoFollowUp =                                  zeros(0,1);
+            else                
+                TrackIDsOfNextFrame =                                   obj.Tracking.getTrackIDsOfFrame(obj.getActiveFrames + 1);
+                trackIDsWithNoFollowUp =                                setdiff(obj.getTrackIDsOfCurrentFrame, TrackIDsOfNextFrame);
+            end
+            
+        end
+        
+        function trackIDs =                 getTrackIDsOfCurrentFrame(obj)
+            TrackDataOfCurrentFrame =       obj.getTrackDataOfCurrentFrame;
+            trackIDs =                      obj.Tracking.getTrackIDsFromSegmentationList(TrackDataOfCurrentFrame);
+        end
+        
+        function TrackDataOfCurrentFrame =                  getTrackDataOfCurrentFrame(obj)
+                TrackDataOfCurrentFrame =       obj.getTrackDataOfFrame(obj.getActiveFrames);
+        end
+          
+        function segmentationOfCurrentFrame =              getTrackDataOfFrame(obj, FrameNumber)   
+                segmentationOfCurrentFrame = obj.Tracking.getSegmentationOfFrame(FrameNumber);
+        end
+
+        %% unmap:
+       
+        
+         %%
+         
+      
+        
     end
      
     methods % verify user input

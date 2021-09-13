@@ -2292,48 +2292,7 @@ classdef PMMovieController < handle
             
             
         
-        %% auto cell-recognation callbacks
-           function obj = AutoCellRecognitionChannelChanged(obj, ~,third)
-               obj.AutoCellRecognitionController = setActiveChannel(obj.AutoCellRecognitionController, third.DisplayIndices(1));
-          end
-          
-          function obj = AutoCellRecognitionFramesChanged(obj, ~, third)
-              myFrames =  third.DisplayIndices(:, 1);
-              obj.AutoCellRecognitionController = setSelectedFrames(obj.AutoCellRecognitionController, myFrames);
-              
-          end
-          
-             function obj = AutoCellRecognitionTableChanged(obj,src,~)
-                 obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.setCircleLimitsBy(src.Data);
-
-             end
-             
-        function obj = startAutoCellRecognitionPushed(obj,~,~)
-
-            switch obj.AutoCellRecognitionController.getUserSelection
-                case 'Interpolate plane settings'
-                    obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.interpolateCircleRecognitionLimits;
-
-                case 'Circle recognition'
-                    obj =                  obj.askUserToDeleteTrackingData;
-                    obj.LoadedMovie =      obj.LoadedMovie.setTrackingAnalysis;
-                    obj.LoadedMovie =      obj.LoadedMovie.executeAutoCellRecognition(obj.AutoCellRecognitionController.getAutoCellRecognition);
-                    
-                    obj = updateAllViewsThatDependOnSelectedTracks(obj);
-                    
-            end
-           
-            
-        end
     
-          function obj = askUserToDeleteTrackingData(obj)
-                DeleteAllAnswer = questdlg('Do you want to delete all existing tracks before autodetection?', 'Cell autodetection');
-                switch DeleteAllAnswer
-                    case 'Yes'
-                        obj =         obj.tracking_deleteAllTracks;
-                end
-          end
-          
            function obj = updateHandlesForTrackingNavigationEditView(obj)
 
                 obj.TrackingNavigationEditViewController = obj.TrackingNavigationEditViewController.setCallbacks(...
@@ -2435,6 +2394,55 @@ classdef PMMovieController < handle
             end
 
             
+    end
+    
+    methods (Access = private) % auto cell recognition
+        
+
+           function obj = AutoCellRecognitionChannelChanged(obj, ~,third)
+               obj.AutoCellRecognitionController = setActiveChannel(obj.AutoCellRecognitionController, third.DisplayIndices(1));
+          end
+          
+          function obj = AutoCellRecognitionFramesChanged(obj, ~, third)
+              myFrames =  third.DisplayIndices(:, 1);
+              obj.AutoCellRecognitionController = setSelectedFrames(obj.AutoCellRecognitionController, myFrames);
+              
+          end
+          
+             function obj = AutoCellRecognitionTableChanged(obj,src,~)
+                 obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.setCircleLimitsBy(src.Data);
+
+             end
+             
+        function obj = startAutoCellRecognitionPushed(obj,~,~)
+
+            switch obj.AutoCellRecognitionController.getUserSelection
+                case 'Interpolate plane settings'
+                    obj.AutoCellRecognitionController = obj.AutoCellRecognitionController.interpolateCircleRecognitionLimits;
+
+                case 'Circle recognition'
+                    obj =                  obj.askUserToDeleteTrackingData;
+                    obj.LoadedMovie =      obj.LoadedMovie.setTrackingAnalysis;
+                    obj.LoadedMovie =      obj.LoadedMovie.executeAutoCellRecognition(obj.AutoCellRecognitionController.getAutoCellRecognition);
+                    
+                    obj = obj.updateAllViewsThatDependOnSelectedTracks;
+                    
+            end
+           
+            
+        end
+    
+          function obj = askUserToDeleteTrackingData(obj)
+                DeleteAllAnswer = questdlg('Do you want to delete all existing tracks before autodetection?', 'Cell autodetection');
+                switch DeleteAllAnswer
+                    case 'Yes'
+                        obj =         obj.tracking_deleteAllTracks;
+                end
+          end
+          
+          
+        
+        
     end
     
     methods % vies

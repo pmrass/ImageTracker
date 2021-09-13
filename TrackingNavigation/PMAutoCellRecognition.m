@@ -49,15 +49,13 @@ classdef PMAutoCellRecognition
     end
     
 
-    
-    methods
+    methods % initialize
         
-        
-        function obj = PMAutoCellRecognition(myImageSequence, Channel)
+           function obj = PMAutoCellRecognition(myImageSequence, Channel)
             %PMAUTOCELLRECOGNITION Construct an instance of this class
             %   Detailed explanation goes here
             
-                assert(size(myImageSequence,1)>=1, 'ImageSequence must contain at least one frame');
+                assert(size(myImageSequence,1) >= 1, 'ImageSequence must contain at least one frame');
 
                 obj.ImageSequence =          myImageSequence;
                 obj.ActiveChannel =          Channel;
@@ -67,6 +65,14 @@ classdef PMAutoCellRecognition
                 
         end
         
+        
+    end
+    
+    
+    methods
+        
+        
+     
         
               
         function obj =       removeRedundantData(obj)

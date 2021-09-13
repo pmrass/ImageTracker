@@ -6,9 +6,9 @@ function TestError
 
     MyFile = '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary/MyLibrary.mat';
     
-    FileExists = exist(MyFile);
+    exist(MyFile)
     
-    assert(FileExists == 2, 'Please change path of MyFile so that it works for your system.')
+    assert(
 
     myLib =     PMMovieLibraryManager();
     myLib =     myLib.openSelectedMovie;

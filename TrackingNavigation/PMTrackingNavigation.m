@@ -425,8 +425,16 @@ classdef PMTrackingNavigation
             if isempty(CurrentFrameList)
                 CurrentFrameList =    obj.getEmptySegmentation;
             else
-                 CurrentFrameList(:,obj.PixelColumn) =                  cellfun(@(x) size(x,1), CurrentFrameList(:,obj.PixelColumn), 'UniformOutput', false);
-                CurrentFrameList(:, obj.SegmentationTypeColumn) =        obj.extractSegmentationTypeFromList(CurrentFrameList(:, obj.SegmentationTypeColumn));
+                
+                for index = 1 : length(CurrentFrameList)
+                     CurrentFrameList{index}(:,obj.PixelColumn) =                num2cell( size(CurrentFrameList{index}(:,obj.PixelColumn), 1));
+                CurrentFrameList{index}(:, obj.SegmentationTypeColumn) =        obj.extractSegmentationTypeFromList(CurrentFrameList{index}(:, obj.SegmentationTypeColumn));
+                    
+                    
+                end
+                
+                CurrentFrameList = vertcat(CurrentFrameList{:});
+                
             end
             
            
@@ -2038,13 +2046,14 @@ classdef PMTrackingNavigation
                 
                 
                 try
-                obj =       obj.setEntryInTrackingCellForTime(SegmentationCapture);
-             catch E
+                    obj =       obj.setEntryInTrackingCellForTime(SegmentationCapture);
+                     obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+                catch E
                    throw(E) 
                 end
                 
                 
-                obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+               
                
                 
             end
@@ -2544,17 +2553,14 @@ classdef PMTrackingNavigation
                 if obj.PreventDoubleTracking
                     MinDistance = obj.getMinDistanceToOtherMasksInActiveFrameForMask(NewMask);
                     if MinDistance < obj.DistanceForDoubleTracking(1)
-                        myException =  MException('MATLAB:trackingError', 'New mask was within the limit for double tracking. Therefore tracking was not continued.');
-                        throw(myException)
+                    else
+                         obj =       obj.setTrackForFrameTrackIDWithMasks(obj.ActiveFrame, obj.ActiveTrackID, NewMask, NewMaskWithDrift);
                     end
                     
                 end
                 
-                obj =       obj.setTrackForFrameTrackIDWithMasks(obj.ActiveFrame, obj.ActiveTrackID, NewMask, NewMaskWithDrift);
-                
-                
-           
-                
+               
+                   
           end
           
         
@@ -2565,24 +2571,18 @@ classdef PMTrackingNavigation
         
           function minDistance = getMinDistanceToOtherMasksInActiveFrameForMask(obj, Mask)
               
-                    NewX = Mask{1, obj.CentroidXColumn} ;
-                    NewY = Mask{1, obj.CentroidYColumn};
-                    NewZ = Mask{1, obj.CentroidZColumn} ;
+                NewX = Mask{1, obj.CentroidXColumn} ;
+                NewY = Mask{1, obj.CentroidYColumn};
+                NewZ = Mask{1, obj.CentroidZColumn} ;
 
-                     
-              
-                    
-                    segmentation =      obj.getSegmentationOfFrame(obj.ActiveFrame);
-                    
-                     MatchingRow =      cell2mat(segmentation(:, obj.TrackIDColumn)) == Mask{obj.TrackIDColumn, 1};
-                    
-                     segmentation(MatchingRow, :) = [];
-                    coordinates =       obj.extractCoordinatesFromTrackList(segmentation);
-                   
-                    
-                    
-                   
-                     minDistance =            min(pdist2([NewX NewY NewZ], coordinates));
+                segmentation =      obj.getSegmentationOfFrame(obj.ActiveFrame);
+
+                 MatchingRow =      cell2mat(segmentation(:, obj.TrackIDColumn)) == Mask{obj.TrackIDColumn, 1};
+
+                 segmentation(MatchingRow, :) = [];
+                coordinates =       obj.extractCoordinatesFromTrackList(segmentation);
+
+                 minDistance =            min(pdist2([NewX NewY NewZ], coordinates));
                 
           end
           
@@ -2590,7 +2590,7 @@ classdef PMTrackingNavigation
           
         function [Mask, MaskWithDrift] =  getMasksForInput(obj, MyTrackID, activeFrame, SegmentationCapture)
 
-                 assert(~isempty(obj.TrackingAnalysis), 'Need tracking analysis to calculate drift.')
+                assert(~isempty(obj.TrackingAnalysis), 'Need tracking analysis to calculate drift.')
             
                 Mask{1, obj.TrackIDColumn} =    MyTrackID;
                 Mask{1, obj.TimeColumn} =       activeFrame;
