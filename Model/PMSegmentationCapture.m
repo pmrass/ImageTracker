@@ -33,7 +33,6 @@ classdef PMSegmentationCapture
     end
     
     properties (Access = private)
-      
          SizeForFindingCellsByIntensity
          PixelNumberForMaxAverage =              20; %25
       
@@ -66,9 +65,7 @@ classdef PMSegmentationCapture
 
  
         end
-        
-        
-        
+          
     end
     
     
@@ -96,8 +93,6 @@ classdef PMSegmentationCapture
         
     end
 
-   
-    
     properties (Access = private, Constant)
         TrackIDColumn = 1;
     end
@@ -412,8 +407,10 @@ classdef PMSegmentationCapture
             failurs = obj.AccumulatedSegmentationFailures;
         end
         
+       function value = getMaskCoordinateList(obj)
+            value = obj.getActiveShape.getCoordinates;
+       end
         
-      
 
         function value = getMaskXCoordinateList(obj)
            value = obj.MaskCoordinateList; 
@@ -441,9 +438,7 @@ classdef PMSegmentationCapture
         function CandidateYCentroid = getZCentroid(obj)
             CandidateYCentroid =        mean(obj.getMaskZCoordinateList);
         end
-        
-        
-        
+
         function pixelNumber = getNumberOfPixels(obj)
             pixelNumber =   size(obj.MaskCoordinateList,1); 
         end                             
@@ -482,7 +477,6 @@ classdef PMSegmentationCapture
     end
     
     methods % autothresholding in brightest region of image 
-        
         
             function obj = performAutothresholdSegmentationAroundBrightestAreaInImage(obj)
               
@@ -734,9 +728,7 @@ classdef PMSegmentationCapture
             obj =                           obj.showMaskDetectionByThresholding(ThresholdedImage);
         end
 
-        function value = getMaskCoordinateList(obj)
-            value = obj.getActiveShape.getCoordinates;
-        end
+     
 
         function Threshold =                getThresholdToClickedPixel(obj)
             Threshold =      obj.ImageVolume(obj.ActiveYCoordinate, obj.ActiveXCoordinate, obj.ActiveZCoordinate);

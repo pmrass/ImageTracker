@@ -335,7 +335,7 @@ classdef PMMovieController < handle
     
     methods (Access = private) % track line views
         
-              function [obj] =                   tracking_updateActiveMaskByButtonClick(obj)
+              function obj =                   tracking_updateActiveMaskByButtonClick(obj)
                   % UPDATEACTIVEMASKBYBUTTONCLICK: create mask of active track based on mouse click;
                   % mouse click selecs pixel that serves as threshold for detecting mask;
                   % mask is stored in PMMovieTracking and views are updated;
@@ -610,6 +610,81 @@ classdef PMMovieController < handle
             obj =               obj.updateMovieView;
             obj =               obj.setNavigationControls;
         end  
+        
+    end
+    
+    methods (Access = private) % autotracking
+        
+          function obj = updateHandlesForAutoTrackingController(obj)
+
+              obj.TrackingAutoTrackingController  = obj.TrackingAutoTrackingController.setCallbacks(...
+                    @obj.respondToMaximumAcceptedDistanceForAutoTracking, ...
+                    @obj.respondToFirstPassDeletionFrameNumber, ...
+                    @obj.respondToConnectionGapsValueChanged, ...
+                    @obj.respondToConnectionGapsXYLimitChanged, ...
+                    @obj.respondToConnectionGapsZLimitValueChanged, ...
+                    @obj.respondToShowMergeInfoValueChanged, ...
+                    @obj.startAutoTrackingPushed ...
+                    );
+              
+          end
+        
+          function obj = respondToMaximumAcceptedDistanceForAutoTracking(obj, ~, ~)
+                obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+          function obj = respondToFirstPassDeletionFrameNumber(obj, ~, ~)
+              obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+          function obj = respondToShowMergeInfoValueChanged(obj,~,~)
+              obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+          function obj = setTrackingNavigationByAutoTrackingView(obj)
+              obj.LoadedMovie =                         obj.LoadedMovie.updateTrackingWith(obj.TrackingAutoTrackingController.getView);
+              obj.TrackingAutoTrackingController =      obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking);
+          end
+          
+          
+          function obj =respondToConnectionGapsValueChanged(obj,~,~)
+              obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+          function obj = respondToConnectionGapsXYLimitChanged(obj,~,~)
+              obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+           function obj = respondToConnectionGapsZLimitValueChanged(obj,~,~)
+                 obj = obj.setTrackingNavigationByAutoTrackingView;
+          end
+          
+          function obj = startAutoTrackingPushed(obj,~,~)
+
+                switch obj.TrackingAutoTrackingController.getUserSelection
+
+                    case 'Tracking by minimizing object distances'
+                        obj =             obj.trackByMinimizingDistancesOfTracks;
+
+                    case 'Delete tracks'
+                        obj =             obj.unTrack;
+
+                    case 'Connect exisiting tracks with each other'
+                        obj.LoadedMovie =   obj.LoadedMovie.performTrackingMethod('performSerialTrackReconnection');
+
+                    case 'Track-Delete-Connect'
+                        obj.LoadedMovie =   obj.LoadedMovie.performAutoTrackingOfExistingMasks;
+
+                end
+
+               
+                obj =           obj.initializeViews;
+                obj =           obj.updateMovieView;
+                obj =           obj.setTrackViews;
+
+          end
+          
+        
         
     end
     
@@ -1640,6 +1715,8 @@ classdef PMMovieController < handle
         
     end
     
+    
+    
     methods (Access = private)
         
        
@@ -1763,78 +1840,7 @@ classdef PMMovieController < handle
          
           
 
- 
-        %% showAutoTrackingController
-          function obj = updateHandlesForAutoTrackingController(obj)
-
-              obj.TrackingAutoTrackingController  = obj.TrackingAutoTrackingController.setCallbacks(...
-                    @obj.respondToMaximumAcceptedDistanceForAutoTracking, ...
-                    @obj.respondToFirstPassDeletionFrameNumber, ...
-                    @obj.respondToConnectionGapsValueChanged, ...
-                    @obj.respondToConnectionGapsXYLimitChanged, ...
-                    @obj.respondToConnectionGapsZLimitValueChanged, ...
-                    @obj.respondToShowMergeInfoValueChanged, ...
-                    @obj.startAutoTrackingPushed ...
-                    );
-              
-          end
-        
-          function obj = respondToMaximumAcceptedDistanceForAutoTracking(obj, ~, ~)
-                obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-          function obj = respondToFirstPassDeletionFrameNumber(obj, ~, ~)
-              obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-          function obj = respondToShowMergeInfoValueChanged(obj,~,~)
-              obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-          function obj = setTrackingNavigationByAutoTrackingView(obj)
-              obj.LoadedMovie =                         obj.LoadedMovie.updateTrackingWith(obj.TrackingAutoTrackingController.getView);
-              obj.TrackingAutoTrackingController =      obj.TrackingAutoTrackingController.resetModelWith(obj.LoadedMovie.getTracking);
-          end
-          
-          
-          function obj =respondToConnectionGapsValueChanged(obj,~,~)
-              obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-          function obj = respondToConnectionGapsXYLimitChanged(obj,~,~)
-              obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-           function obj = respondToConnectionGapsZLimitValueChanged(obj,~,~)
-                 obj = obj.setTrackingNavigationByAutoTrackingView;
-          end
-          
-          function obj = startAutoTrackingPushed(obj,~,~)
-
-                switch obj.TrackingAutoTrackingController.getUserSelection
-
-                    case 'Tracking by minimizing object distances'
-                        obj =             obj.trackByMinimizingDistancesOfTracks;
-
-                    case 'Delete tracks'
-                        obj =             obj.unTrack;
-
-                    case 'Connect exisiting tracks with each other'
-                        obj.LoadedMovie =   obj.LoadedMovie.performTrackingMethod('performSerialTrackReconnection');
-
-                    case 'Track-Delete-Connect'
-                        obj.LoadedMovie =   obj.LoadedMovie.performAutoTrackingOfExistingMasks;
-
-                end
-
-               
-                obj =           obj.initializeViews;
-                obj =           obj.updateMovieView;
-                obj =           obj.setTrackViews;
-
-          end
-          
-         
+  
         
         %%  mergeTracksByProximity
         function obj = mergeTracksByProximity(obj)
@@ -2399,7 +2405,7 @@ classdef PMMovieController < handle
     methods (Access = private) % auto cell recognition
         
 
-           function obj = AutoCellRecognitionChannelChanged(obj, ~,third)
+           function obj = AutoCellRecognitionChannelChanged(obj, ~, third)
                obj.AutoCellRecognitionController = setActiveChannel(obj.AutoCellRecognitionController, third.DisplayIndices(1));
           end
           
@@ -2425,7 +2431,7 @@ classdef PMMovieController < handle
                     obj.LoadedMovie =      obj.LoadedMovie.setTrackingAnalysis;
                     obj.LoadedMovie =      obj.LoadedMovie.executeAutoCellRecognition(obj.AutoCellRecognitionController.getAutoCellRecognition);
                     
-                    obj = obj.updateAllViewsThatDependOnSelectedTracks;
+                    obj =                   obj.updateAllViewsThatDependOnSelectedTracks;
                     
             end
            

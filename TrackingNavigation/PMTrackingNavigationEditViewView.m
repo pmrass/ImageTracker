@@ -152,7 +152,7 @@ classdef PMTrackingNavigationEditViewView
                     
                     obj.TrackDetail.ColumnName =  Value.getFieldNamesOfTrackingCell;
                     obj.TrackDetail.Data =        Value.getConciseObjectListOfActiveTrack;
-                    obj =                         obj.resetSelectedTracksActionForTrackNumber(length(Value.getIdsOfSelectedTracks));    
+               obj =                         obj.resetSelectedTracksActionForTrackNumber(length(Value.getIdsOfSelectedTracks));    
 
                 otherwise
                     error('Wrong input.')

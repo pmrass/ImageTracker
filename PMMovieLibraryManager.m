@@ -35,26 +35,9 @@ classdef PMMovieLibraryManager < handle
         FileWithPreviousSettings =         [userpath,'/imans_PreviouslyUsedFile.mat'];
     end
     
-    
     methods % initialization
         
         function obj =          PMMovieLibraryManager(varargin)
-
-            obj.Viewer =    PMImagingProjectViewer;
-            obj.Viewer.getMovieControllerView.blackOutMovieView;
-            obj.Viewer =    obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
-
-            obj =           obj.addCallbacksToFileAndProject;
-
-            obj =           obj.setFileMenu;
-            obj =           obj.setProjectMenu;
-            obj =           obj.setMovieMenu;
-            obj =           obj.setDriftMenu;
-            obj =           obj.setTrackingMenu;
-            obj =           obj.setInteractionsMenu;
-            obj =           obj.setHelpMenu;
-
-            obj.MovieLibrary = PMMovieLibrary();
 
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
@@ -63,16 +46,27 @@ classdef PMMovieLibraryManager < handle
                 case 1
                     myFileName =  varargin{1};
                 otherwise
-                    error('Wrong number of arguments')
+                    error('Wrong number of arguments.')
             end
-
-            assert(~isempty(myFileName) && ischar(myFileName), 'Wrong input.')
-               
-      
             
-            obj =                   obj.finishOffCurrentLibrary;
-            obj.MovieLibrary =      PMMovieLibrary(myFileName);
-            obj =       obj.changeLibraryToFileName;
+            assert(~isempty(myFileName) && ischar(myFileName) && exist(myFileName) == 2, 'Invalid filename. Please enter a valid file-path as argument of this intializer.')
+            
+            obj.Viewer =            PMImagingProjectViewer;
+            obj.Viewer.getMovieControllerView.blackOutMovieView;
+            obj.Viewer =            obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
+
+            obj =                   obj.addCallbacksToFileAndProject;
+
+            obj =                   obj.setFileMenu;
+            obj =                   obj.setProjectMenu;
+            obj =                   obj.setMovieMenu;
+            obj =                   obj.setDriftMenu;
+            obj =                   obj.setTrackingMenu;
+            obj =                   obj.setInteractionsMenu;
+            obj =                   obj.setHelpMenu;
+
+            obj.MovieLibrary =      PMMovieLibrary(myFileName);            
+            obj =                   obj.resetAfterLibraryChange;
 
        end
         
@@ -88,7 +82,7 @@ classdef PMMovieLibraryManager < handle
         
     end
     
-     methods  % movie-list clicked
+    methods  % movie-list clicked
         
         function [obj] =         movieListClicked(obj, ~, ~)
           
@@ -137,7 +131,6 @@ classdef PMMovieLibraryManager < handle
 
      end
    
-    
     methods % getter
         
         function obj = showSummary(obj)
@@ -299,8 +292,6 @@ classdef PMMovieLibraryManager < handle
 
 
     end
-    
-    
     
     methods (Access = private) % callbacks file menu
         
@@ -916,7 +907,7 @@ classdef PMMovieLibraryManager < handle
                                         a...
                                         );
                                                 
-                      obj =                  obj.changeLibraryToFileName;
+                      obj =                  obj.resetAfterLibraryChange;
                       
                       
              
@@ -981,7 +972,7 @@ classdef PMMovieLibraryManager < handle
                     
                       obj =                   obj.finishOffCurrentLibrary;
                     obj.MovieLibrary =      PMMovieLibrary(Path);
-                    obj =                  obj.changeLibraryToFileName;
+                    obj =                  obj.resetAfterLibraryChange;
                 end
             end
 
@@ -994,7 +985,7 @@ classdef PMMovieLibraryManager < handle
                  end
             end
 
-            function [obj] =             changeLibraryToFileName(obj)
+            function [obj] =             resetAfterLibraryChange(obj)
 
                 obj.MovieLibrary =      obj.MovieLibrary.testIntactnessOfLibrary;
                 
@@ -1337,92 +1328,74 @@ classdef PMMovieLibraryManager < handle
         
     end
     
-    methods (Access = private) % interation
-        
-   
-        
-       function obj = showInteractionsViewer(obj, ~, ~)
-           
+    methods (Access = private) % interaction
+
+        function obj = showInteractionsViewer(obj, ~, ~)
+
           obj = obj.initializeInteractionView;
-           
-       end
-       
-       function obj = initializeInteractionView(obj)
+
+        end
+
+        function obj = initializeInteractionView(obj)
             obj.InteractionsManager = obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-          
+
            obj.InteractionsManager = obj.InteractionsManager.showView;
             obj =                     obj.addCallbacksToInteractionManager;
-           
-       end
-        
-       
-       
-        
-        function obj =  addCallbacksToInteractionManager(obj)
-            obj.InteractionsManager =               obj.InteractionsManager.setCallbacks(@obj.interactionsManagerAction, @obj.updateInteractionSettings);
-            
+
         end
-        
-            function obj = interactionsManagerAction(obj, ~, ~)
-            
-               
-                switch obj.InteractionsManager.getUserSelection
 
-                    case 'Write raw analysis to file'
-                         obj = obj.initializeInteractionManager;
-                        InteractionObject =             obj.InteractionsManager.getInteractionTrackingObject;
-                        Nickname =                      obj.ActiveMovieController.getNickName;
-                        Path =                          [obj.MovieLibrary.getInteractionFolder , Nickname, '.mat'];
-                        save(Path, 'InteractionObject');
+        function obj =  addCallbacksToInteractionManager(obj)
+            obj.InteractionsManager =               obj.InteractionsManager.setCallbacks(@obj.interactionsManagerAction, @obj.updateInteractionSettings);    
+        end
 
-                    case 'Write interaction map into file'
-                   
-                        obj = obj.saveInteractionsMapForActiveMovie;
-                        
-                    otherwise
-                        error('Wrong input.')
+        function obj = interactionsManagerAction(obj, ~, ~)
 
-                end
+
+            switch obj.InteractionsManager.getUserSelection
+
+                case 'Write raw analysis to file'
+                     obj = obj.initializeInteractionManager;
+                    InteractionObject =             obj.InteractionsManager.getInteractionTrackingObject;
+                    Nickname =                      obj.ActiveMovieController.getNickName;
+                    Path =                          [obj.MovieLibrary.getInteractionFolder , Nickname, '.mat'];
+                    save(Path, 'InteractionObject');
+
+                case 'Write interaction map into file'
+
+                    obj = obj.saveInteractionsMapForActiveMovie;
+
+                otherwise
+                    error('Wrong input.')
 
             end
-            
-            
-            
-            function obj = initializeInteractionManager(obj)
-                
-                if ~obj.InteractionsManager.testViewsAreSetup
-                    obj = obj.initializeInteractionView;    
-                end
-                
-                obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
-                obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
-                obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-                
-                obj.InteractionsManager =       obj.InteractionsManager.setXYLimitForNeighborArea(obj.XYLimitForNeighborArea);
-                obj.InteractionsManager =       obj.InteractionsManager.setZLimitForNeighborArea(obj.ZLimitsForNeighborArea);
+
+        end
+
+        function obj = initializeInteractionManager(obj)
+
+            if ~obj.InteractionsManager.testViewsAreSetup
+                obj = obj.initializeInteractionView;    
             end
-        
-       
-           
-            function obj = updateInteractionSettings(obj, ~, ~)
-                
-                obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
-                obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
-                obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-                
-                Volume =                        obj.InteractionsManager.getImageVolume;
-                obj.ActiveMovieController =     obj.ActiveMovieController.setInteractionImageVolume(Volume);
-              
-            end
-        
-            
-            
-            
-        
-        
+
+            obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
+            obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
+            obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
+
+            obj.InteractionsManager =       obj.InteractionsManager.setXYLimitForNeighborArea(obj.XYLimitForNeighborArea);
+            obj.InteractionsManager =       obj.InteractionsManager.setZLimitForNeighborArea(obj.ZLimitsForNeighborArea);
+        end
+
+        function obj = updateInteractionSettings(obj, ~, ~)
+
+            obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
+            obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
+            obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
+
+            Volume =                        obj.InteractionsManager.getImageVolume;
+            obj.ActiveMovieController =     obj.ActiveMovieController.setInteractionImageVolume(Volume);
+
+        end
+ 
     end
     
-    
-    
 end
-

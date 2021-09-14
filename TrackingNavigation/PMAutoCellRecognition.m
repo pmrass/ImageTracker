@@ -365,58 +365,58 @@ classdef PMAutoCellRecognition
         end
         
    
-        function CoordinateListAfterPooling =     combinePixelsFromNeighboringPlanes(obj, CoordinatesBeforePooling)
+        function CoordinateListAfterPooling =     combinePixelsFromNeighboringPlanes(obj, ListWithRemainingTargetCoordinates)
 
                   CoordinateListAfterPooling =              zeros(0,4);
-                  PotentialTargetCoordinates =  zeros(0,3);
+                  TargetCoordinatesForFirstMask =  zeros(0,3);
 
 
-                  while ~isempty(CoordinatesBeforePooling)
+                  while ~isempty(ListWithRemainingTargetCoordinates)
 
 
-                        CoordinatesBeforePooling =        sortrows(CoordinatesBeforePooling,3); % sort by plane so that search for neighboring planes goes from top to bottom;
-                        CurrentlyReconstructedMask =      CoordinatesBeforePooling(1,:);
-                        CoordinatesBeforePooling(1,:) =   [];
+                        ListWithRemainingTargetCoordinates =        sortrows(ListWithRemainingTargetCoordinates,3); % sort by plane so that search for neighboring planes goes from top to bottom;
+                        FirstMaskInList =      ListWithRemainingTargetCoordinates(1,:);
+                        ListWithRemainingTargetCoordinates(1,:) =   [];
 
-                        XWithinLimit =         abs(CurrentlyReconstructedMask(1) - CoordinatesBeforePooling(:,1)) < obj.DistanceLimitForPlaneMerging;
-                        YWithinLimit =         abs(CurrentlyReconstructedMask(2) - CoordinatesBeforePooling(:,2)) < obj.DistanceLimitForPlaneMerging;
+                        XWithinLimit =         abs(FirstMaskInList(1) - ListWithRemainingTargetCoordinates(:,1)) < obj.DistanceLimitForPlaneMerging;
+                        YWithinLimit =         abs(FirstMaskInList(2) - ListWithRemainingTargetCoordinates(:,2)) < obj.DistanceLimitForPlaneMerging;
                         RowsWithinLimit =      find(min([XWithinLimit YWithinLimit], [], 2));
 
                         %% if possible neighboring coordinates are found, shift them from the general coordinates to the reference coordinate;
                         if ~isempty(RowsWithinLimit)
 
-                            PotentialTargetCoordinates =         CoordinatesBeforePooling( RowsWithinLimit,:);
-                            CoordinatesBeforePooling(RowsWithinLimit,:) =    [];
+                            TargetCoordinatesForFirstMask =         ListWithRemainingTargetCoordinates( RowsWithinLimit,:);
+                            ListWithRemainingTargetCoordinates(RowsWithinLimit,:) =    [];
 
                             while 1 % not sure whether this loop is necessary;
-                                ZDifferences =        round(abs(PotentialTargetCoordinates(:,3) - max(CurrentlyReconstructedMask(:,3))));
+                                ZDifferences =        round(abs(TargetCoordinatesForFirstMask(:,3) - max(FirstMaskInList(:,3))));
                                 if min(ZDifferences)>1
                                     break
                                 else
 
                                     % get and delete target coordinates that are in direct contact with current Bottom Z;
                                     TargetRowsInDirectContact =                ZDifferences <= 1;
-                                    TargetCoordinatesThatAreTransferred =      PotentialTargetCoordinates(TargetRowsInDirectContact,:);
-                                    PotentialTargetCoordinates(TargetRowsInDirectContact,:) =     [];
+                                    TargetCoordinatesThatAreTransferred =      TargetCoordinatesForFirstMask(TargetRowsInDirectContact,:);
+                                    TargetCoordinatesForFirstMask(TargetRowsInDirectContact,:) =     [];
 
-                                    CurrentlyReconstructedMask =          [CurrentlyReconstructedMask;   TargetCoordinatesThatAreTransferred ];
+                                    FirstMaskInList =          [FirstMaskInList;   TargetCoordinatesThatAreTransferred ];
 
 
-                                    if isempty(PotentialTargetCoordinates)
+                                    if isempty(TargetCoordinatesForFirstMask)
                                        break 
                                     end
 
                                 end
 
                             end
-                            CoordinatesBeforePooling =       [CoordinatesBeforePooling; PotentialTargetCoordinates]; % unused coordinates get shift back;
+                            ListWithRemainingTargetCoordinates =       [ListWithRemainingTargetCoordinates; TargetCoordinatesForFirstMask]; % unused coordinates get shift back;
 
                         end
 
-                        NewCoordinate(1,1) =                    round(mean(CurrentlyReconstructedMask(:,1)));
-                        NewCoordinate(1,2) =                    round(mean(CurrentlyReconstructedMask(:,2)));
-                        NewCoordinate(1,3) =                    min(CurrentlyReconstructedMask(:,3));
-                        NewCoordinate(1,4) =                    max(CurrentlyReconstructedMask(:,3));
+                        NewCoordinate(1,1) =                    round(mean(FirstMaskInList(:,1)));
+                        NewCoordinate(1,2) =                    round(mean(FirstMaskInList(:,2)));
+                        NewCoordinate(1,3) =                    min(FirstMaskInList(:,3));
+                        NewCoordinate(1,4) =                    max(FirstMaskInList(:,3));
                         CoordinateListAfterPooling =            [CoordinateListAfterPooling;NewCoordinate];
                   end
                   CoordinateListAfterPooling =         sortrows(CoordinateListAfterPooling, [1,2,3]);

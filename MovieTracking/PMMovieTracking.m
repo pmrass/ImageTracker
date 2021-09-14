@@ -377,35 +377,35 @@ classdef PMMovieTracking < PMChannels
     
     methods % SETTRACKING
 
-        function obj = setActiveTrackToNewTrack(obj)
+        function obj =      setActiveTrackToNewTrack(obj)
             obj =     obj.setActiveTrackWith(obj.findNewTrackID);
         end
 
-        function obj =              setActiveTrackWith(obj, NewTrackID)
+        function obj =      setActiveTrackWith(obj, NewTrackID)
             obj.Tracking =      obj.Tracking.setActiveTrackIDTo(NewTrackID);
         end
 
-        function obj = deleteActiveTrack(obj)
+        function obj =      deleteActiveTrack(obj)
             obj.Tracking  =     obj.Tracking.removeActiveTrack;
         end
 
-        function obj = selectAllTracks(obj)
+        function obj =      selectAllTracks(obj)
             obj.Tracking =  obj.Tracking.selectAllTracks;
         end
 
-        function obj = addToSelectedTrackIds(obj, TracksToAdd)
+        function obj =      addToSelectedTrackIds(obj, TracksToAdd)
             obj.Tracking =    obj.Tracking.addToSelectedTrackIds(TracksToAdd);
         end
 
-        function obj = setSelectedTrackIdsTo(obj, Value)
+        function obj =      setSelectedTrackIdsTo(obj, Value)
             obj.Tracking =  obj.Tracking.setSelectedTrackIdsTo(Value);
         end
 
-        function obj = updateTrackingWith(obj, Value)
+        function obj =      updateTrackingWith(obj, Value)
             obj.Tracking = obj.Tracking.updateWith(Value); 
         end
 
-        function obj = setTrackIndicesFromScratch(obj)
+        function obj =      setTrackIndicesFromScratch(obj)
             obj.Tracking =           obj.Tracking.setTrackIndicesFromScratch;
         end
 
@@ -418,11 +418,11 @@ classdef PMMovieTracking < PMChannels
             obj.Tracking =       obj.Tracking.setActiveFrameTo(FrameNumber);
         end
 
-        function [obj]=             setNumberOfFramesInSubTracks(obj, Frames)
+        function obj=       setNumberOfFramesInSubTracks(obj, Frames)
             obj.Tracking.TrackNumberOfFramesInSubTracks =        Frames;
         end
 
-        function obj =   setFinishStatusOfTrackTo(obj, input)
+        function obj =      setFinishStatusOfTrackTo(obj, input)
           obj.Tracking = obj.Tracking.setInfoOfActiveTrack(input);
           fprintf('Finish status of track %i was changed to "%s".\n', obj.getIdOfActiveTrack, input)
         end
@@ -679,17 +679,17 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    methods % tracking that needs to be organized
+    
+    methods % autocell recognition
         
         
-      
-
-        %% executeAutoCellRecognition
         function obj = executeAutoCellRecognition(obj, myCellRecognition)
             myCellRecognition =     myCellRecognition.performAutoDetection;
             obj.Tracking =          obj.Tracking.setAutomatedCellRecognition(myCellRecognition);
             fprintf('\nCell recognition finished!\n')
            
+            setPreventDoubleTracking
+            
             fprintf('\nAdding cells into track database ...\n')
             for CurrentFrame = myCellRecognition.getSelectedFrames' % loop through each frame 
                 fprintf('Processing frame %i ...\n', CurrentFrame)
@@ -706,6 +706,8 @@ classdef PMMovieTracking < PMChannels
         
           function [obj] =             resetActivePixelListWith(obj, SegmentationCapture)
             
+              assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
+              
             if isnan(obj.getIdOfActiveTrack)
                 warning('No valid active track. Therefore no action taken.')
                 
@@ -720,7 +722,7 @@ classdef PMMovieTracking < PMChannels
                 catch E
                     throw(E) 
                 end
-                
+
                 obj =               obj.setSavingStatus(true);
                 
             end
@@ -728,9 +730,12 @@ classdef PMMovieTracking < PMChannels
           end
         
         
+          
         
-           
-          %% mergeTracksWithinDistance
+    end
+    
+    methods % tracking that needs to be organized
+        
           function obj =    mergeTracksWithinDistance(obj, distance)
                  obj.Tracking =             obj.Tracking.setDistanceLimitZForTrackingMerging(2);
                  obj.Tracking =             obj.Tracking.setShowDetailedMergeInformation(true);
