@@ -2,13 +2,16 @@ function TestError
 %TESTMOVIE Summary of this function goes here
 %   Detailed explanation goes here
 
-
-
-    MyFile = '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary/MyLibrary.mat';
+    MyFile =        '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary/MyLibrary.mat';
     
-    FileExists = exist(MyFile);
+    MovieFile =     '/Users/paulusmrass/Documents/GitHub/Paul/ImageTracker/Exploration/TestLibrary/AnotherNewNick.czi';
     
-    assert(FileExists == 2, 'Please change path of MyFile so that it works for your system.')
+    FileExists = exist(MovieFile);
+    
+    assert(FileExists == 2, 'Movie file could not be found.')
+    
+    
+   % myMovieTracking = PMMovieTracking(
 
     myLib =     PMMovieLibraryManager(MyFile);
     myLib =     myLib.openSelectedMovie;
@@ -48,4 +51,3 @@ myLib =          myLib.addNewMovie('NickNameTest', {'TestMovie.czi'});
 
 
 %}
-

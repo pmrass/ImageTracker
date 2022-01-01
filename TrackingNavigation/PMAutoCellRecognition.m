@@ -1,6 +1,6 @@
 classdef PMAutoCellRecognition
     %PMAUTOCELLRECOGNITION Enables autodetection of roundish objects in image-sequence;
-    %   Detailed explanation goes here
+    %   Can independently recognize shapes in specified channel of imported image-sequence;
     
     properties (Access = private)
         
@@ -49,11 +49,14 @@ classdef PMAutoCellRecognition
     end
     
 
-    methods % initialize
+    methods % INITIALIZATION
         
            function obj = PMAutoCellRecognition(myImageSequence, Channel)
             %PMAUTOCELLRECOGNITION Construct an instance of this class
-            %   Detailed explanation goes here
+            % takes 2 arguments:
+            % 1: 5D imagesequence
+            % 2: index of channel that should be analyzed (numeric scalar)
+            
             
                 assert(size(myImageSequence,1) >= 1, 'ImageSequence must contain at least one frame');
 
@@ -63,86 +66,56 @@ classdef PMAutoCellRecognition
                 obj =                        obj.interpolateSensitivityLimits;
                 obj =                        obj.interpolateEdgeThresholdLimits;
                 
-        end
+           end
+           
+           function obj = set.ActiveChannel(obj, Value)
+               assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
+              obj.ActiveChannel = Value; 
+           end
+           
+           function obj = set.SelectedFrames(obj, Value)
+                  assert(isnumeric(Value) && isvector(Value), 'Wrong input.')
+              obj.SelectedFrames = Value; 
+           end
         
+           
+             
         
     end
     
-    
-    methods
+       methods % SETTERS
         
-        
-     
-        
+         function obj = performAutoDetection(obj)
+             % PERFORMAUTODETECTION goes through each frame of the image-sequence and detects shapes in each plane;
+             % sets DetectedCoordinates property with detected masks;
+            
+            fprintf('\nPMAutoCellRecognition: @performAutoDetection.\n')
+            
+            obj =       obj.printSettings;
+            CollectionOfCellMasks_Frames =          cell(obj.getNumberOfFrames,1);
+              for SetFrame = (obj.SelectedFrames)'
+                  
+                    fprintf('Auto recognition: frame %i\n', SetFrame)
+                    CollectionOfCellMasks_Planes =              obj.getCoordinatesForFrame(SetFrame);
+                    PlaneDataAfterPoolingPlanes =               obj.combinePixelsFromNeighboringPlanes(vertcat(CollectionOfCellMasks_Planes{:}));
+                    CollectionOfCellMasks_Frames{SetFrame,1} =  obj.createMiniMasks( PlaneDataAfterPoolingPlanes);
+
+              end
+                
+              obj.DetectedCoordinates =     CollectionOfCellMasks_Frames;
+              obj.ImageSequence =           cell(size(obj.ImageSequence,1),1); % empty memory
+              fprintf('A total of %i object were detected.\n', sum(cellfun(@(x) length(x), obj.DetectedCoordinates)));
               
+         end
+        
+             
         function obj =       removeRedundantData(obj)
                     obj.ImageSequence = cell(size(obj.ImageSequence,1),1);
         end
 
-        function cells = getDetectedCoordinates(obj)
-            cells = obj.DetectedCoordinates;
-        end
-        
-        function number = getNumberOfFrames(obj)
-              number =                size(obj.ImageSequence,1);
-        end
-        
-        function number = getNumberOfChannels(obj)
-            frames = obj.getAvailableFrames;
-            if isnan(frames)
-                number = NaN;
-            else
-                number = size(obj.ImageSequence{frames(1)},5);
-                
-            end
-        end
-        
-         function number = getNumberOfPlanes(obj)
-             frames = obj.getAvailableFrames;
-             if isnan(frames)
-                  number = NaN;
-             else
-                  number = size(obj.ImageSequence{frames(1)},3);
-                
-             end
-           
-         end
-        
-         function listWithFrames = getAvailableFrames(obj)
-             listWithFrames =       find(cellfun(@(x) ~isempty(x), obj.ImageSequence));
-             listWithFrames =       listWithFrames(:);
-             if isempty(listWithFrames)
-                 listWithFrames = NaN;
-             end
-        end
-        
-        function radiusRanges = getRadiusRanges(obj)
-            radiusRanges = obj.RadiusRange;
-        end
-        
-        function sensitivities = getSensitivities(obj)
-            sensitivities = obj.Sensitivity;
-        end
-        
-        function thresholds = getEdgeThresholds(obj)
-           thresholds = obj.EdgeThreshold; 
-        end
-        
-        function thresholds = getHighDensityNumberLimit(obj)
-           thresholds = obj.HighDensityNumberLimit; 
-        end
-        
-        function thresholds = getHighDensityDistanceLimit(obj)
-           thresholds = obj.HighDensityDistanceLimit; 
-        end
-        
         %% setSelectedFrames
         function obj = setSelectedFrames(obj, Value)
            obj.SelectedFrames = Value; 
-        end
-        
-        function frames = getSelectedFrames(obj)
-           frames = sort(obj.SelectedFrames(:)); 
         end
         
         %%  setActiveChannel
@@ -187,30 +160,8 @@ classdef PMAutoCellRecognition
 
       
         %% performAutoDetection
-        function obj = performAutoDetection(obj)
-            
-            fprintf('\nPMAutoCellRecognition: @performAutoDetection.\n')
-            
-            obj =       obj.printSettings;
-            CollectionOfCellMasks_Frames =          cell(obj.getNumberOfFrames,1);
-              for SetFrame = (obj.SelectedFrames)'
-                  
-                    fprintf('Auto recognition: frame %i\n', SetFrame)
-                    CollectionOfCellMasks_Planes =              obj.getCoordinatesForFrame(SetFrame);
-                    PlaneDataAfterPoolingPlanes =               obj.combinePixelsFromNeighboringPlanes(vertcat(CollectionOfCellMasks_Planes{:}));
-                    CollectionOfCellMasks_Frames{SetFrame,1} =  obj.createMiniMasks( PlaneDataAfterPoolingPlanes);
+       
 
-              end
-                
-              obj.DetectedCoordinates =     CollectionOfCellMasks_Frames;
-              obj.ImageSequence =           cell(size(obj.ImageSequence,1),1); % empty memory
-              fprintf('A total of %i object were detected.\n', sum(cellfun(@(x) length(x), obj.DetectedCoordinates)));
-              
-        end
-        
-   
-        
-        
         function obj = printSettings(obj)
             
                if length(obj.ActiveChannel) ~= 1
@@ -268,8 +219,80 @@ classdef PMAutoCellRecognition
         
        
     
+       end
+   
+    
+    
+    methods % getters
+        
+        function frames = getSelectedFrames(obj)
+            frames = sort(obj.SelectedFrames(:)); 
+        end
+        
+        function channel = getActiveChannel(obj)
+            channel = obj.ActiveChannel;
+        end
+
+        function cells = getDetectedCoordinates(obj)
+            cells = obj.DetectedCoordinates;
+        end
+
+        function number = getNumberOfFrames(obj)
+          number =                size(obj.ImageSequence,1);
+        end
+
+        function number = getNumberOfChannels(obj)
+            frames = obj.getAvailableFrames;
+            if isnan(frames)
+                number = NaN;
+            else
+                number = size(obj.ImageSequence{frames(1)},5);
+
+            end
+        end
+
+        function number = getNumberOfPlanes(obj)
+             frames = obj.getAvailableFrames;
+             if isnan(frames)
+                  number = NaN;
+             else
+                  number = size(obj.ImageSequence{frames(1)},3);
+             end
+
+        end
+
+        function listWithFrames = getAvailableFrames(obj)
+             listWithFrames =       find(cellfun(@(x) ~isempty(x), obj.ImageSequence));
+             listWithFrames =       listWithFrames(:);
+             if isempty(listWithFrames)
+                 listWithFrames = NaN;
+             end
+        end
+
+        function radiusRanges = getRadiusRanges(obj)
+            radiusRanges = obj.RadiusRange;
+        end
+
+        function sensitivities = getSensitivities(obj)
+            sensitivities = obj.Sensitivity;
+        end
+
+        function thresholds = getEdgeThresholds(obj)
+            thresholds = obj.EdgeThreshold; 
+        end
+
+        function thresholds = getHighDensityNumberLimit(obj)
+            thresholds = obj.HighDensityNumberLimit; 
+        end
+
+        function thresholds = getHighDensityDistanceLimit(obj)
+            thresholds = obj.HighDensityDistanceLimit; 
+        end
+
     end
     
+    
+  
     methods (Access = private)
         
         %% interpolateRadiusLimits:

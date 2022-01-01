@@ -35,8 +35,8 @@ classdef PMAutoCellRecognitionController
         
         
          function obj = setCallBacks(obj, varargin)
-             assert(length(varargin) == 4, 'Wrong input.')
-             obj.View = obj.View.setCallBacks(varargin{1}, varargin{2}, varargin{3}, varargin{4});
+             assert(length(varargin) == 6, 'Wrong input.')
+             obj.View = obj.View.setCallBacks(varargin{1}, varargin{2}, varargin{3}, varargin{4},  varargin{5},  varargin{6});
          end
          
          function selection = getUserSelection(obj)

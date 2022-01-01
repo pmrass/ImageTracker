@@ -45,6 +45,11 @@ classdef PMMask
             end
         end
         
+        function obj = set.CellWithData(obj, Value)
+            assert(iscell(Value) && ismatrix(Value) && size(Value, 1) == 1 && size(Value, 2) == 7, 'Wrong input.')
+            obj.CellWithData =  Value; 
+        end
+        
       
     end
     
@@ -58,60 +63,65 @@ classdef PMMask
         end
         
         function obj = showTable(obj)
-            
-            fprintf('%i %6.2f %6.2f %6.2f %6.2f\n', ...
-                obj.CellWithData{obj.TrackIDColumn}, ...
-                obj.CellWithData{obj.FrameColumn}, ...
-                obj.CellWithData{obj.XColumn}, ...
-                obj.CellWithData{obj.YColumn}, ...
-                obj.CellWithData{obj.ZColumn}...
-                );
-                
+
+        fprintf('%i %6.2f %6.2f %6.2f %6.2f\n', ...
+            obj.CellWithData{obj.TrackIDColumn}, ...
+            obj.CellWithData{obj.FrameColumn}, ...
+            obj.CellWithData{obj.XColumn}, ...
+            obj.CellWithData{obj.YColumn}, ...
+            obj.CellWithData{obj.ZColumn}...
+            );
+
         end
-        
-          function data = getData(obj)
-           data = obj.CellWithData; 
+
+        function data = getData(obj)
+        data = obj.CellWithData; 
         end
-        
+
         function trackID = getTrackID(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            trackID = obj.CellWithData{obj.TrackIDColumn};
+        %METHOD1 Summary of this method goes here
+        %   Detailed explanation goes here
+        trackID = obj.CellWithData{obj.TrackIDColumn};
         end
-        
+
         function lastFrame = getFrame(obj)
-            if isempty(obj.CellWithData)
-                lastFrame = NaN;
-            else
-                lastFrame = obj.CellWithData{obj.FrameColumn};
-            end
+        if isempty(obj.CellWithData)
+            lastFrame = NaN;
+        else
+            lastFrame = obj.CellWithData{obj.FrameColumn};
         end
-        
+        end
+
         function X = getX(obj)
-            X = cell2mat(obj.CellWithData(1,4));
+        X = cell2mat(obj.CellWithData(1,4));
         end
-        
-         function X = getY(obj)
-            X = cell2mat(obj.CellWithData(1,3));
-         end
-        
-          function X = getZ(obj)
-            X = cell2mat(obj.CellWithData(1,5));
+
+        function X = getY(obj)
+        X = cell2mat(obj.CellWithData(1,3));
+        end
+
+        function X = getZ(obj)
+        X = cell2mat(obj.CellWithData(1,5));
+        end
+
+        function pixels = getMaskPixels(obj)
+            pixels = obj.CellWithData{obj.PixelColmun};
+            
         end
         
         function Centroid = getCentroidYX(obj)
-            Centroid = cell2mat(obj.CellWithData(1,3:4));
+        Centroid = cell2mat(obj.CellWithData(1,3:4));
         end
-        
+
         function ZPositions = getAllUniqueZPositions(obj)
-             ZPositions = unique(obj.CellWithData{6}(:,3));  
+         ZPositions = unique(obj.CellWithData{6}(:,3));  
         end
-        
+
         function info = getSegmentationInfo(obj)
-            info = obj.CellWithData{obj.SegmentationInfo};
-            info = info.SegmentationType;
+        info = obj.CellWithData{obj.SegmentationInfo};
+        info = info.SegmentationType;
         end
-        
+
     end
     
     methods (Access = private)

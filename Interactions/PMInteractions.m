@@ -51,7 +51,14 @@ classdef PMInteractions
         
          function obj = PMInteractions(varargin)
             %PMINTERACTIONS Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 7 arguments:
+            % 1: PMShape (flu metric)
+            % 2: PMShape (flu pixels)
+            % 3: PMTrackingAnalysis (metric)
+            % 4: PMTrackingAnalysis (pixels)
+            % 5: PMDriftCorrection
+            % 6: numeric scalar: XYLimitForNeighborArea
+            % 7: numeric scalar: ZLimitForNeighborArea
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 7
@@ -91,8 +98,6 @@ classdef PMInteractions
             obj.MyTrackingAnalysis_Pixels = Value; 
          end
          
-     
-         
          function obj = set.DriftCorrection(obj, Value)
             assert(isa(Value, 'PMDriftCorrection') && isscalar(Value), 'Wrong input.')
             obj.DriftCorrection = Value; 
@@ -114,12 +119,10 @@ classdef PMInteractions
              
          end
       
-         
          function obj = set.ExportFolder(obj, Value)
             assert(ischar(Value), 'Wrong input.')
              obj.ExportFolder = Value;
          end
-        
         
     end
     
@@ -138,21 +141,20 @@ classdef PMInteractions
     methods % summary:
         
         function text = getSummary(obj)
-            
            text = {sprintf('\n*** This PMInteractions object can measure distances between searchers and a target.\n')};
            text = [text; sprintf('Its main function is "getInteractionsMap", which returns a spreadsheet with the following columns:\n')];
-           
-               
             
         end
         
     end
     
-    methods % main functions
-        
+    methods % GETTERS MAIN
         
         function InteractionMapForAllTracks = getInteractionsMap(obj)
             %GETINTERACTIONSMAP main function of PMInteractions class
+            % returns a cell array for each time frame, each cell has the
+            % following content:
+            % returns a list for each "searcher object" at each frame and gives distances and density to target relative to searcher;
             % returns matrix with the following columns;
             % column 1: track ID of searcher;
             % column 2: frame number of searcher;
@@ -160,9 +162,8 @@ classdef PMInteractions
             % column 4: number of "full target pixels" surrounding searcher;
             % column 5: shortest 2D distance to target;
             
-            obj.FastTracking = true;
+            obj.FastTracking =                  true;
           
-            
             obj.MyTrackingAnalysis_Metric =     obj.MyTrackingAnalysis_Metric.initializeTrackCell;
             obj.MyTrackingAnalysis_Pixels =     obj.MyTrackingAnalysis_Pixels.initializeTrackCell;
             
@@ -181,8 +182,7 @@ classdef PMInteractions
             % does not create "actual numerical data" used for quantitative figures, this is done by "getInteractionMapFromAllFrames";
            assert(isnumeric(TrackIDs) && isvector(TrackIDs), 'Wrong input')
            
-           
-             if ~isempty(obj.ExportFolder)
+            if ~isempty(obj.ExportFolder)
                 obj = obj.initializeView;
             end
            
@@ -201,15 +201,15 @@ classdef PMInteractions
                                 
             end
 
-            
         end
         
     end
     
     
-    methods % interaction map
+    methods % GETTERS interaction map
        
-        function [InteractionMap_CurrentTrack] = getInteractionMapFromAllFrames(obj)
+        function [InteractionMap_CurrentTrack] =                getInteractionMapFromAllFrames(obj)
+            % GETINTERACTIONMAPFROMALLFRAMES returns cell array with interaction maps for each frame;
             
              fprintf('PMInteractions is processing track %i of %i.\n', obj.CurrentTrackIndex, obj.MyTrackingAnalysis_Metric.getNumberOfTracks)
              InteractionMap_CurrentTrack =            cell(obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(obj.CurrentTrackIndex) - 2 , 5);
@@ -217,7 +217,7 @@ classdef PMInteractions
                         
                         obj.CurrentFrameIndex =                                     FrameIndex;
                         [MapOfCurrentFrame, ~] =                                    obj.getActiveInteractionMap;
-                      %  fprintf('Frame %i: Overlap = %5.4f\n', FrameIndex, MapOfCurrentFrame{4})
+                        %  fprintf('Frame %i: Overlap = %5.4f\n', FrameIndex, MapOfCurrentFrame{4})
                         InteractionMap_CurrentTrack(obj.CurrentFrameIndex, :) =     MapOfCurrentFrame;
                         
 
@@ -229,23 +229,32 @@ classdef PMInteractions
             
         end
         
-        function [InteractionsOfTrack, myInteractionObject] = getActiveInteractionMap(obj)
+        function [InteractionsOfTrack, myInteractionObject] =   getActiveInteractionMap(obj)
+            % GETACTIVEINTERACTIONMAP returns interaction data of active track and active frame ;
+            % takes 0 arguments
+            % 1 or 2 returns:
+            % 1: cell array with 5 elements:
+            %      1: trackID
+            %      2: frame number
+            %      3: optional: 3D distance to closest target 
+            %      4: fraction of pixels around 
+            %      5: optional: 2D distance to closest target
+            % 2: PMInteraction scalar of active track and frame;
             
-             InteractionsOfTrack{1, 1} =          obj.getTrackIDOfActiveSearcher;
-                InteractionsOfTrack{1, 2} =          obj.getFrameNumberOfActiveSearcher;
-               
-                InteractionsOfTrack{1, 4} =          obj.getFractionOfPositiveTargetVolume;
-                 
+            InteractionsOfTrack{1, 1} =          obj.getTrackIDOfActiveSearcher;
+            InteractionsOfTrack{1, 2} =          obj.getFrameNumberOfActiveSearcher;
+            InteractionsOfTrack{1, 4} =          obj.getFractionOfPositiveTargetVolume;
+
             if   obj.FastTracking
                 myInteractionObject = '';
                 InteractionsOfTrack{1, 3} =         NaN;
                 InteractionsOfTrack{1, 5} =         NaN;
             else
                 myInteractionObject =               obj.getActiveInteractionObject;
-                 InteractionsOfTrack{1, 3} =          myInteractionObject.getDistanceToClosestTarget;
-                  InteractionsOfTrack{1, 5} =          myInteractionObject.getDistanceToClosestTarget('2D');    
+                InteractionsOfTrack{1, 3} =          myInteractionObject.getDistanceToClosestTarget;
+                InteractionsOfTrack{1, 5} =          myInteractionObject.getDistanceToClosestTarget('2D');    
             end
-                
+
                
                
         end
@@ -256,7 +265,10 @@ classdef PMInteractions
         
         function myInteractionObject = getActiveInteractionObject(obj)
             CellCoordinates =                           obj.getCoordinatesOfActiveSearcher;
-            MetricCoordinatesOfTarget(:, 2 : 4) =       obj.myFluShape_Metric.getCoordinatesInSquareAroundCenter(CellCoordinates(1, 2:4),  obj.XYLimitForNeighborArea);
+            MetricCoordinatesOfTarget(:, 2 : 4) =       obj.myFluShape_Metric.getCoordinatesInSquareAroundCenter(...
+                                                            CellCoordinates(1, 2:4),  ...
+                                                            obj.XYLimitForNeighborArea...
+                                                            );
             myInteractionObject =                       PMInteraction(CellCoordinates, MetricCoordinatesOfTarget);
             
         end

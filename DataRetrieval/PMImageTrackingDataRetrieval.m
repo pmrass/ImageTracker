@@ -1,6 +1,6 @@
 classdef PMImageTrackingDataRetrieval
-    %PMIMAGETRACKINGDATARETRIEVAL Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMIMAGETRACKINGDATARETRIEVAL for convenient manipulation and retrieval of tracking data;
+    %   after specifying library, selected nicknames per group, allows retrieval of appropriate PMTrackingGroups;
     
     properties (Access = private) % keys for data access
         
@@ -23,19 +23,26 @@ classdef PMImageTrackingDataRetrieval
         
         function obj = PMImageTrackingDataRetrieval(varargin)
             %PMIMAGETRACKINGDATARETRIEVAL Construct an instance of this class
+            % takes 4 or 5 arguments:
+            % 1: library filenames (for each group)
+            % 2: interaction-folder names (for each group)
+            % 3: group names
+            % 4: nicknames per group
+            % 5: plane filters
 
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
+                
                 case 4
                     obj.GroupNames =                        varargin{3};
-                    obj.LibraryFileNamePerGroup =           varargin{1};
+                    obj.LibraryFileNamePerGroup =           cellfun(@(x) x.getFileName, varargin{1}, 'UniformOutput', false);
                     obj.InteractionFolderNamePerGroup =     varargin{2};
 
                     obj.NicknamesPerGroup =                 varargin{4};
                     
                 case 5
-                     obj.GroupNames =                        varargin{3};
-                    obj.LibraryFileNamePerGroup =           varargin{1};
+                    obj.GroupNames =                        varargin{3};
+                    obj.LibraryFileNamePerGroup =            cellfun(@(x) x.getFileName, varargin{1}, 'UniformOutput', false);
                     obj.InteractionFolderNamePerGroup =     varargin{2};
                     
                     obj.NicknamesPerGroup =                 varargin{4};
@@ -61,7 +68,7 @@ classdef PMImageTrackingDataRetrieval
         end
         
         function obj = set.InteractionFolderNamePerGroup(obj, Value)
-            assert(iscell(Value) && isvector(Value) && length(Value) == obj.getNumberOfGroups, 'Wrong input.')
+            assert(isempty(Value) || (iscell(Value) && isvector(Value) && length(Value) == obj.getNumberOfGroups), 'Wrong input.')
             obj.InteractionFolderNamePerGroup = Value(:);
         end
         
@@ -85,7 +92,7 @@ classdef PMImageTrackingDataRetrieval
         
     end
     
-    methods
+    methods % SUMMARY
         
           function obj = showSummary(obj)
               
@@ -115,77 +122,93 @@ classdef PMImageTrackingDataRetrieval
           end
     end
 
-    methods % getters:
+    methods % GETTERS:
         
-        function GroupNames = getGroupNames(obj)
+        function MyGroupData =          getGroupData(obj)
+            %GETGROUPDATA returns PMTrackingGroups
+            MyGroupData = obj.GroupData;
+        end
+        
+        function TrackingSuites =       getTrackinSuites(obj)
+            % GETTRACKINSUITES returns TrackingSuites vector;
+            % each group has each on TrackingSuites object
+            TrackingSuites = obj.GroupData.getTrackingSuites;
+        end
+         
+        function GroupNames =           getGroupNames(obj)
             GroupNames = obj.GroupNames;
         end
         
-        function NicknamesPerGroup = getNicknamesPerGroup(obj)
+        function NicknamesPerGroup =    getNicknamesPerGroup(obj)
             NicknamesPerGroup = obj.NicknamesPerGroup;
         end
         
-         function MyGroupData = getGroupData(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            MyGroupData = obj.GroupData;
-         end
-         
-         function Images = getInteractionImageVolumes(obj)
-             
-             
-               
-            FileNames = obj.getInteractionMapFileNamesPerGroup;
-            for index = 1 : obj.getNumberOfGroups
-                
-                FilenamesForCurrentGroup = FileNames{index};
-                Images{index, 1} = cellfun(@(x) imread(x), obj.NicknamesPerGroup{index}, 'UniformOutput', false);  
-            end
-             
-         end
-          
-           function FileNames = getInteractionMapFileNamesPerGroup(obj)
-            
+        function Images =               getInteractionImageVolumes(obj)
+
+
+
+        FileNames = obj.getInteractionMapFileNamesPerGroup;
+        for index = 1 : obj.getNumberOfGroups
+
+            FilenamesForCurrentGroup = FileNames{index};
+            Images{index, 1} = cellfun(@(x) imread(x), obj.NicknamesPerGroup{index}, 'UniformOutput', false);  
+        end
+
+        end
+
+        function FileNames =            getInteractionMapFileNamesPerGroup(obj)
+            % GETINTERACTIONMAPFILENAMESPERGROUP returns cell array with file-names of interaction maps;
+
             FileNames = cell(obj.getNumberOfGroups, 1);
             for index = 1 : obj.getNumberOfGroups
                 FileNames{index, 1} = cellfun(@(x) [obj.InteractionFolderNamePerGroup{index}, x, '_Map.mat'], obj.NicknamesPerGroup{index}, 'UniformOutput', false);  
             end
-           
+
         end
-        
+
     end
-    
     
     methods (Access = private)
     
-        function obj = setGroupData(obj)
+        function obj = setGroupData(obj, MovieLibraries)
                                     
-            if ~isempty(obj.PlaneFilters)
+            if isempty(obj.InteractionFolderNamePerGroup)
                 
-                 MyTrackingSuites =          cellfun(@(file, x, y, z, plane) PMTrackingSuite(file,x,y, z, plane), ...
-                                            obj.LibraryFileNamePerGroup, ...
+                  MyTrackingSuites =          cellfun(@(file, x, y) PMTrackingSuite(file, x, y), ...
+                                            MovieLibraries, ...
+                                            obj.GroupNames, ...
+                                            obj.NicknamesPerGroup  ...
+                                            );
+                
+                                        
+            elseif isempty(obj.PlaneFilters)
+                
+                    MyTrackingSuites =          cellfun(@(file, x, y, z) PMTrackingSuite(file, x, y, z), ...
+                                            MovieLibraries, ...
                                             obj.GroupNames, ...
                                             obj.NicknamesPerGroup,  ...
-                                            obj.getInteractionMapFileNamesPerGroup, ...
-                                            obj.PlaneFilters);
+                                            obj.getInteractionMapFileNamesPerGroup...
+                                            );
+                
              
                 
             else
                 
-                 MyTrackingSuites =          cellfun(@(file, x, y, z) PMTrackingSuite(file,x,y, z), ...
-                                            obj.LibraryFileNamePerGroup, ...
-                                            obj.GroupNames, ...
-                                            obj.NicknamesPerGroup,  ...
-                                            obj.getInteractionMapFileNamesPerGroup);
-                
-                
+             
+
+                     MyTrackingSuites =          cellfun(@(file, x, y, z, plane) PMTrackingSuite(file,x,y, z, plane), ...
+                        MovieLibraries, ...
+                        obj.GroupNames, ...
+                        obj.NicknamesPerGroup,  ...
+                        obj.getInteractionMapFileNamesPerGroup, ...
+                        obj.PlaneFilters...
+                        );
+                                        
             end
             obj.GroupData =             PMTrackingGroups(MyTrackingSuites);
 
         end
-        
-      
-        
+
         function number = getNumberOfGroups(obj)
            number = length(obj.GroupNames); 
         end

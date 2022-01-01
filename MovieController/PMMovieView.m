@@ -37,13 +37,71 @@ classdef PMMovieView
         
     end
     
-    methods % setters track lines
+    methods % setters: general resets
         
-         function obj = setSegmentLineViews(obj, StopCoordinates, GoCoordinates)
+        function obj =      clear(obj)
+            
+                h = [        obj.ViewMovieAxes, ...
+            obj.MainImage, ...
+            obj.Rectangle, ...
+            obj.TimeStampText, ...
+            obj.ZStampText, ...
+            obj.ScalebarText, ...
+            obj.ScaleBarLine, ...
+            obj.ManualDriftCorrectionLine, ...
+            obj.CentroidLine, ...
+            obj.CentroidLine_SelectedTrack...
+            ];
+
+            delete(h);
+                obj = deleteStopTracks(obj);
+                obj = deleteGoTracks(obj);
+
+          end
+      
+        function obj =      inactivate(obj)
+            obj.MainImage.CData(:) =                      0;
+            obj.ZStampText.String =                       '';
+
+            obj.TimeStampText.String =                    '';
+            obj.ScalebarText.String =                     '';
+            obj.ScaleBarLine.Visible =                    'off';
+
+            obj.CentroidLine.Visible =                    'off';
+            obj.CentroidLine_SelectedTrack.Visible =      'off';
+            obj.Rectangle.Visible =                       'off';
+            obj.ManualDriftCorrectionLine.Visible =       'off';
+            
+         end
+  
+        function obj =      adjustViews(obj)
+            %ADJUSTVIEWS sets move axes, timestamp, Z-stamp, scalebar with hard-wired positions;
+            %   Detailed explanation goes here
+            if isvalid(obj.ViewMovieAxes)
+            
+                obj.ViewMovieAxes.Visible =         'on';
+                obj.ViewMovieAxes.Units =           'centimeters';
+                obj.ViewMovieAxes.DataAspectRatio = [1 1 1];
+                obj.ViewMovieAxes.Position =        [18 8 18 18];
+                obj.ViewMovieAxes.Units =           'pixels';
+
+                
+              obj =                 obj.setHorizontalPositionsOfAnnotation;
+
+            end
+        end
+        
+      
+        
+        function obj =      setDefaults(obj)
+           obj.ViewMovieAxes.Color =       [0.1 0.1 0.1]; 
+        end  
+        
+    end
     
-            
-            
+    methods % SETTERS TRACK LINES
         
+        function obj = setSegmentLineViews(obj, StopCoordinates, GoCoordinates)
             obj = setGoLines(obj, GoCoordinates);
             obj = setStopLines(obj, StopCoordinates);
             
@@ -52,10 +110,8 @@ classdef PMMovieView
         function obj = setGoLines(obj, GoCoordinates)
             
             
-            if ~isempty(obj.GoTrackViews)
-             cellfun(@(x) delete(x), obj.GoTrackViews)
-            end
            
+           obj = deleteGoTracks(obj);
             
 
             Number = size(GoCoordinates, 1);
@@ -75,12 +131,16 @@ classdef PMMovieView
              
         end
         
+        function obj = deleteGoTracks(obj)
+             if ~isempty(obj.GoTrackViews)
+             cellfun(@(x) delete(x), obj.GoTrackViews)
+            end
+            
+        end
           
         function obj = setStopLines(obj, StopCoordinates)
             
-             if ~isempty(obj.StopTrackViews)
-                cellfun(@(x) delete(x), obj.StopTrackViews)
-             end
+           obj = deleteStopTracks(obj);
 
             Number = size(StopCoordinates, 1);
            
@@ -99,28 +159,31 @@ classdef PMMovieView
              
         end
         
+        function obj = deleteStopTracks(obj)
+              if ~isempty(obj.StopTrackViews)
+                cellfun(@(x) delete(x), obj.StopTrackViews)
+             end
+            
+        end
         
     end
     
-    methods % setters axes 
+    methods % SETTERS AXES 
         
         function obj = setAxesLimits(obj, XLimits, YLimits)
-            obj.ViewMovieAxes.XLim =    XLimits;
-            obj.ViewMovieAxes.YLim =     YLimits;
+            obj.ViewMovieAxes.XLim =            XLimits;
+            obj.ViewMovieAxes.YLim =            YLimits;
+            obj =                               obj.adjustWidthOfMovieAxes;
+            obj =                               obj.setHorizontalPositionsOfAnnotation;
+
         end
         
-        function obj = setAxesWidth(obj, Width)
-            obj.ViewMovieAxes.Position(3) =     Width;
-        end
-        
-        
-        
-        
+       
+          
     end
     
-    methods % setters centroids
+    methods % setters CENTROIDS
        
-        
         function obj = setSelectedCentroidCoordinates(obj, X, Y)
              assert(isnumeric(X) && isvector(X) && isnumeric(Y) && isvector(Y), 'Wrong input.')
                     obj.CentroidLine.XData =         X;
@@ -135,29 +198,22 @@ classdef PMMovieView
                 
         end
         
-         function obj = setVisibilityOfActiveTrack(obj, Value)
+        function obj = setVisibilityOfActiveTrack(obj, Value)
             assert(islogical(Value) && isscalar(Value), 'Wrong input.')
             obj.CentroidLine_SelectedTrack.Visible =         Value;
             
         end
-        
-      
-        
+
         function obj = setCentroidVisibility(obj, Value)
                assert(islogical(Value) && isscalar(Value), 'Wrong input.')
                 obj.CentroidLine.Visible =         Value;
         end
         
-        
-                
-        
-        
-        
     end
     
-    methods % setters drift correction
+    methods % setters DRIFT-CORRECTION
         
-          function obj =      setManualDriftCorrectionCoordinatesWith(obj, Value)
+        function obj =      setManualDriftCorrectionCoordinatesWith(obj, Value)
             Type = class(Value);
             switch Type
             case 'PMMovieTracking'
@@ -178,7 +234,7 @@ classdef PMMovieView
             end            
         end
         
-        function obj =  updateDriftWith(obj, Value)
+        function obj =      updateDriftWith(obj, Value)
              Type = class(Value);
              switch Type
                case 'PMMovieTracking'
@@ -191,21 +247,15 @@ classdef PMMovieView
              
         end
             
-        
-        function obj = setVisibilityOfManualDriftCorrection(obj, Value)
+        function obj =      setVisibilityOfManualDriftCorrection(obj, Value)
             obj.ManualDriftCorrectionLine.Visible = Value;
             
         end
         
-         
-        
-        
-        
     end
     
-    methods % setters annotation
+    methods % setters ANNOTATION
     
-        
         function obj = setAnnotationWith(obj, Value)
             
             switch Value.getTimeVisibility                  
@@ -252,7 +302,7 @@ classdef PMMovieView
 
         end
         
-         function obj = setScaleBarVisibility(obj, ScaleBarVisible)
+        function obj = setScaleBarVisibility(obj, ScaleBarVisible)
              switch ScaleBarVisible
                   case 1
                       obj.ScaleBarLine.Visible = 'on';
@@ -268,102 +318,23 @@ classdef PMMovieView
            obj.TimeStampText.FontSize =   FontSize;
            obj.ZStampText.FontSize =      FontSize; 
         end
-        
-        
-        
-        
          
-        
     end
     
-    methods % setters image
+    methods % setters IMAGE
        
         function obj =    setImageContent(obj, Image)
             obj.MainImage.CData =                  Image; 
         end
         
-        
     end
-    
-   
-    
-    methods % setters
-        
-         function obj =      inactivate(obj)
-            obj.MainImage.CData(:) =                      0;
-            obj.ZStampText.String =                       '';
 
-            obj.TimeStampText.String =                    '';
-            obj.ScalebarText.String =                     '';
-            obj.ScaleBarLine.Visible =                    'off';
-
-            obj.CentroidLine.Visible =                    'off';
-            obj.CentroidLine_SelectedTrack.Visible =      'off';
-            obj.Rectangle.Visible =                       'off';
-            obj.ManualDriftCorrectionLine.Visible =       'off';
-            
-         end
-         
-           
-        function obj = adjustViews(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            obj.ViewMovieAxes.Visible =         'on';
-            obj.ViewMovieAxes.Units =           'centimeters';
-            obj.ViewMovieAxes.DataAspectRatio = [1 1 1];
-            obj.ViewMovieAxes.Position =        [11.5 5.7 19 19];
-            obj.ViewMovieAxes.Units =           'pixels';
-
-            
-
-            obj.TimeStampText.Units =           'centimeters';
-            obj.TimeStampText.Position =        [2 0.3 ];
-            obj.TimeStampText.Color = 'c';
-
-            obj.ZStampText.Units =              'centimeters';
-            obj.ZStampText.Position =           [9 0.3 ];
-            obj.ZStampText.Color = 'c';
-
-            obj.ScalebarText.Units =            'centimeters';
-            obj.ScalebarText.Position =         [16 0.3 ];
-            obj.ScalebarText.Color = 'c';
-        end
-        
-       
-        
-        function obj = setDefaults(obj)
-           obj.ViewMovieAxes.Color =       [0.1 0.1 0.1]; 
-        end
-       
-       
-      
-        
-       
-        
-        
-        
-        
-        
-    end
-    
     methods % getters
         
         function Value = getAxes(obj)
             Value = obj.ViewMovieAxes;
         end
       
-        function xLimits =  getXLimitsOfImage(~, Value)
-            [~, columnsInImage, ~] =        Value.getImageDimensions;
-            CurrentColumnShift=             Value.getAplliedColumnShiftsForActiveFrames;
-            xLimits =                       [1+  CurrentColumnShift, columnsInImage + CurrentColumnShift];
-        end
-
-        function yLimits =  getYLimitsOfImage(~, Value)
-            [rowsInImage, ~, ~] =       Value.getImageDimensions;
-            CurrentRowShift =           Value.getAplliedRowShiftsForActiveFrames;
-            yLimits =                   [1+  CurrentRowShift, rowsInImage + CurrentRowShift];
-        end
-        
         function Value = getImage(obj)
            Value = obj.MainImage; 
         end
@@ -374,11 +345,93 @@ classdef PMMovieView
         
     end
     
-    methods (Access = private)
+    methods (Access = private) % SETTERS AXES
        
-        
+        function obj =  adjustWidthOfMovieAxes(obj)
+            XLength =                           obj.ViewMovieAxes.XLim(2)- obj.ViewMovieAxes.XLim(1);
+            YLength =                           obj.ViewMovieAxes.YLim(2)- obj.ViewMovieAxes.YLim(1);
+            LengthenFactorForX =                XLength/  YLength;
+            obj.ViewMovieAxes.Position(3) =     obj.ViewMovieAxes.Position(4) * LengthenFactorForX;
 
-        %% setScaleBarSize
+        end
+            
+         function obj = setAxesWidth(obj, Width)
+            obj.ViewMovieAxes.Position(3) =     Width;
+        end
+        
+    end
+    
+    methods (Access = private) % GETTERS DIMENSIONS
+       
+        function Width = getWidthOfAxes(obj, varargin)
+            switch length(varargin)
+                case 1
+                    assert(ischar(varargin{1}), 'Wrong input.')
+                    switch varargin{1}
+                        case 'centimeters'
+                            obj.ViewMovieAxes.Units = varargin{1};
+                            Width =  obj.ViewMovieAxes.Position(3);
+                        otherwise
+                            error('Wrong input.')
+                        
+                    end
+                    
+             
+                    
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+        end
+        
+           function [AxesWidthCentimeter, AxesHeightCentimeter] = getAxesDimentionsInCm(obj)
+             obj.ViewMovieAxes.Units =         'centimeters';
+                AxesWidthCentimeter =             obj.ViewMovieAxes.Position(3);
+                AxesHeightCentimeter =            obj.ViewMovieAxes.Position(4);
+                obj.ViewMovieAxes.Units =         'pixels';
+           end
+        
+        
+         function xLimits =  getXLimitsOfImage(~, Value)
+             assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
+            [~, columnsInImage, ~] =        Value.getImageDimensions;
+            CurrentColumnShift=             Value.getAplliedColumnShiftsForActiveFrames;
+            xLimits =                       [1+  CurrentColumnShift, columnsInImage + CurrentColumnShift];
+        end
+
+        function yLimits =  getYLimitsOfImage(~, Value)
+            assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
+            [rowsInImage, ~, ~] =       Value.getImageDimensions;
+            CurrentRowShift =           Value.getAplliedRowShiftsForActiveFrames;
+            yLimits =                   [1+  CurrentRowShift, rowsInImage + CurrentRowShift];
+        end
+        
+        
+    end
+    
+    methods (Access = private) % SETTERS ANNOTATION
+       
+        function obj = setHorizontalPositionsOfAnnotation(obj)
+              WidtOfImage =                       obj.getWidthOfAxes('centimeters');
+                
+                
+                
+                
+                obj.TimeStampText.Units =           'centimeters';
+                obj.TimeStampText.Position =        [2 0.3 ];
+                obj.TimeStampText.Color = 'c';
+
+                obj.ZStampText.Units =              'centimeters';
+                obj.ZStampText.Position =           [WidtOfImage / 2 0.3 ];
+                obj.ZStampText.Color = 'c';
+
+                obj.ScalebarText.Units =            'centimeters';
+                obj.ScalebarText.Position =         [WidtOfImage - 2 0.3 ];
+                obj.ScalebarText.Color = 'c';
+            
+        end
+        
         function obj = setScaleBarSize(obj, LengthInMicrometer, VoxelSizeXuM)
 
             assert(isnumeric(LengthInMicrometer) && isscalar(LengthInMicrometer) && ...
@@ -424,14 +477,7 @@ classdef PMMovieView
 
         end
         
-        function [AxesWidthCentimeter, AxesHeightCentimeter] = getAxesDimentionsInCm(obj)
-             obj.ViewMovieAxes.Units =         'centimeters';
-                AxesWidthCentimeter =             obj.ViewMovieAxes.Position(3);
-                AxesHeightCentimeter =            obj.ViewMovieAxes.Position(4);
-                obj.ViewMovieAxes.Units =         'pixels';
-        end
-        
-         function obj = createMovieView(obj, Input)
+        function obj = createMovieView(obj, Input)
               FontSize =                                      20;
                 FontColor =                                     [ 0 0.1 0.99];
                 TimeColumn =                                    0.1;
@@ -576,7 +622,11 @@ classdef PMMovieView
             
          end
         
+    end
+    
+    methods (Access = private) % GETTERS ANNOTATION
         
+      
         
     end
 end

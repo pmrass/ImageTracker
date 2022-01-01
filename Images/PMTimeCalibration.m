@@ -1,6 +1,6 @@
 classdef PMTimeCalibration
-    %PMTIMECALIBRATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMTIMECALIBRATION manages time calibration
+    %   allows retrieval and conversion of time-stamps
     
     properties
         TimePoints_Seconds
@@ -9,7 +9,8 @@ classdef PMTimeCalibration
     methods
         function obj = PMTimeCalibration(varargin)
             %PMTIMECALIBRATION Construct an instance of this class
-            %   Detailed explanation goes here
+            % takes 0 or 1 arguments:
+            % 1: numerical vector (containing "time-stamps" in seconds)
             NumberOfInputArguments =    length(varargin);
             switch NumberOfInputArguments
                 case 0
@@ -25,9 +26,17 @@ classdef PMTimeCalibration
             obj.TimePoints_Seconds =  Value(:);
         end
         
+         function frames = getTimeStampsInSeconds(obj)
+             % GETTIMESTAMPSINSECONDS returns list of time-stamps in seconds;
+             % returns 1 value:
+             % 1: numerical vector
+            frames = obj.TimePoints_Seconds;
+         end
+        
+        
         function frames_Seconds = convertFramesIntoSeconds(obj, list)
              if iscell(list)
-                frames_Seconds =             num2cell(obj.TimePoints_Seconds(cell2mat(list)));
+                frames_Seconds =    num2cell(obj.TimePoints_Seconds(cell2mat(list)));
              else
                  error('Input type not supported.')
              end
@@ -47,9 +56,7 @@ classdef PMTimeCalibration
             numberOfFrames = length(obj.TimePoints_Seconds);
         end
         
-        function frames = getTimeStampsInSeconds(obj)
-            frames = obj.TimePoints_Seconds;
-        end
+       
         
         
     end

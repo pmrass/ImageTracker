@@ -4,11 +4,9 @@ classdef PMInteractionsManager
     % this can be stored in a file and used by PMTrackingSuite to offer filtering tracks by distance to target locations;
     
     properties (Access = private)
-        
         Model 
         View
                   
-     
     end
     
     properties(Access = private)
@@ -18,22 +16,33 @@ classdef PMInteractionsManager
         
            function obj = PMInteractionsManager(varargin)
             %PMINTERACTIONSMANAGER Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 0 arguments
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
+                    obj.View = PMInteractionsView;
+                case 1
+                    
+                    obj.View = varargin{1};
                     
                 otherwise
                     error('Wrong input.')
             end
             
-            obj.View = PMInteractionsView;
+            
   
         end
         
         function obj = set.Model(obj, Value)
             assert(isa(Value, 'PMInteractionsCapture'), 'Wrong input.')
             obj.Model = Value;
+            
+        end
+        
+        function obj = set.View(obj, Value)
+            assert(isa(Value, 'PMInteractionsView'), 'Wrong input.')
+            obj.View = Value;
+            
         end
         
         
@@ -49,7 +58,30 @@ classdef PMInteractionsManager
         
     end
     
-    methods % setters
+    methods % SETTERS
+        
+        function obj = resetModelByMovieController(obj, MovieController)
+            % SETMOVIECONTROLLER sets PMMovieController used by PMInteractionsCapture model;
+            % takes 1 argument:
+            % 1: PMMovieController
+           
+            
+           switch class(MovieController.getLoadedMovie.getInteractions)
+                   case 'PMInteractionsCapture'
+                        obj.Model = MovieController.getLoadedMovie.getInteractions; 
+                   otherwise
+                       error('Movie tracking input did not have PMInteractionsCapture')
+            end
+
+           if isempty(obj.Model.getThresholdsForImageVolumes)
+                obj.Model = obj.Model.setThresholdsForImageVolumeOfTarget(MovieController.getDefaultThresholdsForAllPlanes);
+           end
+           
+            
+            obj.Model =     obj.Model.setMovieController(MovieController);
+            obj =           obj.updateView;
+           
+        end
         
           function obj = setExportFolder(obj, Value)
                 obj.Model = obj.Model.setExportFolder(Value); 
@@ -93,16 +125,7 @@ classdef PMInteractionsManager
         end
 
         
-        %% setMovieController
-        function obj = setMovieController(obj, Value)
-            if isempty(obj.Model)
-                obj.Model = PMInteractionsCapture;
-            end
-            
-            obj.Model =     obj.Model.setMovieController(Value);
-            obj =           obj.updateView;
-           
-        end
+     
         
         function obj = setXYLimitForNeighborArea(obj, Value)
             obj.Model = obj.Model.setXYLimitForNeighborArea(Value);
@@ -146,7 +169,7 @@ classdef PMInteractionsManager
             
         end
         
-        function value = getPMInteractionsQuantification(obj)
+        function value = getModel(obj)
             value = obj.Model;
             
         end
@@ -156,12 +179,16 @@ classdef PMInteractionsManager
         function volume = getImageVolume(obj) 
            volume = obj.Model.getImageVolume; 
          
-           if obj.View.getShowThresholdedImage
+           if obj.getVisibilityOfTargetImage
                
            else
                volume(:,:,:) = 0;
            end
            
+        end
+        
+        function value = getVisibilityOfTargetImage(obj)
+           value =  obj.View.getShowThresholdedImage;
         end
         
         %% accessors:

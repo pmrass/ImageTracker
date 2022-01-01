@@ -1,16 +1,13 @@
 classdef PMImagingProjectViewer
-    %PMIMAGINGPROJECTVIEWER Summary of this class goes here
+    %PMIMAGINGPROJECTVIEWER for viewing and editing movie library (PMMovieLibrary) and associated movies;
     %   Detailed explanation goes here
     
     properties (Access = private)
+        
         Figure
-
         ProjectAxes
-
         ProjectViews
-        MovieControllerViews
         TrackingViews
-
         InfoView
         TagForKeywordEditor =           'PMImagingProject_EditKeywordsViewer'
 
@@ -27,9 +24,6 @@ classdef PMImagingProjectViewer
         HelpMenu
 
     end
-    
-   
-    
 
     properties (Constant, Access = private)
         
@@ -48,50 +42,181 @@ classdef PMImagingProjectViewer
          WidthOfProjectViews =           0.2; 
         LeftPositionOfProjectViews =    0.01;
      
-        ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content'; 'Show content with non-matching channel information'; 'Show all unmapped movies'}; 
+        ProjectFilterList =              {'Show all movies'; 'Show all Z-stacks'; 'Show all snapshots'; 'Show all movies with drift correction'; 'Show all tracked movies'; 'Show all untracked movies'; 'Show entire content';  'Show all unmapped movies'}; 
     
-        AvailableMenus = {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'TrackingMenu', 'InteractionsMenu', 'HelpMenu'};
+        AvailableMenus =                {   'FileMenu', 'ProjectMenu', 'MovieMenu', 'DriftMenu', 'TrackingMenu', 'InteractionsMenu', 'HelpMenu'};
           
     end
     
     
     methods % initialize:
         
-          function obj =                                          PMImagingProjectViewer
+          function obj =           PMImagingProjectViewer(varargin)
                 %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
-                %   Detailed explanation goes here
+                %   no arguments: new views are generated automatically;
+                switch length(varargin)
+                    case 0
+                          obj = obj.initializeViews;
+                          
 
-                obj =                        obj.CreateProjectFigure;
+                    otherwise
+                        error('Wrong input.')
+                    
+                end
 
-                obj.TrackingViews =          PMTrackingView(obj);
-
-                obj =                        obj.CreateProjectViews;
-                obj.MovieControllerViews =   PMMovieControllerView(obj);
-                obj =                        obj.createInfoView;
- 
           end
-          
-          
-        
-        
-        
-    end
-
-    methods (Access = private) % initialize
-        
-        
-        function obj = verifyMenuName(obj, Name)
-            
-            assert(ischar(Name) && max(strcmp(Name, obj.AvailableMenus)), 'Menu not supported')
-            
-        end
-        
-        
         
     end
     
+    methods % setters for callbacks
+
+        function obj = setCallbacks(obj, varargin)
+            % SETCALLBACKS sets callbacks for key- and mouse activity, and for filter-, sort-, and movielist- guis; 
+            % takes 8 arguments:
+            % 1: keypress
+            % 2: button down
+            % 3: button up
+            % 4: button motion
+            % 5: filter
+            % 6: keywords filter
+            % 7: sort
+            % 8: movie-list
+
+            switch length(varargin)
+
+                case 8
+
+                    obj.Figure.WindowKeyPressFcn =                          varargin{1};
+                    obj.Figure.WindowButtonDownFcn =                         varargin{2};
+                    obj.Figure.WindowButtonUpFcn =                           varargin{3};
+                    obj.Figure.WindowButtonMotionFcn =                       varargin{4};
+
+                    obj.ProjectViews.FilterForKeywords.Callback =            varargin{5};
+                    obj.ProjectViews.RealFilterForKeywords.Callback =        varargin{6};
+                    obj.ProjectViews.SortMovies.Callback =                   varargin{7};
+                    obj.ProjectViews.ListOfMoviesInProject.Callback =        varargin{8};
+
+                otherwise
+                    error('Wrong input.')
+
+
+            end
+
+        end
+
+    end
+
+    methods % set menus
+        
+        function obj = setMenu(obj, varargin)
+            % SETMENU this creates and specifies a new menu;
+            % 4 or 5 arguments:
+            % 1: name of main menu: must match list of allowed menu options;
+            % 2: tag of main menu:
+            % 3: list of "sub-menu" labels
+            % 4: list of callbacks for each "sub-menu"
+            % 5: list of separators ("on", "off", for each "sub-menu")
+
+            switch length(varargin)
+
+                case 4
+                    MainMenuName =  varargin{1};
+                    MainMenuLabel = varargin{2};
+                    MenuLabels =    varargin{3};
+                    MyCallbacks =   varargin{4};
+                    SeparatorList = repmat({'off'}, length(MenuLabels), 1);
+
+                case 5
+                    MainMenuName =  varargin{1};
+                    MainMenuLabel = varargin{2};
+                    MenuLabels =    varargin{3};
+                    MyCallbacks =   varargin{4};
+                    SeparatorList = varargin{5};
+
+                otherwise
+                    error('Wrong input')
+
+
+
+
+            end
+
+
+
+            obj = obj.verifyMenuName(MainMenuName);
+            assert(ischar(MainMenuLabel), 'Wrong input.')
+            assert(isvector(MenuLabels) && iscellstr(MenuLabels), 'Wrong input.')
+            assert(isvector(MyCallbacks) && iscell(MyCallbacks), 'Wrong input.')
+            assert(isvector(SeparatorList) && iscellstr(SeparatorList), 'Wrong input.')
+            assert(length(MenuLabels) == length(MyCallbacks), 'Wrong input.')
+            assert(length(MenuLabels) == length(SeparatorList), 'Wrong input.')
+
+
+            obj.(MainMenuName).Main=            uimenu(obj.Figure);
+            obj.(MainMenuName).Main.Label=      MainMenuLabel;
+
+            for index = 1 : length(MenuLabels)
+                 Name = ['Menu', num2str(index)];
+                obj.(MainMenuName).(Name) =                     uimenu(obj.(MainMenuName).Main);
+                obj.(MainMenuName).(Name).Label =               MenuLabels{index};
+                obj.(MainMenuName).(Name).Enable =              'on';
+                obj.(MainMenuName).(Name).Separator=            SeparatorList{index};
+                obj.(MainMenuName).(Name).MenuSelectedFcn=      MyCallbacks{index};
+
+            end
+
+
+        end
+        
+    end
+
     methods % setters
         
+        function obj = updateWith(obj, varargin)
+                % UPDATEWITH update views with input:
+                % 1 argument: PMMovieLibrary:
+                % methods leads to update of nickname view, movie-filter, keyword-filter, image-source list, info-lview;
+                NumberOfArguments= length(varargin);
+                switch NumberOfArguments
+                    case 1
+                        Type = class(varargin{1});
+                        switch Type
+                            case 'PMMovieLibrary'
+
+                                MovieLibrary = varargin{1};
+                                assert(isscalar(MovieLibrary), 'Wrong input.');
+
+                                obj =    obj.setNickNameView(MovieLibrary.getSelectedNickname);
+                                obj =    obj.setImageSourceTypeFilterView(MovieLibrary.getFilterSelectionIndex);
+                                obj =    obj.setKeywordFilterView(MovieLibrary.getKeyWordList);
+                                
+                                obj =    obj.setImageSourceListView(MovieLibrary.getListWithFilteredNicknames);
+                                obj =    obj.setInfoView(MovieLibrary.getProjectInfoText);
+
+                            otherwise
+                                error('Wrong input.')
+
+                        end
+                    otherwise
+                        error('Wrong input.')
+
+                end
+            
+          end
+      
+        function obj = show(obj)
+            % SHOW shows figure:
+            % either puts figure in foreground (if it exists) or creates new figure from scracth;
+            FigureWasThere = isvalid(obj.Figure);
+
+            if FigureWasThere
+                figure(obj.Figure);
+            else
+                obj = obj.initializeViews; 
+            end
+
+        end
+
         function obj = setContentTypeFilterTo(obj, Value)
             assert(ischar(Value), 'Wrong input.') 
             WantedFilterRow =                                           strcmp(obj.ProjectViews.FilterForKeywords.String, 'Show all unmapped movies');
@@ -99,37 +224,7 @@ classdef PMImagingProjectViewer
          
         end
         
-        function obj = updateWith(obj, varargin)
-            NumberOfArguments= length(varargin);
-            switch NumberOfArguments
-                case 1
-                    Type = class(varargin{1});
-                    switch Type
-                        case 'PMMovieLibrary'
-                            MovieLibrary = varargin{1};
-                            
-                            if isempty(MovieLibrary.getMovieObjectSummaries)   
-                                obj.MovieControllerViews.disableAllViews;
-                            end
-                            
-                            obj =    obj.setNickNameView(MovieLibrary.getSelectedNickname);
-                            obj =    obj.setImageSourceTypeFilterView(MovieLibrary.getFilterSelectionIndex);
-                            obj =    obj.setKeywordFilterView(MovieLibrary.getKeyWordList);
-                            obj =    obj.setImageSourceListView(MovieLibrary.getListWithFilteredNicknames);
-                            obj =    obj.setInfoView(MovieLibrary.getProjectInfoText);
-                            
-                        otherwise
-                            error('Wrong input.')
-                        
-                    end
-                otherwise
-                    error('Wrong input.')
-                
-            end
-            
-        end
-        
-         function obj = setInfoView(obj, String)
+        function obj = setInfoView(obj, String)
              obj.InfoView.List.String =       String;
              obj.InfoView.List.Value =        min([length(obj.InfoView.List.String) obj.InfoView.List.Value]);
              if obj.InfoView.List.Value == 0
@@ -139,11 +234,10 @@ classdef PMImagingProjectViewer
            
            
              
-         end
-           
+        end
+
     end
     
- 
     methods % getters positioning
         
         function row = getStartRowTracking(obj)
@@ -189,6 +283,13 @@ classdef PMImagingProjectViewer
     
     methods % getters
         
+         function list = getSelectedNicknames(obj)
+           % GETSELECTEDNICKNAMES:
+           % returns list of all selected (highlighted) nicknames in movie-list;
+           list =             obj.ProjectViews.ListOfMoviesInProject.String(obj.ProjectViews.ListOfMoviesInProject.Value);  
+         end
+        
+        
         function figure = getFigure(obj)
            figure = obj.Figure; 
         end
@@ -201,9 +302,7 @@ classdef PMImagingProjectViewer
            views = obj.TrackingViews; 
         end
         
-        function view = getMovieControllerView(obj)
-           view = obj.MovieControllerViews; 
-        end
+      
         
         function row = getStartRowNavigation(obj)
             row = obj.StartRowNavigation;    
@@ -213,141 +312,56 @@ classdef PMImagingProjectViewer
             type = obj.Figure.SelectionType;
         end
         
-        function list = getSelectedNicknames(obj)
-           list =             obj.ProjectViews.ListOfMoviesInProject.String(obj.ProjectViews.ListOfMoviesInProject.Value);  
-        end
+       
        
     end
 
-
-    methods % setters for callbacks
+    methods % setters project views:
+       
           
+       
         
-
-        
-        function obj = setCallbacks(obj, varargin)
-            
-            switch length(varargin)
-               
-                case 8
-                    
-                    obj.Figure.WindowKeyPressFcn =                          varargin{1};
-                    obj.Figure.WindowButtonDownFcn =                         varargin{2};
-                    obj.Figure.WindowButtonUpFcn =                           varargin{3};
-                    obj.Figure.WindowButtonMotionFcn =                       varargin{4};
-
-                    obj.ProjectViews.FilterForKeywords.Callback =            varargin{5};
-                    obj.ProjectViews.RealFilterForKeywords.Callback =        varargin{6};
-                    obj.ProjectViews.SortMovies.Callback =                   varargin{7};
-                    obj.ProjectViews.ListOfMoviesInProject.Callback =        varargin{8};
-                    
-                otherwise
-                    error('Wrong input.')
+        function obj =  setCurrentCharacter(obj, Value)
+                obj.Figure.CurrentCharacter =                  Value;
+        end
                 
-                
-            end
-            
-           
+          function obj = adjustViews(obj, Value)
+              % ADJUSTVIEWS: adjust positioning of subviews:
+              % takes 1 argument: numerical vector of 4;
+              % resets position of info-view
+              
+              assert(isvector(Value) && length(Value) == 4, 'Wrong input.')
 
-                
+                obj.InfoView.List.Position =      Value;
             
         end
-        
- 
-
-     
-
-        function obj = setMovieMenuCallbacks(obj, varargin)
-        obj.MovieMenu =    obj.MovieMenu.setCallbacks(varargin{:});
-        end
-
-        function obj =  setDriftMenuCallbacks(obj, varargin)
-
-        NumberOfArguments = length(varargin);
-        switch NumberOfArguments
-        case 2
-            obj.DriftMenu.ApplyManualDriftCorrection.MenuSelectedFcn =                          varargin{1} ;
-            obj.DriftMenu.EraseAllDriftCorrections.MenuSelectedFcn =                            varargin{2} ;
-        otherwise
-         error('Wrong input.')
-
-        end
-
-
-        end
-
-    
-
- 
         
     end
-    
-    methods % set menus
-       
-        function obj = setMenu(obj, varargin)
-            
-            switch length(varargin)
-               
-                case 4
-                    MainMenuName =  varargin{1};
-                    MainMenuLabel = varargin{2};
-                    MenuLabels =    varargin{3};
-                    MyCallbacks =   varargin{4};
-                    SeparatorList = repmat({'off'}, length(MenuLabels), 1);
-                    
-                case 5
-                    MainMenuName =  varargin{1};
-                    MainMenuLabel = varargin{2};
-                    MenuLabels =    varargin{3};
-                    MyCallbacks =   varargin{4};
-                    SeparatorList = varargin{5};
-                    
-                otherwise
-                    error('Wrong input')
-                
-                 
-                
-                
-            end
-            
+  
+    methods (Access = private) % initialize
         
+        
+        function obj = verifyMenuName(obj, Name)
             
-            obj = obj.verifyMenuName(MainMenuName);
-            assert(ischar(MainMenuLabel), 'Wrong input.')
-            assert(isvector(MenuLabels) && iscellstr(MenuLabels), 'Wrong input.')
-            assert(isvector(MyCallbacks) && iscell(MyCallbacks), 'Wrong input.')
-            assert(isvector(SeparatorList) && iscellstr(SeparatorList), 'Wrong input.')
-            assert(length(MenuLabels) == length(MyCallbacks), 'Wrong input.')
-            assert(length(MenuLabels) == length(SeparatorList), 'Wrong input.')
-            
-            
-            obj.(MainMenuName).Main=            uimenu(obj.Figure);
-            obj.(MainMenuName).Main.Label=      MainMenuLabel;
-
-            for index = 1 : length(MenuLabels)
-                 Name = ['Menu', num2str(index)];
-                obj.(MainMenuName).(Name) =                     uimenu(obj.(MainMenuName).Main);
-                obj.(MainMenuName).(Name).Label =               MenuLabels{index};
-                obj.(MainMenuName).(Name).Enable =              'on';
-                obj.(MainMenuName).(Name).Separator=            SeparatorList{index};
-                obj.(MainMenuName).(Name).MenuSelectedFcn=      MyCallbacks{index};
-
-            end
-                            
+            assert(ischar(Name) && max(strcmp(Name, obj.AvailableMenus)), 'Menu not supported')
             
         end
         
         
-    end
-    
-    methods (Access = private) % create menus:
+        
+     end
+  
+    methods (Access = private) % initialize
        
-     
-
-        
-        
-
-    
+         function obj = initializeViews(obj)
+            
+                obj =                        obj.CreateProjectFigure;
+                obj =                        obj.CreateProjectViews;
+                obj =                        obj.createInfoView;
+                
+                 obj = obj.setKeywordFilterView('');
+            
+        end
         
     end
     
@@ -480,19 +494,36 @@ classdef PMImagingProjectViewer
         
     end
     
-    methods % setters project views:
+    methods (Access = private) % SETTERS KEYWORD FILTER
        
-          
-        function obj =  setCurrentCharacter(obj, Value)
-                obj.Figure.CurrentCharacter =                  Value;
-        end
-                
-          function obj = adjustViews(obj, Value)
+        function obj = setKeywordFilterView(obj, ListWithKeywordStrings)
+            
            
-              obj.MovieControllerViews =       obj.MovieControllerViews.adjustViews;
-                obj.InfoView.List.Position =      Value;
+          
+            obj.ProjectViews.RealFilterForKeywords.String =          obj.getKeywordFilterList(ListWithKeywordStrings);    
+
+            if obj.ProjectViews.RealFilterForKeywords.Value == 0
+                obj.ProjectViews.RealFilterForKeywords.Value = 1;
+            end
+
+            if min(obj.ProjectViews.RealFilterForKeywords.Value)> length(obj.ProjectViews.RealFilterForKeywords.String)
+                obj.ProjectViews.RealFilterForKeywords.Value = length(obj.ProjectViews.RealFilterForKeywords.String);
+            end
+
+        end
+        
+        function KeywordList = getKeywordFilterList(obj, ListWithKeywordStrings)
+            
+             if iscell(ListWithKeywordStrings)
+                KeywordList=                        ['Ignore keywords'; 'Movies with no keyword'; ListWithKeywordStrings];
+            else
+                KeywordList =                       {'Ignore keywords'; 'Movies with no keyword'; ListWithKeywordStrings}; 
+             end
+            
+               KeywordList(cellfun(@(x) isempty(x), KeywordList), :) =         [];
             
         end
+
         
     end
     
@@ -512,25 +543,7 @@ classdef PMImagingProjectViewer
 
         end
 
-        function obj = setKeywordFilterView(obj, ListWithKeywordStrings)
-        if iscell(ListWithKeywordStrings)
-            KeywordList=                        ['Ignore keywords'; 'Movies with no keyword'; ListWithKeywordStrings];
-        else
-            KeywordList =                       {'Ignore keywords'; 'Movies with no keyword'; ListWithKeywordStrings}; 
-        end
-        KeywordList(cellfun(@(x) isempty(x), KeywordList), :) =         [];
-        obj.ProjectViews.RealFilterForKeywords.String =          KeywordList;    
-
-        if obj.ProjectViews.RealFilterForKeywords.Value == 0
-            obj.ProjectViews.RealFilterForKeywords.Value = 1;
-        end
-
-        if min(obj.ProjectViews.RealFilterForKeywords.Value)> length(obj.ProjectViews.RealFilterForKeywords.String)
-            obj.ProjectViews.RealFilterForKeywords.Value = length(obj.ProjectViews.RealFilterForKeywords.String);
-        end
-
-        end
-
+     
         function obj = setImageSourceListView(obj, ListWithSelectedNickNames)
                 if ~isempty(ListWithSelectedNickNames)
                     ListWithSelectedNickNames =                                     sort(ListWithSelectedNickNames);
@@ -776,7 +789,28 @@ classdef PMImagingProjectViewer
                 
     
 
+         end
+        
+         function obj = setMovieMenuCallbacks(obj, varargin)
+            error('Not supported anymore.')
+            obj.MovieMenu =    obj.MovieMenu.setCallbacks(varargin{:});
         end
+
+        function obj =  setDriftMenuCallbacks(obj, varargin)
+            error('Not supported anymore.')
+            NumberOfArguments = length(varargin);
+            switch NumberOfArguments
+            case 2
+                obj.DriftMenu.ApplyManualDriftCorrection.MenuSelectedFcn =                          varargin{1} ;
+                obj.DriftMenu.EraseAllDriftCorrections.MenuSelectedFcn =                            varargin{2} ;
+            otherwise
+             error('Wrong input.')
+
+            end
+
+
+        end
+
         
         
         

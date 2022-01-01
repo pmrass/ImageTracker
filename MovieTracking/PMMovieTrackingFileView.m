@@ -1,6 +1,18 @@
 classdef PMMovieTrackingFileView
-    %PMMOVIETRACKINGSETTINGS Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIETRACKINGSETTINGS To view file-properties of image-source;
+    %   shows
+    %   nickname
+    %   keywords
+    %   image-folder
+    %   annotation-folder
+    %   movie-filenames
+    %   movie-paths
+    %   movie-pointers
+    %   indicate whether file could be read
+    %   image-map table
+    %   number of tracks
+    %   whether drift correction was performed
+    %   table with summary of meta-data
     
 
     properties (Access = private)
@@ -43,10 +55,19 @@ classdef PMMovieTrackingFileView
         
         function obj = PMMovieTrackingFileView(varargin)
             %PMMOVIETRACKINGSETTINGS Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes zero arguments:
             
-            obj =       obj.setMainFigure;
-            obj =       obj.setPanels;
+            switch length(varargin)
+               
+                case 0
+                    obj =       obj.setMainFigure;
+                    obj =       obj.setPanels;
+                    
+                otherwise
+                    error('Wrong input.')
+                
+            end
+          
               
         end
         
@@ -55,34 +76,35 @@ classdef PMMovieTrackingFileView
         end
         
         function obj = updateWith(obj, Value)
-            
-            assert(isscalar(Value), 'Wrong input.')
+            % UPDATEWITH updates states of individual view;
+            % takes 1 argument:
+            % 1: PMMovieTracking
             
             switch class(Value)
                
                 case 'PMMovieTracking'
                     
-                        obj.NickName.Value =                   Value.getNickName;
+                    assert(isscalar(Value), 'Wrong input.')
+                    
+                    obj.NickName.Value =                   Value.getNickName;
                     if ~isempty(Value.getKeywords)
                         % this shows only the first keyword; in a future version
                         % there should be options to show and change more than first keyword;
-                        obj.Keywords.Value =               Value.getKeywords{1}; 
+                        obj.Keywords.Value =                Value.getKeywords{1}; 
                     else
-                        obj.Keywords.Value =         '';
+                        obj.Keywords.Value =                '';
                     end
-                    obj.Folder.Items =               {Value.getMovieFolder};
-                    obj.FolderAnnotation.Items =     {Value.getPathOfMovieTrackingForSingleFile};
-                    obj.AttachedFiles.Items =        Value.getLinkedMovieFileNames;
-                    obj.ListWithPaths.Items =        Value.getPathsOfImageFiles;
-                    obj.PointersPerFile.Items =      cellfun(@(x) x, Value.getPathsOfImageFiles, 'UniformOutput', false);
+                    obj.Folder.Items =                      {Value.getMovieFolder};
+                    obj.FolderAnnotation.Items =            {Value.getPathOfMovieTrackingForSingleFile};
+                    obj.AttachedFiles.Items =               Value.getLinkedMovieFileNames;
+                    obj.ListWithPaths.Items =               Value.getPathsOfImageFiles;
+                    obj.PointersPerFile.Items =             cellfun(@(x) x, Value.getPathsOfImageFiles, 'UniformOutput', false); % correct?
 
-                    obj.TrackNumber.Text =           num2str(Value.getNumberOfTracks);
-                    obj.DriftCorrectionPerformed.Value =     Value.testForExistenceOfDriftCorrection;
-                    obj.MetaData.Items =               Value.getMetaDataInfoText;
-                    obj.ImageMap.Data =                Value.getSimplifiedImageMapForDisplay;
-
-                    
-                    
+                    obj.TrackNumber.Text =                  num2str(Value.getNumberOfTracks);
+                    obj.DriftCorrectionPerformed.Value =    Value.testForExistenceOfDriftCorrection;
+                    obj.MetaData.Items =                    Value.getMetaDataInfoText;
+                    obj.ImageMap.Data =                     Value.getSimplifiedImageMapForDisplay;
+   
                 otherwise
                     error('Wrong input.')
                 

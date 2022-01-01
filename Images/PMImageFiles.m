@@ -139,26 +139,22 @@ classdef PMImageFiles
     methods (Access = private)
         
         function obj = SetImageDocuments(obj)
-                    myWaitBar =                                             waitbar(0.5, 'Mapping image file(s). This can take a few minutes for large files.'); % cannot do a proper waitbar because it is not a loop;
                     
-                    switch obj.getFileExtension
-                        case {'.tif', '.lsm'}
-                              obj.myImageDocuments =                            cellfun(@(x)  PMTIFFDocument(x), obj.getPathsOfImageFiles);
-                        
-                        case '.czi'
-                            obj.myImageDocuments =                              cellfun(@(x)  PMCZIDocument(x), obj.getPathsOfImageFiles);
-                      
-                        case '.pic'
-                             obj.myImageDocuments =                             cellfun(@(x)  PMImageBioRadPicFile(x), obj.getPathsOfImageFiles);
-                     
-                        otherwise % need to add pic
-                            error('Format of image file not supported.')
-                   
-                    end
+                switch obj.getFileExtension
+                    case {'.tif', '.lsm'}
+                          obj.myImageDocuments =                            cellfun(@(x)  PMTIFFDocument(x), obj.getPathsOfImageFiles);
 
-                      if isvalid(myWaitBar)
-                            close(myWaitBar);
-                      end
+                    case '.czi'
+                        obj.myImageDocuments =                              cellfun(@(x)  PMCZIDocument(x), obj.getPathsOfImageFiles);
+
+                    case '.pic'
+                         obj.myImageDocuments =                             cellfun(@(x)  PMImageBioRadPicFile(x), obj.getPathsOfImageFiles);
+
+                    otherwise % need to add pic
+                        error('Format of image file not supported.')
+
+                end
+
         end
         
         

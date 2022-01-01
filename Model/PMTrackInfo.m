@@ -1,6 +1,8 @@
 classdef PMTrackInfo
-    %PMTRACKINFO Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMTRACKINFO manages main logistics information of track
+    %   has track ID, tells whether track is finished and contains "address";
+    % address: matrix with two columns: 
+    % column 1: all frame numbers of track; column 2: "row" where track is located at each frame;
     
     properties
        
@@ -17,18 +19,20 @@ classdef PMTrackInfo
         
         function obj = PMTrackInfo(TrackId)
             %PMTRACKINFO Construct an instance of this class
-            %   Detailed explanation goes here
+            %  takes 1 argument:
+            % 1: track ID
             obj.TrackID = TrackId;
         end
         
          function obj = set.SegmentationAddress(obj, Value)
-             if isempty(Value)
+            
+            if isempty(Value)
                  
-             else
+            else
                  assert(isnumeric(Value) && ismatrix(Value) && size(Value, 2) == 2, 'Wrong input.')
-             end
-             
-            obj.SegmentationAddress = Value; 
+            end
+            obj.SegmentationAddress = Value;
+            
          end
         
         
@@ -80,6 +84,8 @@ classdef PMTrackInfo
          end
          
          function value = getSegmentationAddress(obj)
+             % GETSEGMENTATIONADDRESS returns segmentation address;
+             % segmentation address is matrix with two columns:
              value = obj.SegmentationAddress;
          end
          

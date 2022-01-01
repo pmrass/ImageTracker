@@ -15,6 +15,9 @@ classdef PMAutoCellRecognitionView
         FilterForHighDensityDistance
         FilterForHighDensityNumber
         
+         FilterForOverLapExclusion
+        FilterForOverLapDistance
+        
         ProcedureSelection
         
         StartButton
@@ -28,10 +31,9 @@ classdef PMAutoCellRecognitionView
         
     end
     
-    methods
-
+    methods % initialize
         
-        function obj = PMAutoCellRecognitionView(varargin)
+          function obj = PMAutoCellRecognitionView(varargin)
             %PMMOVIETRACKINGSETTINGS Construct an instance of this class
             %   Detailed explanation goes here
             
@@ -49,7 +51,31 @@ classdef PMAutoCellRecognitionView
             
             
            
+          end
+        
+        
+    end
+    
+    methods % getters
+        
+        function value = getOverlapExclusionSelection(obj)
+            
+           value = obj.FilterForOverLapExclusion; 
         end
+        
+        function value = getOverlapExclusionDistance(obj)
+            
+           value = obj.FilterForOverLapDistance; 
+        end
+        
+        
+        
+    end
+    
+    methods % setters
+
+        
+      
         
         function obj = setChannels(obj, Value)
             obj.ListWithChannels.Data =                       Value;    
@@ -84,12 +110,16 @@ classdef PMAutoCellRecognitionView
             
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
-                case 4
+                case 6
                     
                     obj.ListWithChannels.CellSelectionCallback =        varargin{1};
                     obj.ListWithFrames.CellSelectionCallback =          varargin{2};
                     obj.ListWithPlaneSettings.DisplayDataChangedFcn =   varargin{3};
                     obj.StartButton.ButtonPushedFcn =                   varargin{4};
+                    
+                     obj.FilterForOverLapExclusion.ValueChangedFcn  =   varargin{5};
+                        obj.FilterForOverLapDistance.ValueChangedFcn =   varargin{6};
+        
                     
                 otherwise
                     error('Wrong input.')
@@ -116,6 +146,7 @@ classdef PMAutoCellRecognitionView
             obj =       obj.setChannelPanels;
          
             obj =       obj.setHighDensityPanels;
+            obj = setOverlapPanels(obj);
             
             obj =       obj.setActionPanels;
              
@@ -170,6 +201,32 @@ classdef PMAutoCellRecognitionView
             obj.FilterForHighDensityNumber.Position =           [ColumnPosition obj.TopContentRow 200 20 ];  
 
         end
+        
+        function obj = setOverlapPanels(obj)
+            
+            ColumnPosition =                            obj.getWidth * 0.6;
+
+            FilterForOverlapTitle =                     uilabel(obj.MainFigure);
+            FilterForOverlapTitle.Position =            [ColumnPosition obj.TopContentRow + 80 200 20 ]; 
+            FilterForOverlapTitle.Text =                'Prevent double tracking:';
+
+       %     FilterForOverLapExclusionTitle =            uilabel(obj.MainFigure);
+         %   FilterForOverLapExclusionTitle.Position =   [ColumnPosition obj.TopContentRow + 20  200 20 ];   
+         %   FilterForOverLapExclusionTitle.Text =       'Min cell distance';
+
+            obj.FilterForOverLapExclusion =             uicheckbox(obj.MainFigure);
+            obj.FilterForOverLapExclusion.Position =    [ColumnPosition obj.TopContentRow + 60 200 20 ];   
+            obj.FilterForOverLapExclusion.Text =        'Exclude overlapping cells';
+
+
+            FilterForOverLapDistanceTitle =             uilabel(obj.MainFigure);
+            FilterForOverLapDistanceTitle.Position =    [ColumnPosition obj.TopContentRow + 20  200 20 ];   
+            FilterForOverLapDistanceTitle.Text =        'Min cell distance';
+
+            obj.FilterForOverLapDistance =              uieditfield(obj.MainFigure);
+            obj.FilterForOverLapDistance.Position =     [ColumnPosition obj.TopContentRow 200 20 ];  
+              
+        end
           
         
         
@@ -195,7 +252,7 @@ classdef PMAutoCellRecognitionView
             
             obj.ProcedureSelection  =               uidropdown(obj.MainFigure);
             obj.ProcedureSelection.Position =       [obj.getWidth * 0.5 50  obj.getWidth * 0.4 20 ];
-            obj.ProcedureSelection.Items =          {'Interpolate plane settings', 'Circle recognition'};
+            obj.ProcedureSelection.Items =          {'Interpolate plane settings', 'Circle recognition', 'Intensity recognition'};
             obj.ProcedureSelection.Value =          'Circle recognition';
 
             obj.StartButton =                       uibutton(obj.MainFigure);

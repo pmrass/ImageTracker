@@ -1,6 +1,6 @@
 classdef PMMovieTrackingFileController
-    %PMMOVIETRACKINGCONTROLLER Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIETRACKINGCONTROLLER View of the file aspects of PMMovieTracking
+    %   mediates interaction between PMMovieTrackingFileView and PMMovieTracking to ; 
     
     properties (Access = private)
         Model
@@ -9,9 +9,19 @@ classdef PMMovieTrackingFileController
     
     methods % initialize
         
-        function obj =      PMMovieTrackingFileController
+        function obj =      PMMovieTrackingFileController(varargin)
             %PMMOVIETRACKINGCONTROLLER Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 0 arguments
+            
+            switch length(varargin)
+               
+                case 0
+                    
+                otherwise
+                    error('Wrong input.')
+                
+            end
+            
         end
         
         function obj = set.View(obj, Value)
@@ -34,19 +44,24 @@ classdef PMMovieTrackingFileController
         end
         
         function obj =      resetView(obj)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
+            %RESETVIEW resets view
+            % Also creates new view if currently no valide view available;
           
             if ~isempty(obj.View) && isvalid(obj.View.getFigure)
             
             else
                 obj =       obj.setView;
-                obj =       obj.updateView;
+               
             end
+            
+             obj =       obj.updateView;
             
         end
         
         function obj = updateWith(obj, varargin)
+            % UPDATEWITH updates view with new content
+            % takes 1 argument
+            % 1: PMMovieTracking;
             
             switch length(varargin)
                 case 1
@@ -64,7 +79,20 @@ classdef PMMovieTrackingFileController
         end
         
         
-        function obj =   updateView(obj)
+     
+        
+         function obj = setCallbacks(obj, varargin)
+             obj.View = obj.View.setCallbacks(varargin{:});
+         end
+         
+      
+        
+
+    end
+    
+    methods (Access = private)
+        
+           function obj =   updateView(obj)
                 
             if ~isempty(obj.View) && isvalid(obj.View.getFigure)
                  figure(obj.View.getFigure)
@@ -73,13 +101,10 @@ classdef PMMovieTrackingFileController
             end
            
            
-        end
+           end
         
-         function obj = setCallbacks(obj, varargin)
-             obj.View = obj.View.setCallbacks(varargin{:});
-         end
-         
-        function FigureHandle = getFigureHandle(obj)
+        
+          function FigureHandle = getFigureHandle(obj)
            FigureHandle = obj.View.getFigure;
         end
         
@@ -90,12 +115,6 @@ classdef PMMovieTrackingFileController
         function Keyword =  getKeywordFromView(obj)
             Keyword =   obj.View.getKeywords;
         end
-        
-
-    end
-    
-    methods (Access = private)
-        
         
         
     end

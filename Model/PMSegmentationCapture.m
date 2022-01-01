@@ -80,8 +80,7 @@ classdef PMSegmentationCapture
         SegmentationType
 
         ImageVolume
-        MaximumRows
-        MaximumColumns
+      
 
         MaskCoordinateList
         AllowedExcessSizeFactor
@@ -105,16 +104,22 @@ classdef PMSegmentationCapture
             %   Detailed explanation goes here
 
             NumberOfInputArguments =    length(varargin);
-            
             switch NumberOfInputArguments
                 
                 case 0
                     return
                     
                 case 1 % one input argument means that the current PMMovieController is the input argument:
-                    MovieControllerObject =      varargin{1};
-                    [obj]=                       obj.resetWithMovieController(MovieControllerObject);
-                    
+                    assert(isscalar(varargin{1}), 'Wrong input.')
+                    switch class(varargin{1})
+                        case 'PMMovieController'
+                                obj =     obj.resetWithMovieController(varargin{1});
+                            
+                        otherwise
+                            error('Wrong input.')
+                        
+                    end
+                     
                 case 2 % manual tracking: pixel-list and type "manual";
 
                     if strcmp(class(varargin{1}),  'PMMovieController')
@@ -156,7 +161,6 @@ classdef PMSegmentationCapture
                     obj.SegmentationOfCurrentFrame =            varargin{2};
                     obj.ImageVolume =                           varargin{3};
 
-
                 case 6
                     
                     obj.CurrentTrackId =                        varargin{1};
@@ -166,94 +170,113 @@ classdef PMSegmentationCapture
                     obj.ActiveXCoordinate  =                   round(varargin{3});
                     obj.ActiveYCoordinate  =                   round(varargin{4});
                     obj.ActiveZCoordinate  =                   round(varargin{5});
+                    
+                otherwise
+                    error('Wrong input.')
 
             end
             
-            obj.MaximumRows =           size(obj.ImageVolume,1); 
-            obj.MaximumColumns =        size(obj.ImageVolume,2); 
-
-            
-
+          
         end
         
-       function obj = set.BlackedOutPixels(obj, Value)
-        assert(isnumeric(Value) && ismatrix(Value), 'Wrong input.')
-        obj.BlackedOutPixels = Value;
-
-       end
-       
-       
-        function obj = set.FactorForThreshold(obj, Value)
-             assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
-            obj.FactorForThreshold = Value;
+        function obj = set.ImageVolume(obj, Value)
+            assert(isnumeric(Value) && ndims(Value) == 3, 'Wrong input.')
+            obj.ImageVolume = Value;
         end
         
-         function obj = set.MaximumCellRadius(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
-            obj.MaximumCellRadius = Value;
-         end
-        
-          function obj = set.MaximumDisplacement(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
-            obj.MaximumDisplacement = Value;
-          end
-        
-           function obj = set.PixelShiftForEdgeDetection(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
-           obj.PixelShiftForEdgeDetection = Value; 
-           end
-        
-              function obj = set.AllowedExcessSizeFactor(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
-           obj.AllowedExcessSizeFactor = Value; 
-              end
-        
-                  function obj = set.ActiveChannel(obj, Value)
+        function obj =  set.BlackedOutPixels(obj, Value)
+            assert(isnumeric(Value) && ismatrix(Value), 'Wrong input.')
+            obj.BlackedOutPixels = Value;
+
+        end
+
+        function obj =  set.FactorForThreshold(obj, Value)
+        assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
+        obj.FactorForThreshold = Value;
+        end
+
+        function obj =  set.MaximumCellRadius(obj, Value)
+        assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
+        obj.MaximumCellRadius = Value;
+        end
+
+        function obj =  set.MaximumDisplacement(obj, Value)
+        assert(isnumeric(Value) && isscalar(Value) && ~isnan(Value), 'Wrong input.')
+        obj.MaximumDisplacement = Value;
+        end
+
+        function obj =  set.PixelShiftForEdgeDetection(obj, Value)
+        assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
+        obj.PixelShiftForEdgeDetection = Value; 
+        end
+
+        function obj =  set.AllowedExcessSizeFactor(obj, Value)
+        assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
+        obj.AllowedExcessSizeFactor = Value; 
+        end
+
+        function obj =  set.ActiveChannel(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) && Value >= 1, 'Wrong argument type.')
             obj.ActiveChannel = Value;
         end
-        
-        function obj = set.ActiveYCoordinate(obj, Value)
+
+        function obj =  set.ActiveYCoordinate(obj, Value)
             assert(isnumeric(Value) && isscalar(Value)  && Value >= 1, 'Wrong argument type.')
             obj.ActiveYCoordinate = Value;
         end
-        
-        function obj = set.ActiveXCoordinate(obj, Value)
+
+        function obj =  set.ActiveXCoordinate(obj, Value)
             assert(isnumeric(Value) && isscalar(Value)  && Value >= 1, 'Wrong argument type.')
             obj.ActiveXCoordinate = Value;
         end
-        
-         
-           function obj = set.ActiveZCoordinate(obj, Value)
+
+        function obj =  set.ActiveZCoordinate(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) && Value >= 1, 'Wrong argument type.')
             obj.ActiveZCoordinate = Value;
         end
-        
-        function obj = set.MaskCoordinateList(obj, Value)
+
+        function obj =  set.MaskCoordinateList(obj, Value)
             if isempty(Value)
-               Value = zeros(0, 3);
+                Value = zeros(0, 3);
             else
                 assert(isnumeric(Value) && ismatrix(Value) && size(Value,2) == 3, 'Wrong argument type.')
             end
             obj.MaskCoordinateList = Value;
-            
-            
+
+
         end
-        
-        function obj = set.SizeForFindingCellsByIntensity(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
+
+        function obj =  set.SizeForFindingCellsByIntensity(obj, Value)
+            assert(isnumeric(Value) && isscalar(Value) && Value > 0, 'Wrong input.')
             obj.SizeForFindingCellsByIntensity = Value;
         end
+
+        function obj =  set.CurrentTrackId(obj, Value)
+            
+            if isempty(Value)
+                
+            else
+                assert(isscalar(Value) && isnumeric(Value), 'Wrong input.')
+                
+                if isnan(Value)
+                    
+                else
+                    assert( mod(Value, 1) == 0 && Value >= 1, 'Wrong input.')
+                    obj.CurrentTrackId = Value;
+                    
+                end
+                
+                
+              
+            end
+            
+        end
         
-          function obj = set.CurrentTrackId(obj, Value)
-            assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
-            obj.CurrentTrackId = Value;
-          end
-        
-        
-          
-          
-        
+        function obj = set.ShowSegmentationProgress(obj, Value)
+            assert(isscalar(Value) && islogical(Value), 'Wrong input.')
+           obj.ShowSegmentationProgress = Value; 
+        end
+
     end
     
     methods % summaries
@@ -319,93 +342,123 @@ classdef PMSegmentationCapture
     
     methods % setters
         
-         function obj = setBlackedOutPixels(obj, Value)
+        function obj = setBlackedOutPixels(obj, Value)
             obj.BlackedOutPixels = Value;
-         end
-        
+        end
+
         function obj = emptyOutBlackedOutPixels(obj) 
             obj.BlackedOutPixels = zeros(0,3);
         end
-        
-        
-        
+
         function obj = setMaximumCellRadius(obj, Value)
             obj.MaximumCellRadius = Value;
         end
-        
-       
-        
+
         function obj = setMaximumDisplacement(obj, Value)
-           obj.MaximumDisplacement = Value; 
+            obj.MaximumDisplacement = Value; 
         end
-        
-       
-        
-        
+
         function obj = setPixelShiftForEdgeDetection(obj, Value)
-           obj.PixelShiftForEdgeDetection = Value; 
+            obj.PixelShiftForEdgeDetection = Value; 
         end
-        
-       
-         function obj = setAllowedExcessSizeFactor(obj, Value)
-           obj.AllowedExcessSizeFactor = Value; 
+
+        function obj = setAllowedExcessSizeFactor(obj, Value)
+            obj.AllowedExcessSizeFactor = Value; 
         end
-        
-     
-        
-       
-        
+
         function obj = setActiveChannel(obj, Value)
-           obj.ActiveChannel = Value; 
-           
+            obj.ActiveChannel = Value; 
         end
-        
-    
+
         function obj = setActiveZCoordinate(obj, Value)
             obj.ActiveZCoordinate = Value;
         end
-        
-     
+
         function obj = setMaskCoordinateList(obj, Value)
             obj.MaskCoordinateList = Value;
             obj =        obj.setActiveCoordinateByBrightestPixels;
         end
-        
-          function obj = setFactorForThreshold(obj, Value)
+
+        function obj = setFactorForThreshold(obj, Value)
             obj.FactorForThreshold = Value;
-          end
-          
-          
-        
-     
-        
+        end
+
         function obj = setSegmentationType(obj, Value)
-            
-           obj.SegmentationType = Value; 
+            obj.SegmentationType = Value; 
         end
-        
-       
+
         function obj = setSizeForFindingCellsByIntensity(obj, Value)
-           obj.SizeForFindingCellsByIntensity = Value;
-            
+            obj.SizeForFindingCellsByIntensity = Value;
         end
-        
-          function obj = setTrackId(obj, Value)
+
+        function obj = setTrackId(obj, Value)
             obj.CurrentTrackId = Value;
         end
         
+        function obj = setShowSegmentationProgress(obj, Value)
+            
+           obj.ShowSegmentationProgress = Value; 
+        end
+   
+    end
+    
+    methods % setters: set multiple properties by MovieController
+
+        function obj=               resetWithMovieController(obj, MovieController)
+            
+                assert(isscalar(MovieController) && isa(MovieController, 'PMMovieController'), 'Wrong input.')
+                obj.ActiveChannel =                    MovieController.getLoadedMovie.getActiveChannelIndex;
+                obj.ImageVolume =                      MovieController.getActiveImageVolumeForChannel(obj.ActiveChannel);
+                obj.SegmentationOfCurrentFrame =       MovieController.getLoadedMovie.getUnfilteredSegmentationOfCurrentFrame;
+                
+                ActiveSegmentation = MovieController.getLoadedMovie.getSegmentationOfActiveMask;
+                if ~isempty(ActiveSegmentation)
+                    obj =         obj.setActiveStateBySegmentationCell(ActiveSegmentation);
+                else
+                    
+                    
+                end
+                
+                
+        end
+
+     
+
+    end
+    
+    methods (Access = private) % setters: set multiple properties by MovieController
+       
+           function obj = setActiveStateBySegmentationCell(obj, SegmentationOfActiveTrack)
+               
+                 assert(size(SegmentationOfActiveTrack, 1) == 1, 'One unique segment must be retrieved here.')
+                        
+                MyMask =                        PMMask(SegmentationOfActiveTrack);
+
+                obj.CurrentTrackId =            MyMask.getTrackID;
+                obj.ActiveYCoordinate =         round(MyMask.getY);
+                obj.ActiveXCoordinate =         round(MyMask.getX);
+                obj.ActiveZCoordinate =         round(MyMask.getZ);
+                obj.MaskCoordinateList =        MyMask.getMaskPixels;
+
+        end
+
         
-        
-        
-        
-         
     end
     
     methods % getters
         
-        function failurs = getAccumulatedSegmentationFailures(obj)
-            failurs = obj.AccumulatedSegmentationFailures;
+        function rows = getMaximumRows(obj)
+            rows =  size(obj.ImageVolume,1); 
         end
+        
+        function rows = getMaximumColumns(obj)
+            rows =  size(obj.ImageVolume,2); 
+        end
+        
+        function plane = getPlaneMax(obj)
+           plane = size(obj.ImageVolume, 3);
+        end
+      
         
        function value = getMaskCoordinateList(obj)
             value = obj.getActiveShape.getCoordinates;
@@ -448,7 +501,12 @@ classdef PMSegmentationCapture
         end
         
         function area = getPixelArea(obj)
-           area = round(size(unique(obj.MaskCoordinateList(:, 1:2)), 1));
+            if isempty(obj.MaskCoordinateList)
+                area = 0;
+            else
+                  area = round(size(unique(obj.MaskCoordinateList(:, 1:2)), 1));
+            end
+         
             
         end
         
@@ -480,38 +538,116 @@ classdef PMSegmentationCapture
         
             function obj = performAutothresholdSegmentationAroundBrightestAreaInImage(obj)
               
-                obj.CurrentTrackId =         NaN; % have to do this to also exclude currently active track pixels;
-                obj =                       obj.addPreviouslTrackedPixelsToBlackedOutPixels;
                 
-                CleanedupImage =                obj.removePixelsFromImage(obj.BlackedOutPixels);
-                figure(20)
-                imagesc(CleanedupImage)
-
-                [xCoordinate, yCoordinate, coordinateList] =    obj.detectBrightestAreaInImage(CleanedupImage);
-                
-                obj =                     obj.addPixelsToBlackedOutPixels(coordinateList);
-                obj.ActiveYCoordinate =   yCoordinate;
-                obj.ActiveXCoordinate =   xCoordinate;
-                obj =                     obj.generateMaskByAutoThreshold;
-
-                 if ~obj.getActiveShape.testShapeValidity
-                            obj.AccumulatedSegmentationFailures = obj.AccumulatedSegmentationFailures + 1;    
-                 end
+          
                               
             end
+            
+            
+        
+    end
+    
+    methods
+        
+        function obj = blackoutAllPreviouslyTrackedPixels(obj)
+            
+            TrackID = obj.CurrentTrackId;
+            
+            obj.CurrentTrackId =     NaN; % have to do this to also exclude currently active track pixels;
+            obj =                    obj.addPreviouslTrackedPixelsToBlackedOutPixels;
+            
+            obj.CurrentTrackId = TrackID;
+            
+        end
+        
+        function obj = addActivePixelsToBlackedOutPixels(obj)
+            
+             obj = obj.addPixelsToBlackedOutPixels(obj.MaskCoordinateList);
+            
+            
+        end
+        
+        
+        
+        function obj = addPixelsToBlackedOutPixels(obj, Pixels)
+            assert(isnumeric(Pixels) && ismatrix(Pixels) && size(Pixels, 2) == 3, 'Wrong input.')
+              obj.BlackedOutPixels =       unique([Pixels; obj.BlackedOutPixels], 'rows');
+            
+        end
+        
+        function obj = setActiveCoordinateByBrightestArea(obj)
+            
+            MyPlane =                       obj.ActiveZCoordinate;
+            BlackedOutImage =               obj.getImageWithBlackedOutPixelsForPlane(MyPlane);
+            
+          
+            
+          
+            
+            [xCoordinate, yCoordinate] =    obj.detectBrightestAreaInImage(BlackedOutImage);
+            obj.ActiveYCoordinate =         yCoordinate;
+            obj.ActiveXCoordinate =         xCoordinate;
+
+        end
+        
         
     end
     
     methods (Access = private) % autothresholding in brightest region of image 
         
+        function showAllImagePlanes(obj, ImageVolume, FigureNumber)
+            
+        
+            
+            NumberOfPlanes = size(ImageVolume, 3);
+            
+            NumberOfRows = 2;
+            NumberOfColumns = 6;
+            figure(FigureNumber)
+            assert(NumberOfPlanes <= NumberOfRows * NumberOfColumns, 'Wrong input.')
+               
+            for index = 1 : NumberOfPlanes
+                
+                 subplot(NumberOfRows, NumberOfColumns, index)
+                  imagesc(ImageVolume(:, :, index))
+                  
+            end
+           
+           
+           
+            
+        end
+        
+        function BlackedOutImageVolume = getImageVolumeWithBlackedOutPixels(obj)
+            BlackedOutImageVolume = arrayfun(@(x) obj.getImageWithBlackedOutPixelsForPlane(x), (1 : obj.getPlaneMax)', 'UniformOutput', false);
+            
+            BlackedOutImageVolume = cat( 3 , BlackedOutImageVolume{:} );
+            
+        end
+        
+        function BlackedOutImage = getImageWithBlackedOutPixelsForPlane(obj, MyPlane)
+                DirtyImage =                            obj.ImageVolume(:, :, MyPlane);
+                BlackedOutPixelsInCurrentPlane =        obj.filterPixelsForPlane(obj.BlackedOutPixels, MyPlane);
+                BlackedOutPixelsInCurrentPlane(:, 3) = 1;
+                
+                BlackedOutImage =                        obj.removePixelsFromImage(BlackedOutPixelsInCurrentPlane, DirtyImage);
+                
+            
+        end
+        
            function obj = addPreviouslTrackedPixelsToBlackedOutPixels(obj)
-                obj.BlackedOutPixels =       unique([obj.getAllPreviouslTrackedPixelsInPlane(obj.ActiveZCoordinate); obj.BlackedOutPixels], 'rows');
+               obj = obj.addPixelsToBlackedOutPixels(obj.getAllPreviouslyTrackedPixelsInActivePlane);
                 
             end
             
-            function PreviouslyTrackedPixels = getAllPreviouslTrackedPixelsInPlane(obj, Plane)
-                PreviouslyTrackedPixels =                           obj.getAllPreviouslyTrackedPixels; 
-                PreviouslyTrackedPixels(PreviouslyTrackedPixels(:,3) ~= obj.ActiveZCoordinate,:) =    []; % this is just for current plane; generalize this more;
+            function PreviouslyTrackedPixels = getAllPreviouslyTrackedPixelsInActivePlane(obj)
+                PreviouslyTrackedPixels =       obj.getAllPreviouslyTrackedPixels; 
+                PreviouslyTrackedPixels =       obj.filterPixelsForPlane(PreviouslyTrackedPixels, obj.ActiveZCoordinate);
+            end
+            
+            function Pixels = filterPixelsForPlane(obj, Pixels, Plane)
+                
+                  Pixels(Pixels(:,3) ~= Plane,:) =    []; 
             end
             
             function PixelsFromPreviouslyTrackedCells = getAllPreviouslyTrackedPixels(obj)
@@ -549,13 +685,11 @@ classdef PMSegmentationCapture
              end
              
             
-              function obj = addPixelsToBlackedOutPixels(obj, coordinateList)
-                  obj.BlackedOutPixels =     [obj.BlackedOutPixels; coordinateList]; % remember positions that have been tried (avoid multiple tries);
-              end
-            
-                function PixelsFromPreviouslyTrackedCells = removeOutOfPlanePixels(obj, PixelsFromPreviouslyTrackedCells)
+          
+            function PixelsFromPreviouslyTrackedCells = removeOutOfPlanePixels(obj, PixelsFromPreviouslyTrackedCells)
+
                 if isempty(PixelsFromPreviouslyTrackedCells)
-                    
+
                 else
                     PlaneRange =      obj.getUpperZPlane : obj.getBottomZPlane;
                     RowFilter = false(size(PixelsFromPreviouslyTrackedCells, 1), length(PlaneRange));
@@ -566,46 +700,52 @@ classdef PMSegmentationCapture
                     end
                     RowsFromExcludedPlanes = max(RowFilter, [], 2);
                     PixelsFromPreviouslyTrackedCells(~RowsFromExcludedPlanes, :) = [];
-                    
+
                 end
-                    
-                end
-            
-            
-            
-            
-        
+
+            end
+  
     end
     
     methods (Access = private) % detectBrightestAreaInImage
-       
-                         
-            function [xCoordinate,yCoordinate,CoordinatesList] = detectBrightestAreaInImage(obj, Image)
+              
+            function [xCoordinate, yCoordinate] = detectBrightestAreaInImage(obj, Image)
+                assert(isnumeric(Image) && ismatrix(Image), 'Wrong input.')
+                IntensityMatrix =           obj.getIntensityMatrixForImage(Image);
+
+                [ListWithMaxValues, ListWithMaxRowIndices] =          max(IntensityMatrix);
+                [~,ListWithMaxColumnIndex] =    max(ListWithMaxValues);
+                ListMaxRowIndex =               ListWithMaxRowIndices(ListWithMaxColumnIndex);
                 
+                yCoordinate =                   ListMaxRowIndex + round(obj.SizeForFindingCellsByIntensity / 2);
+                xCoordinate =                   ListWithMaxColumnIndex + round(obj.SizeForFindingCellsByIntensity / 2);
+                %CoordinatesList =               obj.convertRectangleLimitToYXZCoordinates([ListWithMaxColumnIndex,  ListMaxRowIndex, obj.SizeForFindingCellsByIntensity, obj.SizeForFindingCellsByIntensity]);
+               
+            end
+            
+            function IntensityMatrix = getIntensityMatrixForImage(obj, Image)
+                assert(isnumeric(Image) && ismatrix(Image), 'Wrong input.')
                 IntensityMatrix =   zeros(size(Image,1) - obj.SizeForFindingCellsByIntensity, size(Image,2) - obj.SizeForFindingCellsByIntensity);
-                for RowIndex = 1:size(Image,1) - obj.SizeForFindingCellsByIntensity + 1
+                for RowIndex = 1 : size(Image,1) - obj.SizeForFindingCellsByIntensity + 1
                     for ColumnIndex = 1 : size(Image,2) - obj.SizeForFindingCellsByIntensity+1
                         Area =                                      Image(RowIndex:RowIndex+obj.SizeForFindingCellsByIntensity-1,ColumnIndex:ColumnIndex+obj.SizeForFindingCellsByIntensity-1);            
                         IntensityMatrix(RowIndex,ColumnIndex) =     median(Area(:));     
                     end  
                 end
-
-                [a,listWithRows] =          max(IntensityMatrix);
-                [c,column] =                max(a);
-                yCoordinate =               listWithRows(column) + round(obj.SizeForFindingCellsByIntensity/2);
-                xCoordinate =               column + round(obj.SizeForFindingCellsByIntensity/2);
-                [CoordinatesList] =         obj.convertRectangleLimitToYXZCoordinates([column  listWithRows(column) obj.SizeForFindingCellsByIntensity obj.SizeForFindingCellsByIntensity]);
-                CoordinatesList(:,3) =      obj.ActiveZCoordinate;  
+                
             end
 
+            function Coordinates =    convertRectangleLimitToYXZCoordinates(obj, Rectangle)
+                assert(isnumeric(Rectangle) && isvector(Rectangle) && length(Rectangle) == 4, 'Wrong input.')
             
-            function [Coordinates] =    convertRectangleLimitToYXZCoordinates(obj,Rectangle)
-                Image(Rectangle(2):Rectangle(2)+Rectangle(4)-1,Rectangle(1):Rectangle(1)+Rectangle(3)-1) = 1;
-                [Coordinates] =    obj.convertImageToYXZCoordinates(Image);
+                Image(Rectangle(2) : Rectangle(2) + Rectangle(4) - 1, Rectangle(1) : Rectangle(1) + Rectangle(3) - 1) = 1;
+                Coordinates =    obj.convertImageToYXZCoordinates(Image);
                 
             end
               
-            function [collectedCoordinates] =    convertImageToYXZCoordinates(obj, Image)
+            function collectedCoordinates =    convertImageToYXZCoordinates(obj, Image)
+                
+                 
                 NumberOfPlanes = size(Image,3);
                 CorrdinateCell = cell(NumberOfPlanes,1);
                 for CurrentPlane =1 :NumberOfPlanes
@@ -613,24 +753,20 @@ classdef PMSegmentationCapture
                     addedCoordinates =      [ rows, columns];
                     addedCoordinates(addedCoordinates(:,1) <= 0, :) = [];
                     addedCoordinates(addedCoordinates(:,2) <= 0, :) = [];
-                    addedCoordinates(addedCoordinates(:,1) > obj.MaximumRows,:) =  [];
-                    addedCoordinates(addedCoordinates(:,2) > obj.MaximumColumns,:) = [];
+                    addedCoordinates(addedCoordinates(:,1) > obj.getMaximumRows,:) =  [];
+                    addedCoordinates(addedCoordinates(:,2) > obj.getMaximumColumns,:) = [];
                     addedCoordinates(:,3) =     CurrentPlane;
                     CorrdinateCell{CurrentPlane,1} =   addedCoordinates;
                 end
                 collectedCoordinates = vertcat(CorrdinateCell{:});
             end
-    
-          
-        
-        
-        
+  
     end
     
     methods (Access = private) % remove pixels
        
         
-            function [Image] =                                          removePixelsFromImage(obj, PixelList, varargin)
+            function [Image] =          removePixelsFromImage(obj, PixelList, varargin)
                 if length(varargin) ==1
                     Image = varargin{1};
                 else
@@ -645,7 +781,7 @@ classdef PMSegmentationCapture
             end
             
             function Image = addCoordinatesToImageWithIntensity(obj, PixelList, Image, Intensity)
-                  NumberOfPixels = size(PixelList,1);
+                NumberOfPixels = size(PixelList,1);
                 for PixelIndex = 1 : NumberOfPixels % there should be a more efficient way to do this:
                     Image(PixelList(PixelIndex, 1), PixelList(PixelIndex, 2), PixelList(PixelIndex, 3)) = Intensity;
                 end
@@ -665,10 +801,8 @@ classdef PMSegmentationCapture
         
     end
     
-    
-    methods
+    methods % getters:
 
-            
             function UpperZPlane = getUpperZPlane(obj)
                 UpperZPlane =          max([ 1 obj.ActiveZCoordinate - obj.PlaneNumberAboveAndBelow]);
             end
@@ -676,59 +810,39 @@ classdef PMSegmentationCapture
             function BottomZPlane = getBottomZPlane(obj)
                 BottomZPlane = min([ obj.ActiveZCoordinate + obj.PlaneNumberAboveAndBelow size(obj.ImageVolume, 3)]);
             end
-        
-         
-            %% testPixelValidity
-            function pixelCheckSucceeded = testPixelValidity(obj)
-              pixelCheckSucceeded = obj.getActiveShape.testShapeValidity;
+            
+           function pixelCheckSucceeded = testPixelValidity(obj)
+               if isempty(obj.MaskCoordinateList)
+                     pixelCheckSucceeded = false;
+               else
+                     pixelCheckSucceeded = obj.getActiveShape.testShapeValidity;
+                      obj.getActiveShape.showSummary;
+               end
+            
            end
            
             function myShape = getActiveShape(obj)
                 myShape = obj.getShapeForCoordinateList(obj.MaskCoordinateList);
             end
-          
+            
             function myShape = getShapeForCoordinateList(obj, CoordinateList)
                 myShape =   PMShape(CoordinateList, 'YXZ');
                 myShape  =  myShape.setLimits(obj.MinimumCellRadius, obj.MaximumCellRadius);
                 myShape =   myShape.setDimensions(obj.getWithOfCroppedImage, obj.getHeightOfCroppedImage);
                 myShape =   myShape.setOutputFormat('YXZ');
             end
+
+    end
     
-           
-  
-        %% resetWithMovieController
-        function [obj]=               resetWithMovieController(obj, MovieController)         
-                obj.ActiveChannel =                    MovieController.getLoadedMovie.getActiveChannelIndex;
-                obj.ImageVolume =                      MovieController.getActiveImageVolumeForChannel(obj.ActiveChannel);
-                obj.SegmentationOfCurrentFrame =       MovieController.getLoadedMovie.getUnfilteredSegmentationOfCurrentFrame;
-                obj =                                  obj.setActiveStateBySegmentationCell(MovieController.getLoadedMovie.getSegmentationOfActiveMask);
-        end
-        
-        function obj = setActiveStateBySegmentationCell(obj, SegmentationOfActiveTrack) 
-            if ~isempty(SegmentationOfActiveTrack)
-                assert(size(SegmentationOfActiveTrack, 1) == 1, 'Multiple segments retrieved. This should be only one.')
-                    obj.CurrentTrackId =            SegmentationOfActiveTrack{1,1};
-                    obj.ActiveYCoordinate =         round(SegmentationOfActiveTrack{1,3});
-                    obj.ActiveXCoordinate =         round(SegmentationOfActiveTrack{1,4});
-                    obj.ActiveZCoordinate =         round(SegmentationOfActiveTrack{1,5});
-                    obj.MaskCoordinateList =        SegmentationOfActiveTrack{1,6};
-             end
-        end
-                     
-        %% generateMaskByEdgeDetectionForceSizeBelow:
-        function obj=    generateMaskByEdgeDetectionForceSizeBelow(obj, MaximumPixelNumber)
-            obj =   obj.generateMaskByEdgeDetectionForceSizeBelowInternal(MaximumPixelNumber);
-        end
-        
-          %% generateMaskByClickingThreshold
-        function [obj] =                     generateMaskByClickingThreshold(obj)
+    methods % generateMaskByClickingThreshold
+       
+          
+        function obj =                     generateMaskByClickingThreshold(obj)
             obj.SegmentationType =          'Manual';
             ThresholdedImage =              obj.thresholdImageByThreshold(obj.getCroppedImageWithExistingMasksRemoved, obj.getThresholdToClickedPixel);
             obj.MaskCoordinateList =        obj.convertConnectedPixelsIntoCoordinateList(ThresholdedImage);
             obj =                           obj.showMaskDetectionByThresholding(ThresholdedImage);
         end
-
-     
 
         function Threshold =                getThresholdToClickedPixel(obj)
             Threshold =      obj.ImageVolume(obj.ActiveYCoordinate, obj.ActiveXCoordinate, obj.ActiveZCoordinate);
@@ -737,23 +851,42 @@ classdef PMSegmentationCapture
         function [CoordinatesOfAllPlanes] =  convertConnectedPixelsIntoCoordinateList(obj, myCroppedImageVolumeMask)
             CoordinatesOfAllPlanes =  obj.convertConnectedPixelsIntoCoordinateListInternal(myCroppedImageVolumeMask);
         end
+  
+    end
+    
+    methods % setters
+        
+          function obj = setActiveCoordinateBy(obj, Y, X, Z)
+                obj.ActiveYCoordinate =       Y;
+                obj.ActiveXCoordinate =       X;
+                obj.ActiveZCoordinate =               Z;
+                fprintf('Active coordinate reset to %i (x) %i (y) and %i (z).\n', obj.ActiveXCoordinate,  obj.ActiveYCoordinate, obj.ActiveZCoordinate)
+          end
+         
        
-   
+        
+       
+                     
+        %% generateMaskByEdgeDetectionForceSizeBelow:
+        function obj=    generateMaskByEdgeDetectionForceSizeBelowMaxSize(obj)
+            obj =   obj.generateMaskByEdgeDetectionForceSizeBelowInternal;
+        end
+        
+        
 
         %% RemoveImageData
        function [obj] =       RemoveImageData(obj)
-            obj.ImageVolume = [];
-            obj.MaskCoordinateList = zeros(0,3);
+            obj.ImageVolume = cast(zeros(0,0,0), 'uint8');
+            obj = resetMask(obj);
             obj.SegmentationOfCurrentFrame = [];
             
        end
        
-        %% removeRimFromActiveMask
-       function obj =          removeRimFromActiveMask(obj)
-            SourceImage=                obj.convertCoordinatesToImage(obj.MaskCoordinateList); 
-            ErodedImage =               imerode(SourceImage, strel('disk', 1));
-            obj.MaskCoordinateList =    obj.convertImageToYXZCoordinates(ErodedImage);  
+       function obj = resetMask(obj)
+           obj.MaskCoordinateList = zeros(0,3);
        end
+       
+ 
    
        %% setActiveCoordinateByBrightestPixels
        function obj = setActiveCoordinateByBrightestPixels(obj)
@@ -771,18 +904,18 @@ classdef PMSegmentationCapture
          end
         
   
-   
-
+        
     end
     
-    methods (Access = private) % edge detection
-        
-        
-        
-        %% generateMaskByAutoThreshold
-        function [obj] =                generateMaskByAutoThreshold(obj)
+    methods % generateMaskByAutoThreshold
+          
+        function obj =                generateMaskByAutoThreshold(obj)
             obj.SegmentationType =      'ThresholdingByEdgeDetection';
-            ThresholdedImage =         obj.thresholdImageByThreshold(obj.getCroppedImageWithExistingMasksRemoved, obj.getThresholdFromEdge);
+            
+            CroppedImage = obj.getCroppedImageWithExistingMasksRemoved;
+            Threshold = obj.getThresholdFromEdge;
+            
+            ThresholdedImage =         obj.thresholdImageByThreshold(CroppedImage, Threshold);
             obj.MaskCoordinateList =   obj.convertConnectedPixelsIntoCoordinateList(ThresholdedImage);
             
             obj =                      obj.showMaskDetectionByThresholding(ThresholdedImage);
@@ -793,22 +926,39 @@ classdef PMSegmentationCapture
         end
         
         
-         %% getThresholdFromEdge:
+    end
+    
+    methods (Access = private) % getThresholdFromEdge
+        
          function Threshold =                 getThresholdFromEdge(obj)
             CroppedImageAtCentralPlane =    obj.getCroppedImageAtCentralPlane;
             Threshold           =           obj.calculateThresholdFormImageByEdgeDetection(CroppedImageAtCentralPlane);
             
          end
          
-         % getRowPositionsForEdgeDetection:
-         function RowPositions = getRowPositionsForEdgeDetection(obj, CroppedImageAtRightPlane)
-              RowIntensities =                  obj.getRowIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
-            [~, ThresholdColumnFromLeft] =      obj.findEdgeInVector(double(RowIntensities));
-            [~, ThresholdColumnFromRight] =     obj.findEdgeInVector(double(flip(RowIntensities)));
-             RowPositions =                     [ThresholdColumnFromLeft; ThresholdColumnFromRight];
-         end
-         
-        function RowPositions = getRowIntensitiesForEdgeDetetectionFromImage(obj, CroppedImageAtRightPlane)
+        function  Threshold = calculateThresholdFormImageByEdgeDetection(obj, CroppedImageAtRightPlane) 
+            Thresholds =        obj.getAllThresholdsByEdgeDetectionFromImage(CroppedImageAtRightPlane);
+            Threshold  =        mean(Thresholds) * obj.FactorForThreshold;
+
+
+        end
+        
+          function Thresholds = getAllThresholdsByEdgeDetectionFromImage(obj, CroppedImageAtRightPlane)
+            assert(~isempty(CroppedImageAtRightPlane), 'Input image is empty.')
+            RowIntensities =            obj.getRowIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
+            [ThresholdFromTop, ~] =     obj.findEdgeInVector(double(RowIntensities));
+            [ThresholdFromBottom, ~] =  obj.findEdgeInVector(double(flip(RowIntensities)));
+
+            ColumnIntensities =         obj.getColumnIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
+
+            [ThresholdLeft, ~] =        obj.findEdgeInVector(ColumnIntensities);
+            [ThresholdRight, ~] =       obj.findEdgeInVector(flip(ColumnIntensities));
+
+            Thresholds =                [ThresholdFromTop, ThresholdFromBottom, ThresholdLeft, ThresholdRight];
+
+          end
+          
+         function RowPositions = getRowIntensitiesForEdgeDetetectionFromImage(obj, CroppedImageAtRightPlane)
             RowsToPadOnTop =        linspace(0, 0, obj.getRowsLostOnMarginTop);
             RowsToPadOnBottom =     linspace(0, 0, obj.getNumberOfRowsThatExtendBeyondOriginalImage);
 
@@ -825,6 +975,26 @@ classdef PMSegmentationCapture
            end
         end
         
+         function Rows = getNumberOfRowsThatExtendBeyondOriginalImage(obj)
+             Rows = obj.getMaximumRowForCroppingRectangle - obj.getMaximumRows;
+             if Rows < 0
+                 Rows = 0;
+             end
+        end
+        
+        
+         
+         
+         
+         % getRowPositionsForEdgeDetection:
+         function RowPositions = getRowPositionsForEdgeDetection(obj, CroppedImageAtRightPlane)
+              RowIntensities =                  obj.getRowIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
+            [~, ThresholdColumnFromLeft] =      obj.findEdgeInVector(double(RowIntensities));
+            [~, ThresholdColumnFromRight] =     obj.findEdgeInVector(double(flip(RowIntensities)));
+             RowPositions =                     [ThresholdColumnFromLeft; ThresholdColumnFromRight];
+         end
+         
+     
           function [Threshold, ThresholdRow] =              findEdgeInVector(obj, IntensityVector)
                 %findEdgeInVector: key function for edte detection:
                 IntensityDifferences =    diff(IntensityVector);
@@ -832,7 +1002,7 @@ classdef PMSegmentationCapture
                 
                 DifferenceLimit =          ((obj.getBackGroundDifferenceForIntensityVector(IntensityVector) + max(IntensityDifferences)) / 2) * DifferenceLimitFactor;
 
-                if isempty(DifferenceLimit) || max(IntensityDifferences) < DifferenceLimit || isempty(StartPixels) || isempty(EndPixels) || isempty(DifferencesAtPeriphery)
+                if isempty(DifferenceLimit) || max(IntensityDifferences) < DifferenceLimit 
                     ThresholdRow =  NaN;
                     Threshold =     NaN;
                 else
@@ -881,37 +1051,268 @@ classdef PMSegmentationCapture
           end
           
           
-         function Thresholds = getAllThresholdsByEdgeDetectionFromImage(obj, CroppedImageAtRightPlane)
-            RowIntensities =              obj.getRowIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
-            [ThresholdFromTop, ~] =       obj.findEdgeInVector(double(RowIntensities));
-            [ThresholdFromBottom, ~] =    obj.findEdgeInVector(double(flip(RowIntensities)));
-
-            ColumnIntensities =           obj.getColumnIntensitiesForEdgeDetetectionFromImage(CroppedImageAtRightPlane);
-
-            [ThresholdLeft, ~] =         obj.findEdgeInVector(ColumnIntensities);
-            [ThresholdRight, ~] =       obj.findEdgeInVector(flip(ColumnIntensities));
-
-            Thresholds =                [ThresholdFromTop, ThresholdFromBottom, ThresholdLeft, ThresholdRight];
-             
+       
+          
+    end
+    
+    methods (Access = private) % getCroppedImageAtCentralPlane
+        
+         function CroppedImageAtRightPlane = getCroppedImageAtCentralPlane(obj)
+               myCroppedImageVolume =          obj.getCroppedImageSource;
+               CroppedImageAtRightPlane =      myCroppedImageVolume(:, :, obj.ActiveZCoordinate);
          end
          
-         function  Threshold = calculateThresholdFormImageByEdgeDetection(obj, CroppedImageAtRightPlane)
-             
-             Thresholds = getAllThresholdsByEdgeDetectionFromImage(obj, CroppedImageAtRightPlane);
-            Threshold           =                   mean(Thresholds) * obj.FactorForThreshold;
-           
+         function empytImage =       getCroppedImageSource(obj)
+                image =                     obj.getCropImageObjectForImage(obj.ImageVolume).getImage;
+                empytImage =                image;
+                empytImage(:, :, :) =       0;
+                empytImage(:, :, getUpperZPlane(obj) : getBottomZPlane(obj)) = image(:, :, getUpperZPlane(obj) : getBottomZPlane(obj));
+                
+         end
+         
+          %% getCropImageObjectForImage
+          function object = getCropImageObjectForImage(obj, Image)
+              object = PMCropImage(Image, ...
+                  obj.getMinimumColumnForImageCropping, ...
+                  obj.getMaximumColumnForImageCropping, ...
+                  obj.getMinimumRowForImageCropping, ...
+                  obj.getMaximumRowForImageCropping);
+          end
+          
+          % getMinimumColumnForImageCropping:
+        function MinimumColumn = getMinimumColumnForImageCropping(obj)
+            assert(~isempty(obj.ActiveXCoordinate), 'Cannot calculate minimum column for cropping.')
+            MinimumColumn =        obj.ActiveXCoordinate - obj.MaximumDisplacement;
+            if MinimumColumn < 1
+                MinimumColumn = 1;
+            end
+        end
+        
+        % getMaximumColumnForImageCropping:
+        function MaximumColumn =   getMaximumColumnForImageCropping(obj)
+            MaximumColumn =         obj.getMaximumColumnForCroppingRectangle;
+            
+            if obj.getNumberOfColumnsThatExtendBeyondOriginalImage > 0
+                MaximumColumn = obj.getMaximumColumns ;
+            end  
+        end
+        
+        function MaximumColumn = getMaximumColumnForCroppingRectangle(obj)
+            assert(~isempty(obj.ActiveXCoordinate), 'Cannot calculate column for cropping.')
+            MaximumColumn =            obj.ActiveXCoordinate + obj.MaximumDisplacement;
+        end
+        
+        function Columns = getNumberOfColumnsThatExtendBeyondOriginalImage(obj)
+             Columns = obj.getMaximumColumnForCroppingRectangle - obj.getMaximumColumns;
+             if Columns < 0
+                 Columns = 0;
+             end
+        end
+        
+        % getMinimumRowForImageCropping:
+        function MinimumRow =      getMinimumRowForImageCropping(obj)
+            MinimumRow =       obj.getMinimumRowForCroppingRectangle;
+            if MinimumRow < 1
+                MinimumRow = 1;
+            end 
+        end
+        
+        function MinimumRow = getMinimumRowForCroppingRectangle(obj)
+             assert(~isempty(obj.ActiveYCoordinate), 'Cannot calculate row for cropping.')
+            MinimumRow =       obj.ActiveYCoordinate - obj.MaximumDisplacement;
+        end
+        
+        % getMaximumRowForImageCropping:
+        function MaximumRow =      getMaximumRowForImageCropping(obj)
+            MaximumRow = obj.getMaximumRowForCroppingRectangle;
+            if obj.getNumberOfRowsThatExtendBeyondOriginalImage > 0
+                MaximumRow =      obj.getMaximumRows;
+            end
+        end
+         
+        function MaximumRow = getMaximumRowForCroppingRectangle(obj)
+             assert(~isempty(obj.ActiveYCoordinate), 'Cannot calculate row for cropping.')
+            MaximumRow =          obj.ActiveYCoordinate + obj.MaximumDisplacement;
+        end
+        
+       
+        
+    end
+    
+    methods % add RIM
+       
+        function obj =          addRimToActiveMask(obj)
+             DilatedImage =             imdilate(obj.convertCoordinatesToImage(obj.MaskCoordinateList), strel('disk', 1));
+             obj.MaskCoordinateList =   obj.convertImageToYXZCoordinates(DilatedImage);
+             obj =                      obj.removePreviouslyTrackedDuplicatePixels;
+        end
+        
+           function obj =          removeRimFromActiveMask(obj)
+                SourceImage=                obj.convertCoordinatesToImage(obj.MaskCoordinateList); 
+                ErodedImage =               imerode(SourceImage, strel('disk', 1));
+                obj.MaskCoordinateList =    obj.convertImageToYXZCoordinates(ErodedImage);  
+           end
+       
+        
+    end
+   
+    methods (Access = private) % add RIM
+       
+        function Image= convertCoordinatesToImage(obj,ListWithCoordinates)
+            Image(obj.getMaximumRows, obj.getMaximumColumns) = 0;
+            for index = 1:size(ListWithCoordinates,1)
+                Image(ListWithCoordinates(index,1),ListWithCoordinates(index,2),ListWithCoordinates(index,3)) = 1;  
+            end 
+        end
+         
+          function obj =       removePreviouslyTrackedDuplicatePixels(obj)
+            if isempty(obj.MaskCoordinateList)
+            else
+                 if ~isempty(obj.getAllPreviouslyTrackedPixels)
+                    obj.MaskCoordinateList(ismember(obj.MaskCoordinateList, obj.getAllPreviouslyTrackedPixels,'rows'),:) = [];
+                 end
+            end
+          end
+        
+
+        
+    end
+    
+    methods (Access = private) % show thresholding process
+
+         function obj = showMaskDetectionByThresholding(obj, Thresholded)
+            
+            if obj.ShowSegmentationProgress
+                
+                figure(100)
+                clf(100)
+                currentAxesOne=             subplot(3, 3, 1);
+                currentAxesOne.Visible = 'off';
+                imagesc(max(obj.getCroppedImageSource, [], 3))
+                title('Cropping')
+                
+                currentAxesOne=             subplot(3, 3, 2);
+                currentAxesOne.Visible =    'off';
+                imagesc(max(obj.getImageOfPreviouslyTrackedPixels, [], 3))
+                title('Pixels from other tracked cells')
+                
+                currentAxesOne=             subplot(3, 3, 3);
+                currentAxesOne.Visible =    'off';
+                imagesc(max(obj.getCroppedImageWithExistingMasksRemoved, [], 3))
+                title('Existing tracks removed')
+                
+                 currentAxesOne=            subplot(3, 3, 4);
+                currentAxesOne.Visible =    'off';
+                imagesc(obj.getImageShowingDetectedEdges);
+                title('Edge detection')
+                
+                currentAxesOne=             subplot(3, 3, 5);
+                currentAxesOne.Visible =    'off';
+                imagesc(max(Thresholded, [], 3))
+                title('Thresholded')
+                
+                currentAxesOne=             subplot(3, 3, 6);
+                currentAxesOne.Visible =    'off';
+                imagesc(max(Thresholded, [], 3))
+                
+                MyLine =                    line(obj.getSeedColumn, obj.getSeedRow);
+                MyLine.Marker = 'x';
+                MyLine.MarkerSize = 25;
+                MyLine.Color = 'black';
+                MyLine.LineWidth = 20;
+                title('Original seed')
+                
+                currentAxesOne= subplot(3, 3, 7);
+                currentAxesOne.Visible = 'off';
+                imagesc(max(Thresholded, [], 3))
+                
+                CentralPlane =              obj.getOptimizedPlaneForSeed(Thresholded);
+                [Row, Column] =             obj.getClosestFullPixelToSeedInImage(Thresholded(:, :, CentralPlane));
+                
+                MyLine = line(Column, Row);
+                MyLine.Marker = 'x';
+                MyLine.MarkerSize = 25;
+                MyLine.Color = 'black';
+                MyLine.LineWidth = 20;
+                title('Optimized seed')
+                
+                currentAxesOne=                 subplot(3, 3, 8);
+                currentAxesOne.Visible =        'off';
+                image =                         obj.getCropImageObjectForImage(obj.getActiveShape.getRawImageVolume).getImage;
+                imagesc(max(image, [], 3))
+                title('Segmentation')
+                
+              %  currentAxesOne= subplot(3, 3, 8);
+               % currentAxesOne.Visible = 'on';
+                % title('Shape information')
+                %MyText = text(0, 1, obj.getActiveShape.getLimitAnalysisString);
+                % MyText.HorizontalAlignment = 'left';
+                %MyText.VerticalAlignment = 'top';
+                
+                currentAxesOne= subplot(3, 3, 9);
+                currentAxesOne.Visible = 'off';
+                image = obj.getCropImageObjectForImage(obj.getActiveShape.getImageVolume).getImage;
+                imagesc(max(image, [], 3))
+                title('Shape verification')
+                
+                
+                  obj.showAllImagePlanes(obj.ImageVolume, 10);
+                     obj.showAllImagePlanes(obj.getImageVolumeWithBlackedOutPixels, 11);
+                  
+                  
+                
+               % area = obj.getPixelArea;
+            end
+            
             
          end
          
+         function Image = getImageOfPreviouslyTrackedPixels(obj)
+            
+            Image = obj.getCroppedImageSource;
+            Image(:, :) = 0;
+            PreviouslyTrackedPixels =   obj.translateCoordinatesToMatchCroppedImage(obj.getAllPreviouslyTrackedPixels);
+            PixelList =                 obj.removeCoordinatesThatAreOutOfRangeFromList(PreviouslyTrackedPixels, Image);
+            Image =                     obj.addCoordinatesToImageWithIntensity(PixelList, Image, 255);
+
+             
+         end
          
+         function HighlightedImage = getImageShowingDetectedEdges(obj)
+             
+          
+            HighlightedImage = obj.getCroppedImageAtCentralPlane;
+            HighlightedImage(obj.getSeedRow, :) = 255;
+             HighlightedImage(:, obj.getSeedColumn) = 255;
+            
+             Rows = obj.getRowPositionsForEdgeDetection(obj.getCroppedImageAtCentralPlane);
+             
+             if isnan(Rows(1))
+                 
+             else
+                HighlightedImage(Rows(1) ,obj.getSeedColumn) = 0;
+                HighlightedImage(end - Rows(1) + 1 ,obj.getSeedColumn) = 0;
+
+                Columns = obj.getRowPositionsForEdgeDetection(obj.getCroppedImageAtCentralPlane);
+                HighlightedImage(obj.getSeedRow, Columns(1) ) = 0;
+                HighlightedImage(obj.getSeedRow, end - Columns(1) + 1 ) = 0;
+             end
+             
+            
+             
+             
+         end
+      
+        
+        
+        
         
     end
     
     methods (Access = private)
         
         
-        
-       %% setActiveCoordinateByBrightestPixelsInternal:
+
          function obj = setActiveCoordinateByBrightestPixelsInternal(obj)
             %METHOD1 set active coordinate by brightest pixels in currently loaded maks;
             %   Detailed explanation goes here
@@ -930,12 +1331,7 @@ classdef PMSegmentationCapture
             
          end
        
-         function obj = setActiveCoordinateBy(obj, X, Y, Z)
-                obj.ActiveYCoordinate =       X;
-                obj.ActiveXCoordinate =       Y;
-                obj.ActiveZCoordinate =               Z;
-                fprintf('Active coordinate reset to %i (x) %i (y) and %i (z).\n', obj.ActiveXCoordinate,  obj.ActiveYCoordinate, obj.ActiveZCoordinate)
-         end
+       
         
         function [CoordinatesWithMaximumIntensity] =   getBrightestCoordinatesFromActiveMask(obj)
 
@@ -973,105 +1369,28 @@ classdef PMSegmentationCapture
         
 
         %% generateMaskByEdgeDetectionForceSizeBelowInternal
-        function obj = generateMaskByEdgeDetectionForceSizeBelowInternal(obj, MaximumPixelNumber)
+        function obj = generateMaskByEdgeDetectionForceSizeBelowInternal(obj)
+            
+            
+            obj =               obj.generateMaskByAutoThreshold;
             PixelShift = 0;
-            AreaOfNewMask =        MaximumPixelNumber + 20;
-            while AreaOfNewMask > MaximumPixelNumber
+           
+            
+            
+            while obj.getPixelArea == 0 || obj.getActiveShape.cellIsTooLarge
                 obj.PixelShiftForEdgeDetection =    PixelShift;
                 obj =               obj.generateMaskByAutoThreshold;
-                AreaOfNewMask =     obj.getPixelArea; 
                 PixelShift =        PixelShift + 1; 
                 if PixelShift > obj.MaximumCellRadius / 2
                     warning('Had to max out edge detection. This probably means that something is wrong. Check the settings.')
                    break 
                 end
             end
-        end
-        
-         %% getCroppedImageAtCentralPlane:
-         function CroppedImageAtRightPlane = getCroppedImageAtCentralPlane(obj)
-               myCroppedImageVolume =          obj.getCroppedImageSource;
-               CroppedImageAtRightPlane =      myCroppedImageVolume(:, :, obj.ActiveZCoordinate);
-         end
-         
-         function empytImage =       getCroppedImageSource(obj)
-                image =                     obj.getCropImageObjectForImage(obj.ImageVolume).getImage;
-                empytImage =                image;
-                empytImage(:, :, :) =       0;
-                empytImage(:, :, getUpperZPlane(obj) : getBottomZPlane(obj)) = image(:, :, getUpperZPlane(obj) : getBottomZPlane(obj));
-                
-         end
-         
-          %% getCropImageObjectForImage
-          function object = getCropImageObjectForImage(obj, Image)
-              object = PMCropImage(Image, ...
-                  obj.getMinimumColumnForImageCropping, ...
-                  obj.getMaximumColumnForImageCropping, ...
-                  obj.getMinimumRowForImageCropping, ...
-                  obj.getMaximumRowForImageCropping);
-          end
-          
-          % getMinimumColumnForImageCropping:
-        function MinimumColumn = getMinimumColumnForImageCropping(obj)
-            MinimumColumn =        obj.ActiveXCoordinate - obj.MaximumDisplacement;
-            if MinimumColumn < 1
-                MinimumColumn = 1;
-            end
-        end
-        
-        % getMaximumColumnForImageCropping:
-        function MaximumColumn =   getMaximumColumnForImageCropping(obj)
-            MaximumColumn =         obj.getMaximumColumnForCroppingRectangle;
             
-            if obj.getNumberOfColumnsThatExtendBeyondOriginalImage > 0
-                MaximumColumn = obj.MaximumColumns ;
-            end  
+            
+            
         end
         
-        function MaximumColumn = getMaximumColumnForCroppingRectangle(obj)
-            MaximumColumn =            obj.ActiveXCoordinate + obj.MaximumDisplacement;
-        end
-        
-        function Columns = getNumberOfColumnsThatExtendBeyondOriginalImage(obj)
-             Columns = obj.getMaximumColumnForCroppingRectangle - obj.MaximumColumns;
-             if Columns < 0
-                 Columns = 0;
-             end
-        end
-        
-        % getMinimumRowForImageCropping:
-        function MinimumRow =      getMinimumRowForImageCropping(obj)
-            MinimumRow =       obj.getMinimumRowForCroppingRectangle;
-            if MinimumRow < 1
-                MinimumRow = 1;
-            end 
-        end
-        
-        function MinimumRow = getMinimumRowForCroppingRectangle(obj)
-            MinimumRow =       obj.ActiveYCoordinate - obj.MaximumDisplacement;
-        end
-        
-        % getMaximumRowForImageCropping:
-        function MaximumRow =      getMaximumRowForImageCropping(obj)
-            MaximumRow = obj.getMaximumRowForCroppingRectangle;
-            if obj.getNumberOfRowsThatExtendBeyondOriginalImage > 0
-                MaximumRow =      obj.MaximumRows;
-            end
-        end
-         
-        function MaximumRow = getMaximumRowForCroppingRectangle(obj)
-            MaximumRow =          obj.ActiveYCoordinate + obj.MaximumDisplacement;
-        end
-        
-        function Rows = getNumberOfRowsThatExtendBeyondOriginalImage(obj)
-             Rows = obj.getMaximumRowForCroppingRectangle - obj.MaximumRows;
-             if Rows < 0
-                 Rows = 0;
-             end
-        end
-        
-     
-      
         
         
               
@@ -1105,138 +1424,12 @@ classdef PMSegmentationCapture
               end
             
           end
-      
-         function obj = showMaskDetectionByThresholding(obj, Thresholded)
-            
-            if obj.ShowSegmentationProgress
-                figure(100)
-                clf(100)
-                currentAxesOne= subplot(3, 3, 1);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(obj.getCroppedImageSource, [], 3))
-                title('Cropping')
-                
-                
-                
-                
-                
-               
-               Image = obj.getCroppedImageSource;
-               Image(:, :) = 0;
-
-               
-                ListWithPreviouslyTrackedPixels =   obj.translateCoordinatesToMatchCroppedImage(obj.getAllPreviouslyTrackedPixels);
-           
-                PixelList =         obj.removeCoordinatesThatAreOutOfRangeFromList(ListWithPreviouslyTrackedPixels, Image);
-                Image =             obj.addCoordinatesToImageWithIntensity(PixelList, Image, 255);
-                
-                 currentAxesOne= subplot(3, 3, 2);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(Image, [], 3))
-                title('Pixels from other tracked cells')
-                
-                
-                currentAxesOne= subplot(3, 3, 3);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(obj.getCroppedImageWithExistingMasksRemoved, [], 3))
-                title('Existing tracks removed')
-                
-                 currentAxesOne= subplot(3, 3, 4);
-                currentAxesOne.Visible = 'off';
-                imagesc(obj.getImageShowingDetectedEdges);
-                title('Edge detection')
-                
-                
-         
-         
-             
-                
-                
-                currentAxesOne= subplot(3, 3, 5);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(Thresholded, [], 3))
-                title('Thresholded')
-                
-                currentAxesOne= subplot(3, 3, 6);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(Thresholded, [], 3))
-                
-                MyLine = line(obj.getSeedColumn, obj.getSeedRow);
-                MyLine.Marker = 'x';
-                MyLine.MarkerSize = 25;
-                MyLine.Color = 'black';
-                MyLine.LineWidth = 20;
-                title('Original seed')
-                
-                 currentAxesOne= subplot(3, 3, 7);
-                currentAxesOne.Visible = 'off';
-                imagesc(max(Thresholded, [], 3))
-                
-                CentralPlane =    obj.getOptimizedPlaneForSeed(Thresholded);
-                 [Row, Column] =                 obj.getClosestFullPixelToSeedInImage(Thresholded(:, :, CentralPlane));
-                
-                MyLine = line(Column, Row);
-                MyLine.Marker = 'x';
-                MyLine.MarkerSize = 25;
-                MyLine.Color = 'black';
-                MyLine.LineWidth = 20;
-                title('Optimized seed')
-                
-                currentAxesOne= subplot(3, 3, 8);
-                currentAxesOne.Visible = 'off';
-                 image = obj.getCropImageObjectForImage(obj.getActiveShape.getRawImageVolume).getImage;
-                imagesc(max(image, [], 3))
-                title('Segmentation')
-                
-              %  currentAxesOne= subplot(3, 3, 8);
-               % currentAxesOne.Visible = 'on';
-                % title('Shape information')
-                %MyText = text(0, 1, obj.getActiveShape.getLimitAnalysisString);
-                % MyText.HorizontalAlignment = 'left';
-                %MyText.VerticalAlignment = 'top';
-                
-                currentAxesOne= subplot(3, 3, 9);
-                currentAxesOne.Visible = 'off';
-               image = obj.getCropImageObjectForImage(obj.getActiveShape.getImageVolume).getImage;
-                imagesc(max(image, [], 3))
-                title('Shape verification')
-                
-                
-               % area = obj.getPixelArea;
-            end
-            
-            
-         end
-         
-         function HighlightedImage = getImageShowingDetectedEdges(obj)
-             
-          
-            HighlightedImage = obj.getCroppedImageAtCentralPlane;
-            HighlightedImage(obj.getSeedRow, :) = 255;
-             HighlightedImage(:, obj.getSeedColumn) = 255;
-            
-             Rows = obj.getRowPositionsForEdgeDetection(obj.getCroppedImageAtCentralPlane);
-             
-             if isnan(Rows(1))
-                 
-             else
-                HighlightedImage(Rows(1) ,obj.getSeedColumn) = 0;
-                HighlightedImage(end - Rows(1) + 1 ,obj.getSeedColumn) = 0;
-
-                Columns = obj.getRowPositionsForEdgeDetection(obj.getCroppedImageAtCentralPlane);
-                HighlightedImage(obj.getSeedRow, Columns(1) ) = 0;
-                HighlightedImage(obj.getSeedRow, end - Columns(1) + 1 ) = 0;
-             end
-             
-            
-             
-             
-         end
-      
-        
-        
+     
          function obj = highLightAutoEdgeDetectionInternal(obj, ImageHandle)
             
+             
+             obj.ImageVolume = ImageHandle.CData;
+             
               if isempty(obj.SegmentationType)
               else
                      switch obj.SegmentationType
@@ -1256,7 +1449,13 @@ classdef PMSegmentationCapture
                         ImageHandle.CData(obj.ActiveYCoordinate, obj.getCoordinatesForColumnIndicationTwo, 3) =  200;
 
                         ImageHandle.CData(obj.getMinimumRowForImageCropping, obj.ActiveXCoordinate, 1:3) =          255;
+                        
+                        
+                        
                         ImageHandle.CData(obj.getMaximumRowForImageCropping, obj.ActiveXCoordinate, 1:3) =          255;
+                     
+                        
+                        
                         ImageHandle.CData(obj.ActiveYCoordinate, obj.getMinimumColumnForImageCropping, 1:3) =     255;
                         ImageHandle.CData(obj.ActiveYCoordinate, obj.getMaximumColumnForImageCropping, 1:3) =     255;
                         
@@ -1291,43 +1490,13 @@ classdef PMSegmentationCapture
         
 
 
-        function obj =          addRimToActiveMask(obj)
-             DilatedImage =             imdilate(obj.convertCoordinatesToImage(obj.MaskCoordinateList), strel('disk', 1));
-             obj.MaskCoordinateList =   obj.convertImageToYXZCoordinates(DilatedImage);
-             obj =                      obj.removePreviouslyTrackedDuplicatePixels;
-        end
-        
-        function [Image]= convertCoordinatesToImage(obj,ListWithCoordinates)
-            Image(obj.MaximumRows, obj.MaximumColumns) = 0;
-            for index = 1:size(ListWithCoordinates,1)
-                Image(ListWithCoordinates(index,1),ListWithCoordinates(index,2),ListWithCoordinates(index,3)) = 1;  
-            end 
-        end
-        
-    
-        
-          function [obj] =       removePreviouslyTrackedDuplicatePixels(obj)
-            if isempty(obj.MaskCoordinateList)
-            else
-                 if ~isempty(obj.getAllPreviouslyTrackedPixels)
-                    obj.MaskCoordinateList(ismember(obj.MaskCoordinateList, obj.getAllPreviouslyTrackedPixels,'rows'),:) = [];
-                 end
-            end
-          end
-        
-
+   
             
           function [ListWithPixels] =       addBackCutoffFromCroppingToCoordinateList(obj, ListWithPixels)
                 ListWithPixels(:,1) =               ListWithPixels(:,1) + obj.getRowsLostFromCropping;
                 ListWithPixels(:,2) =               ListWithPixels(:,2) + obj.getColumnsLostFromCropping;
           end
 
-          
-        
-        
-     
-        
-        
           % getCroppedImageWithExistingMasksRemoved
           function Image =                   getCroppedImageWithExistingMasksRemoved(obj)
             ListWithPreviouslyTrackedPixels =   obj.translateCoordinatesToMatchCroppedImage(obj.getAllPreviouslyTrackedPixels);
@@ -1370,7 +1539,7 @@ classdef PMSegmentationCapture
         
         
         %% convertConnectedPixelsIntoCoordinateListInternal
-        function [CoordinatesOfAllPlanes] =  convertConnectedPixelsIntoCoordinateListInternal(obj, myCroppedImageVolumeMask)
+        function CoordinatesOfAllPlanes =  convertConnectedPixelsIntoCoordinateListInternal(obj, myCroppedImageVolumeMask)
             
             [CentralPlane, PlanesAbove, PlanesBelow, NumberOfPlanesAnalyzed] = obj.getConnectedPlaneSpecification(myCroppedImageVolumeMask);
 
@@ -1461,9 +1630,9 @@ classdef PMSegmentationCapture
            function [Row, Column] =         getClosestFullPixelToSeedInImage(obj, Image)
                
                if Image(obj.getSeedRow, obj.getSeedColumn) == 0
+                   
                     [fullRows, fullColumns] =       find(Image);
 
-                    % is there a parenthesis missing here?
                     if isempty(fullRows)
                         Row = NaN;
                         Column = NaN;
@@ -1474,8 +1643,9 @@ classdef PMSegmentationCapture
                     end
 
                else
-                   Row = obj.getSeedRow;
-                   Column = obj.getSeedColumn;
+                   Row =        obj.getSeedRow;
+                   Column =     obj.getSeedColumn;
+                   
                end
               
            end
@@ -1532,11 +1702,7 @@ classdef PMSegmentationCapture
                  end
 
             end
-      
-               
-            
-      
-            
+         
         
     end
     

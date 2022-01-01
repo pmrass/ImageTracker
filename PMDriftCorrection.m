@@ -47,7 +47,10 @@ classdef PMDriftCorrection
                 case 2
                      switch varargin{2}
                         case 2
-                                obj =       obj.conversionFromVersionTwoToThree(varargin{1});     
+                                obj =       obj.conversionFromVersionTwoToThree(varargin{1});  
+                                
+                         otherwise
+                             error('Wrong input')
                     end
                 otherwise
                     error('Invalid number of arguments')
@@ -68,59 +71,7 @@ classdef PMDriftCorrection
         
       
         
-        function shifts = getAppliedColumnShifts(obj)
-             switch obj.getDriftCorrectionActive
-                case true
-                    shifts =       obj.getColumnShifts;
-                case false
-                    shifts =           obj.getEmptyColumnShifts;
-              end
-        end
-        
-      function Value = getDriftCorrectionActive(obj)
-         Value = obj.DriftCorrectionIsOn;
-         if isempty(Value)
-            Value = false; 
-         end
-      end
-        
-        
-        function shifts = getAppliedRowShifts(obj)
-             switch obj.getDriftCorrectionActive
-                case true
-                     shifts =       obj.getRowShifts;
-                case false
-                    shifts =    obj.getEmptyRowShifts;
-              end
-        end
-        
-        function shifts = getAplliedPlaneShifts(obj)
-            switch obj.getDriftCorrectionActive
-                case true
-                    shifts =     obj.getPlaneShifts;
-                case false
-                    shifts =    obj.getEmptyPlaneShifts;
-            end
-        end
-        
-              
-  
-         
-         function Values = getManualDriftCorrectionValues(obj)
-             obj =          obj.updateManualDriftCorrection;
-             Values =       obj.ManualDriftCorrectionValues;
-         end
-         
-         
-     
-        function manualOrDetailedExists = testForExistenceOfDriftCorrection(obj) 
-            manualExists =          obj.testForExistenceOfManualDriftCorrection;
-            detailedExists =        obj.testForExistenceOfDetailedDriftCorrection;
-            manualOrDetailedExists = manualExists || detailedExists;
-
-        end
-        
-        
+    
                %% user can retrieve how many rows and columns each at each frame the images have to be shifted;
          function rowShifts = getRowShifts(obj)
             RowsOfReference=                    obj.ListWithBestAlignmentPositions(:,2);
@@ -162,6 +113,73 @@ classdef PMDriftCorrection
          end
         
 
+    end
+    
+    methods % GETTERS
+        
+            function shifts = getAppliedColumnShifts(obj)
+                % GETAPPLIEDCOLUMNSHIFTS returns column-drift corrections;
+                % considers whether drift-correction is "on"
+                % if "off" returns zero-vector
+             switch obj.getDriftCorrectionActive
+                case true
+                    shifts =       obj.getColumnShifts;
+                case false
+                    shifts =           obj.getEmptyColumnShifts;
+              end
+        end
+        
+      function Value = getDriftCorrectionActive(obj)
+         Value = obj.DriftCorrectionIsOn;
+         if isempty(Value)
+            Value = false; 
+         end
+      end
+        
+        
+        function shifts = getAppliedRowShifts(obj)
+            % GETAPPLIEDROWSHIFTS returns row-drift corrections;
+                % considers whether drift-correction is "on"
+                % if "off" returns zero-vector
+             switch obj.getDriftCorrectionActive
+                case true
+                     shifts =       obj.getRowShifts;
+                case false
+                    shifts =    obj.getEmptyRowShifts;
+              end
+        end
+        
+        function shifts = getAplliedPlaneShifts(obj)
+            % GETAPLLIEDPLANESHIFTS returns plane-drift corrections;
+                % considers whether drift-correction is "on"
+                % if "off" returns zero-vector
+            switch obj.getDriftCorrectionActive
+                case true
+                    shifts =     obj.getPlaneShifts;
+                case false
+                    shifts =    obj.getEmptyPlaneShifts;
+            end
+        end
+        
+              
+  
+         
+         function Values = getManualDriftCorrectionValues(obj)
+             obj =          obj.updateManualDriftCorrection;
+             Values =       obj.ManualDriftCorrectionValues;
+         end
+         
+         
+     
+        function manualOrDetailedExists = testForExistenceOfDriftCorrection(obj) 
+            manualExists =          obj.testForExistenceOfManualDriftCorrection;
+            detailedExists =        obj.testForExistenceOfDetailedDriftCorrection;
+            manualOrDetailedExists = manualExists || detailedExists;
+
+        end
+        
+        
+        
     end
     
     methods % setters
@@ -294,17 +312,20 @@ classdef PMDriftCorrection
        
         
         %% conversion
-        function obj = conversionFromVersionTwoToThree(obj,Data)
+        function obj = conversionFromVersionTwoToThree(obj, Data)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             
 
              if ~isempty(fieldnames(Data.DriftCorrection)) && ~isempty (fieldnames(Data.ManualDriftCorrection))
                 DriftCorrectionStatus = 'Manual and complete';
+                
             elseif ~isempty(fieldnames(Data.DriftCorrection))
                 DriftCorrectionStatus = 'Only complete';
+                
             elseif isempty(Data.ManualDriftCorrection)
                 DriftCorrectionStatus = 'No drift correction';
+                
             elseif ~isempty(fieldnames(Data.ManualDriftCorrection))
                 
                 if max(max(Data.ManualDriftCorrection.Values(:,2:4)))
@@ -312,6 +333,7 @@ classdef PMDriftCorrection
                 else
                     DriftCorrectionStatus = 'Only manual';
                 end
+                
              else
                  DriftCorrectionStatus = 'Unknown drift correction';
                  
@@ -503,11 +525,6 @@ classdef PMDriftCorrection
         
     end
     
-    methods (Access = private)
-        
-        
-        
-        
-    end
+ 
 end
 

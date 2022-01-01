@@ -24,11 +24,13 @@ classdef PMInteraction
   
     end
     
-    methods % initialization
+    methods % INITIALIZATION
         
         function obj = PMInteraction(varargin)
             %PMINTERACTION Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 2 arguments:
+            % 1: searcher positions: matrix with 4 columns
+            % 2: target positions: matrix with 4 columns
             NumberOfArguments = length(varargin);
             switch NumberOfArguments                    
                 case 2
@@ -62,7 +64,7 @@ classdef PMInteraction
         
     end
     
-    methods % summary 
+    methods % SUMMARY 
         
         function obj = showSummary(obj)
              cellfun(@(x) fprintf('%s\n', x),   obj.getSummary);
@@ -243,8 +245,6 @@ classdef PMInteraction
         
         
     end
-    
-  
     
     methods (Access = private) % not sure if these functions are still used
         

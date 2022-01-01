@@ -1,5 +1,5 @@
 classdef PMImage
-    %PMIMAGE Summary of this class goes here
+    %PMIMAGE Manages manipulation of 2D image matrix;
     %   Detailed explanation goes here
     
     properties (Access = private)
@@ -7,9 +7,10 @@ classdef PMImage
     end
     
     methods
+
         function obj = PMImage(varargin)
             %PMIMAGE Construct an instance of this class
-            %   Detailed explanation goes here
+            %   1 argument: numerical matrix
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 1
@@ -17,6 +18,11 @@ classdef PMImage
                 otherwise
                     error('Wrong input.')
             end
+        end
+        
+        function obj = set.Image(obj, Value)
+             assert((isnumeric(Value) || islogical(Value)) && ismatrix(Value), 'Wrong input') 
+           obj.Image = Value; 
         end
         
         function Image = getImage(obj)
@@ -27,6 +33,9 @@ classdef PMImage
         end
         
         function obj = filter(obj, varargin)
+           
+            
+                      
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 1
@@ -37,13 +46,11 @@ classdef PMImage
                         case {'Median', 'median'}
                             obj.Image =         medfilt2(obj.Image);
                         case {'Complex', 'complex'}
-                            OpenedImage =      imopen(obj.Image, strel('disk', 2)); % open image
-                            BackGroundImage =  imsubtract(obj.Image, OpenedImage);
-                            obj.Image =       imsubtract(medfilt2(obj.Image), medfilt2(BackGroundImage));
+                            OpenedImage =       imopen(obj.Image, strel('disk', 2)); % open image
+                            BackGroundImage =   imsubtract(obj.Image, OpenedImage);
+                            obj.Image =         imsubtract(medfilt2(obj.Image), medfilt2(BackGroundImage));
                         otherwise
-                            
-                            
-                            warning(['Processing type ', varargin{1}, ' not supported. No image processing performed.'])      
+                            error(['Processing type ', varargin{1}, ' not supported. No image processing performed.'])      
                     end
                 otherwise
                     error('Wrong input.')
@@ -53,7 +60,7 @@ classdef PMImage
         
         function obj = threshold(obj, Threshold)
             obj.Image(obj.Image < Threshold) =      0;
-            obj.Image =            obj.Image>0;
+            obj.Image =            obj.Image > 0;
         end
         
         function obj = removeSmallObjects(obj, MinimumSize)

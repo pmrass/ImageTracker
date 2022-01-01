@@ -52,6 +52,7 @@ classdef PM5DImageVolume
         end
         
         function image = getImageVolume(obj)
+            % GETIMAGEVOLUME: get image-volume;
            image = obj.ImageVolume; 
         end
       
@@ -88,6 +89,7 @@ classdef PM5DImageVolume
         end
         
         function obj = filter(obj, varargin)
+            % FILTER filters image-volume by input string;
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 1
@@ -130,10 +132,12 @@ classdef PM5DImageVolume
          function  obj = thresholdVolume(obj, Threshold)
             
             processedVolume = obj.ImageVolume;
-             for PlaneIndex = 1:size(obj.ImageVolume,3)
+             for PlaneIndex = 1 : size(obj.ImageVolume,3)
                     for ChannelIndex = 1: size(obj.ImageVolume,5)
                         SourceImage =        obj.ImageVolume(:,:,PlaneIndex,1,ChannelIndex);
-                        processedVolume(: , : , PlaneIndex , 1 , ChannelIndex) = PMImage(SourceImage).threshold(Threshold(PlaneIndex)).getImage;
+                        
+                        CurrentImage =   PMImage(SourceImage).threshold(Threshold(PlaneIndex)).getImage;
+                        processedVolume(: , : , PlaneIndex , 1 , ChannelIndex) = CurrentImage;
                     end
              end
 

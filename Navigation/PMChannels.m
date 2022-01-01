@@ -83,7 +83,10 @@ classdef PMChannels
     methods % setters
         
          function obj = setActiveChannel(obj, Value)
-            assert( Value <= length(obj.Channels), 'Wrong type')
+             % SETACTIVECHANNEL set which channel is active
+             % takes 1 argument:
+             % 1: numerical integer in range from 1 to number of channels;
+            assert( Value <= length(obj.Channels && Value >= 1 && mod(Value, 1) == 0), 'Wrong type')
             obj.ActiveChannel = Value;
          end
         
@@ -136,10 +139,7 @@ classdef PMChannels
         
     end
     
-    methods % getters by active channel
-        
-        
-    end
+
     
     methods % getters for all channels
         

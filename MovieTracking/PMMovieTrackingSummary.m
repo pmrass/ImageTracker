@@ -5,16 +5,11 @@ classdef PMMovieTrackingSummary
     properties
         
         % core data: unique identifier plus connected movies;
-        
-        
-        
-      
-         
+          
     end
     
     properties (Access = private)
         Folder =                        '' % movie-folder 
-        AttachedFiles =                 ''
         Keywords =                      cell(0,1);
         
         
@@ -38,6 +33,7 @@ classdef PMMovieTrackingSummary
             
             switch length(varargin)
                 case 0
+                    
                 case 1
                         
                     movieTrackingObject = varargin{1};
@@ -46,7 +42,6 @@ classdef PMMovieTrackingSummary
                     else
                         fprintf('PMMovieTracking object "%s".\n', movieTrackingObject.getNickName)     
                         obj.NickName =                          movieTrackingObject.getNickName;
-                        obj.AttachedFiles =                     movieTrackingObject.getLinkedMovieFileNames;
                         obj.Folder =                            movieTrackingObject.getMovieFolder;
                         obj.DataType =                          movieTrackingObject.getDataType;
                         obj.Keywords =                          movieTrackingObject.getKeywords;
@@ -57,7 +52,8 @@ classdef PMMovieTrackingSummary
                         
 
                         
-                   end
+                    end
+                   
                 case 2
                 
 
@@ -77,23 +73,15 @@ classdef PMMovieTrackingSummary
         end
         
         
-           function [obj] =            setNamesOfMovieFiles(obj, Value)
-              obj.AttachedFiles =       Value;
-           end
+       
            
-           function obj = set.AttachedFiles(obj, Value)
-               assert(iscellstr(Value), 'Invalid argument type.')
-               obj.AttachedFiles = Value;
-           end
+        
            
            function [Value] =            getMovieFolder(obj)
               Value = obj.Folder;
            end
            
-            function [Value] =            getAttachedFiles(obj)
-              Value = obj.AttachedFiles;
-            end
-           
+         
             function [Value] =            getKeywords(obj)
               Value = obj.Keywords;
            end

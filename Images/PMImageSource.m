@@ -34,39 +34,51 @@ classdef PMImageSource
         end
         
         function ImageVolume = getImageVolume(obj)
-            %getImageVolume getImageVolume
-            %   Detailed explanation goes here
-             %% first filter the image map: only images that meet the defined source numbers will be kept;
+            % GETIMAGEVOLUME getImageVolume
+            % returns 5-dimensional uint8 numerical matrix:
+            % dimension 1: rows
+            % dimension 2: columns
+            % dimension 3: planes
+            % dimension 4: time-frames
+            % dimension 5: channels:
+            
              FilteredImageMap =              obj.getImageMap;   
             
              FilteredImageMap =              obj.removeUnwantedEntriesFromImageMap(FilteredImageMap);   
              FilteredImageMap =              obj.resetPositionsOfImageMap(FilteredImageMap);   
              FilteredImageMap(1,:) =         [];
         
-             ImageVolume =                  obj.initializeImageFromImageMap(FilteredImageMap);
              
-
+             
+            ImageVolume =                  obj.initializeImageFromImageMap(FilteredImageMap);
             for IndexOfDirectory = 1 : size(FilteredImageMap,1)
-                directory =             PMImageDirectory(FilteredImageMap(IndexOfDirectory,:));
-                ImageVolume =           directory.drawOnImageVolume(ImageVolume);
+                currentDirectory =      PMImageDirectory(FilteredImageMap(IndexOfDirectory,:));
+                ImageVolume =           currentDirectory.drawOnImageVolume(ImageVolume);
             end
             
         end
         
-         %% get final image map:
+
           function MergedImageMap = getImageMap(obj)
+              % GETIMAGEMAP get merged image map (all individual image-maps will be merged);
+              % returns complete image map with complete information of image source;
+              % image maps from different movie files are pooled and time-frames are adjusted;
+              
                 switch obj.getImageOrderType
 
                     case 'MatchOfNavigationAndImageMapFrames'
                         FramesPerMap =           cellfun(@(x) max(cell2mat(x(2:end, obj.TimeColumn))), obj.ImageMapPerFile);
                         CumulativeTemp =         cumsum(FramesPerMap);
                         adjustingTimeFrames =    [0; CumulativeTemp(1:end-1)];
+                        
                     case 'EachChannelHasAnEntry'
                         adjustingTimeFrames =    linspace(0,obj.Navigation.getMaxFrame-1,obj.Navigation.getMaxFrame);
                         adjustingTimeFrames =    repmat(adjustingTimeFrames, obj.Navigation.getMaxChannel,1);
                         adjustingTimeFrames =    adjustingTimeFrames(:);
+                        
                     case 'NavigationAndImageMaxFrameMatch'
                         adjustingTimeFrames =   '';
+                        
                     otherwise
                         error('Unknown pattern.')
                 end
@@ -125,7 +137,16 @@ classdef PMImageSource
             
           %% adjust frames of image map:
           function ImageMap = adjustFramesOfImageMap(obj, adjustingTimeFrames)
-                 if ~isempty(adjustingTimeFrames)
+              % ADJUSTFRAMESOFIMAGEMAP shifts the frames in consecutive movie-sequences;
+              % input vector with "frame-shift" for each movie; 
+              % will be used to set frame numbers of image map;
+             
+                 if isempty(adjustingTimeFrames)
+                     
+                 else
+                     
+                    assert(isvector(adjustingTimeFrames) && isnumeric(adjustingTimeFrames) && length(adjustingTimeFrames) == obj.getNumberOfImageMaps , 'Wrong input.')
+                      
                     ImageMap = obj.ImageMapPerFile;
                     for CurrentMapIndex = 1: obj.getNumberOfImageMaps 
                         OldMapNumbers =                   cell2mat(obj.ImageMapPerFile{CurrentMapIndex,1}(2:end, obj.TimeColumn));
@@ -302,7 +323,9 @@ classdef PMImageSource
           
             
            function image =        initializeImageFromImageMap(obj, ImageMap)
+               
             image=                         cast(uint8(0), obj.getPrecisionFromImageMap(ImageMap));
+            
             image(obj.getNumberOfRowsFromImageMap(ImageMap), ...
                                     obj.getNumberOfColumnsFromImageMap(ImageMap), ...
                                     obj.getNumberOfPlanesFromImageMap(ImageMap), ...

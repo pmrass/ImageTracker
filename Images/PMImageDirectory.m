@@ -1,6 +1,6 @@
 classdef PMImageDirectory
-    %PMIMAGEDIRECTORY Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMIMAGEDIRECTORY contains information of single "directory" (i.e. single row of Image map);
+    %   method drawOnImageVolume allows adding the corresponding image data from file to input image;
     
     properties (Access = private)
         RawData
@@ -10,7 +10,8 @@ classdef PMImageDirectory
     methods
         function obj = PMImageDirectory(varargin)
             %PMIMAGEDIRECTORY Construct an instance of this class
-            %   Detailed explanation goes here
+            % input: 1 argument
+            % cell that contains content of 1 row of an image map;
            NumberOfArguments = length(varargin);
            switch NumberOfArguments
                case 1
@@ -22,19 +23,24 @@ classdef PMImageDirectory
         end
         
         function obj = set.RawData(obj,Value)
-            assert(iscell(Value), 'Wrong input.')
+            assert(iscell(Value) && isvector(Value) && length(Value) == 15, 'Wrong input.')
             obj.RawData = Value;
         end
         
         function ImageVolume = drawOnImageVolume(obj, ImageVolume)
+            % DRAWONIMAGEVOLUME adds image data to input volume of all strips of directory;
+            % input 5D-image volume
+            % output 5D-image volume (after writing image data of file into volume);
             for CurrentStripIndex = 1 : obj.getNumberOfStrips
                 obj.ActiveStripIndex = CurrentStripIndex;
-                ImageVolume(obj.getActiveUpperRow : obj.getActiveBottomRow, ...
+                ImageVolume(...
+                            obj.getActiveUpperRow : obj.getActiveBottomRow, ...
                             1:obj.getNumberOfColumns, ...
                             obj.getPlanes, ...
                             obj.getFrames, ...
-                            obj.getActiveChannel)=     obj.getImageForStripIndex;
-                % fprintf('%i of %i (t:%i,z:%i,c:%i); ', CurrentStripIndex,NumberOfStrips, min(obj.getFrames), min(obj.getPlanes), min(CurrentChannel))
+                            obj.getActiveChannel...
+                            )=     obj.getImageForStripIndex;
+                            % fprintf('%i of %i (t:%i,z:%i,c:%i); ', CurrentStripIndex,NumberOfStrips, min(obj.getFrames), min(obj.getPlanes), min(CurrentChannel))
             end 
         end
         
@@ -131,7 +137,6 @@ classdef PMImageDirectory
         %% getImageForStripIndex
         function CurrentStripImage = getImageForStripIndex(obj)
             
-        
             MyFileId =                  obj.getFileID;
             fseek(MyFileId,  obj.getActiveOffset, -1);
             CurrentStripData =        cast((fread(MyFileId, obj.getActiveStripLength, obj.getPrecision, obj.getByteOrder))', obj.getPrecision);    
@@ -143,19 +148,18 @@ classdef PMImageDirectory
                                         length(obj.getPlanes));                
             CurrentStripImage =         permute (CurrentStripImage, [2 1 3]);  % in image rows should come first, but reshape reads columns first that's why a switch is necessary;  
 
-                        % fprintf('%i of %i (t:%i,z:%i,c:%i); ', CurrentStripIndex,NumberOfStrips, min(obj.getFrames), min(obj.getPlanes), min(CurrentChannel))
-
-                    
+            % fprintf('%i of %i (t:%i,z:%i,c:%i); ', CurrentStripIndex,NumberOfStrips, min(obj.getFrames), min(obj.getPlanes), min(CurrentChannel))        
+        
         end
         
         function CurrentStripOffset = getActiveOffset(obj)
-             ListWithStripOffsets =      obj.getStripOffsets;
+            ListWithStripOffsets =      obj.getStripOffsets;
             CurrentStripOffset =        ListWithStripOffsets(obj.ActiveStripIndex,1);
             
         end
         
         function CurrentStripByteCount = getActiveByteCount(obj)
-               ListWithStripByteCounts=    obj.getStripByteCounts;
+            ListWithStripByteCounts=    obj.getStripByteCounts;
             CurrentStripByteCount =     ListWithStripByteCounts(obj.ActiveStripIndex,1);
         end
         

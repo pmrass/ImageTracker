@@ -1,6 +1,6 @@
 classdef PMInteractionsView
-    %PMINTERACTIONSVIEW Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMINTERACTIONSVIEW view settings for interaction measurement;
+    %   PlaneThresholds
     
     properties (Access = private)
         MainFigure
@@ -51,13 +51,11 @@ classdef PMInteractionsView
         
     end
     
-    methods
-      
+    methods % GETTERS
+        
+        
         function ok = testViewsAreSetup(obj)
-            
             ok = ~isempty(obj.PlaneThresholds);
-            
-            
         end
         
          
@@ -89,9 +87,20 @@ classdef PMInteractionsView
         end
 
         function value = getShowThresholdedImage(obj)
-            value = obj.ShowThresholdedImage.Value;
+            if isempty(obj.ShowThresholdedImage)
+                value = false;
+            else
+                value = obj.ShowThresholdedImage.Value;
+            end
+            
         end
         
+        
+        
+    end
+    
+    methods % SETTERS
+      
         function obj = setCallbacks(obj, varargin)
             if isvalid(obj.MainFigure)
                 NumberOfArguments = length(varargin);
@@ -146,7 +155,7 @@ classdef PMInteractionsView
         
         function obj = makeVisibible(obj)
             if isempty(obj.MainFigure)
-                obj = initialize(obj);
+                obj = obj.initialize;
             elseif ~isvalid(obj.MainFigure)
                 obj = obj.initialize;
             end

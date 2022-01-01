@@ -36,7 +36,7 @@ classdef PMMovieController_MouseAction
 
                    if strcmp(obj.MovieController.interpretMouseMovement, 'Out of bounds')
                         obj.MovieController = obj.MovieController.setMouseAction('No action');
-                        warning('Cursor was out of bounds during press down. No action taken.')
+                     
                    end
 
                else
