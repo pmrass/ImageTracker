@@ -1,6 +1,6 @@
 classdef PMMovieController_Keypress
-    %PMMOVIECONTROLLER_KEYPRESS Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIECONTROLLER_KEYPRESS manages PMMovieController object actions by keypress;
+    % has PMMovieController object; processKeyInput method takes key and modifier and executes appropriate action;
     
     properties (Access= private)
         PressedKey
@@ -13,12 +13,17 @@ classdef PMMovieController_Keypress
         
         function obj = PMMovieController_Keypress(Object)
             %PMMOVIECONTROLLER_KEYPRESS Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 1 argument:
+            % 1: PMMovieController;
             obj.MovieController = Object;
               
         end
         
         function MyMovieController = processKeyInput(obj, PressedKey, CurrentModifier)
+            % PROCESSKEYINPUT based on input executes PMMovieController action;
+            % takes 2 arguments:
+            % 1: pressed key
+            % 2: modifier
             obj.PressedKey =     PressedKey;
             if ischar(CurrentModifier)
                CurrentModifier = {CurrentModifier}; 
@@ -115,7 +120,7 @@ classdef PMMovieController_Keypress
                     case {'u', 'U'} 
                         switch obj.Modifiers
                             case 'Nil'
-                                obj.MovieController =       obj.MovieController.setTrackViews;
+                                obj.MovieController =       obj.MovieController.updateAllViewsThatDependOnActiveTrack;
                         end
                         
                    case {'x','X'}  %% navigation shortcuts: first frame, last/ first tracked frame:
@@ -127,6 +132,10 @@ classdef PMMovieController_Keypress
                                 
                              case 'shift'
                                 obj.MovieController =      obj.MovieController.setFrame('last');
+                                
+                            case 'ShiftAndCommand' 
+                                obj.MovieController =      obj.MovieController.focusOnActiveMask;
+                                
                          end 
         
                 end
@@ -161,10 +170,8 @@ classdef PMMovieController_Keypress
                             % currently not recommended option;
                             % using brightest pixels to detect cells and then create 3D mask;
                             % problems: very slow, leads to a lot of double-tracking;
-                            obj.MovieController =   obj.MovieController.performTrackingMethod('autoTracking', 'newMasks', 'thresholdingInBrightAreas');
-                           
+                            
                         case 'shift' 
-                            obj.MovieController =   obj.MovieController.performTrackingMethod('autoTracking', 'newMasks', 'circle'); % currently recommeneded approach;
                                 
                         case 'ShiftAndCommand'
                              obj.MovieController =  obj.MovieController.setFinishStatusOfTrackTo('Finished');  
