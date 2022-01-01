@@ -5,23 +5,16 @@ classdef PMMovieLibraryManager < handle
     properties (Access = private)
 
         Viewer
-        MovieLibrary 
-        ActiveMovieController =            PMMovieController()
-        MovieTrackingFileController =      PMMovieTrackingFileController
-        InteractionsManager =              PMInteractionsManager      
-        TrackSegmentView
         
+        MovieLibrary 
+        ActiveMovieController =                 PMMovieController()
+        MovieTrackingFileController =           PMMovieTrackingFileController
+
+        InteractionsManager
         FileManagerViewer
         
-    end
-    
-    properties % add accessors and make private;
-          DistanceLimits = {[0, 8];  [2, 8]; [0, 1]};
-          DistanceType =  'FractionFullPixels';
-    end
-    
-    properties (Access = private) % default settings for some advanced analysis
-       
+        TrackSegmentView
+        
         XYLimitForNeighborArea =                50;
         ZLimitsForNeighborArea =                8;
         
@@ -29,99 +22,120 @@ classdef PMMovieLibraryManager < handle
         MaxStopDurationForGoSegment =           5;
         MinStopDurationForStopInterval =        20;
         
+ 
     end
+    
+    properties % add accessors and make private;
+          DistanceLimits =      {[0, 8];  [2, 8]; [0, 1]};
+          DistanceType =        'FractionFullPixels';
+    end
+    
+
     
     properties(Access = private, Constant)
         FileWithPreviousSettings =         [userpath,'/imans_PreviouslyUsedFile.mat'];
     end
     
-    methods % initialization
+    methods % INITIALIZATION
         
         function obj =          PMMovieLibraryManager(varargin)
-
-            NumberOfArguments = length(varargin);
-            switch NumberOfArguments
+            % PMMOVIELIBRARYMANAGER create instance of this class
+            % takes 0 or 1 arguments:
+            % with zero arguments: tries to retrieve file-name of previously used library stored in file;
+            % 1: character string: complete path of library
+        
+            obj.InteractionsManager =   PMInteractionsManager(PMInteractionsView);
+            obj.Viewer =                PMImagingProjectViewer;
+            
+            switch length(varargin)
                 case 0
-                    myFileName =   obj.getPreviouslyUsedFileName;
+                    
                 case 1
-                    myFileName =  varargin{1};
-                otherwise
-                    error('Wrong number of arguments.')
+                    MyMovieLibrary =       obj.getMovieLibraryForInput( varargin{:});
+                    obj =                  obj.setMovieLibrary(MyMovieLibrary);
+                    
+                
             end
             
-            assert(~isempty(myFileName) && ischar(myFileName) && exist(myFileName) == 2, 'Invalid filename. Please enter a valid file-path as argument of this intializer.')
-            
-            obj.Viewer =            PMImagingProjectViewer;
-            obj.Viewer.getMovieControllerView.blackOutMovieView;
-            obj.Viewer =            obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
 
-            obj =                   obj.addCallbacksToFileAndProject;
-
-            obj =                   obj.setFileMenu;
-            obj =                   obj.setProjectMenu;
-            obj =                   obj.setMovieMenu;
-            obj =                   obj.setDriftMenu;
-            obj =                   obj.setTrackingMenu;
-            obj =                   obj.setInteractionsMenu;
-            obj =                   obj.setHelpMenu;
-
-            obj.MovieLibrary =      PMMovieLibrary(myFileName);            
-            obj =                   obj.resetAfterLibraryChange;
-
-       end
+        end
+        
+    
         
         function set.ActiveMovieController(obj, Value)
-            assert(isa(Value,  'PMMovieController'), 'Wrong input type.')
+            assert(isa(Value,  'PMMovieController') && isscalar (Value), 'Wrong input type.')
            obj.ActiveMovieController = Value;
         end
         
-         function set.MovieLibrary(obj, Value)
-           assert(isa(Value,  'PMMovieLibrary'), 'Wrong input type.')
+        function set.MovieLibrary(obj, Value)
+           assert(isa(Value,  'PMMovieLibrary') && isscalar(Value), 'Wrong input type.')
            obj.MovieLibrary = Value; 
         end
         
     end
     
-    methods  % movie-list clicked
+    methods % VIEW
         
-        function [obj] =         movieListClicked(obj, ~, ~)
-          
-            switch obj.Viewer.getMousClickType
-
-                case 'open'
-                  
-            end 
-            
+        function obj = show(obj)
+            % SHOW show main figure
+            % either puts main-figure in foreground (if it exists) or creates new figure from scracth;
+            obj.Viewer =                    obj.Viewer.show;
+            obj =                           obj.finalizeProjectViews;
+            obj.ActiveMovieController =     obj.ActiveMovieController.setViewsByProjectView(obj.Viewer);
+           
         end
+         
+    end
+    
+    methods % SETTERS
         
-        function obj = openSelectedMovie(obj)
+        function obj =      openSelectedMovie(obj)
+            % OPENSELECTEDMOVIE activates currently selected movie;
+            % only works when precisely one movie is selected
             
-              SelectedNicknames =     obj.Viewer.getSelectedNicknames;
-                    if length(SelectedNicknames) == 1
-
-                        obj =           obj.finishOffCurrentLibrary;
-                        obj =          obj.setActiveMovieByNickName(SelectedNicknames{1});
-
-                    end
+            SelectedNicknames =     obj.Viewer.getSelectedNicknames;
+            if length(SelectedNicknames) == 1
+                obj =    obj.saveActiveMovieAndLibrary;
+                obj =    obj.setActiveMovieByNickName(SelectedNicknames{1});
+            end
                     
         end
         
-
-        function obj =          setActiveMovieByNickName(obj, varargin)
+        function obj =      setActiveMovieByNickName(obj, varargin)
+            % SETACTIVEMOVIEBYNICKNAME change active movie
+            % takes 1 argument:
+            % 1: character string with nickname
+            % updates views and content including MovieTrackingFileController and InteractionsManager;
+            % also updates callbacks;
 
             switch length(varargin)
                 
                 case 1
+                    
+                    obj.ActiveMovieController =             obj.ActiveMovieController.clear;
+                    
                     obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
-                    obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-
+                    obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController;
+                    assert(~isempty(obj.ActiveMovieController), 'Something went wrong. No active movie-controller could be retrieved')
+                    
                     obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
+                    
                     obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
-                    obj =                                   obj.addCallbacksToInteractionManager;
-                    obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
+
+                    obj.ActiveMovieController =             obj.ActiveMovieController.setViewsByProjectView(obj.Viewer);
+
+                    obj.InteractionsManager =               obj.InteractionsManager.resetModelByMovieController(obj.ActiveMovieController);
+                    obj.InteractionsManager =               obj.InteractionsManager.setXYLimitForNeighborArea(obj.XYLimitForNeighborArea);
+                    obj.InteractionsManager =               obj.InteractionsManager.setZLimitForNeighborArea(obj.ZLimitsForNeighborArea);
+
+                  
+                    obj.ActiveMovieController =             obj.ActiveMovieController.updateWith(obj.InteractionsManager);
+                    
                     obj =                                   obj.setInfoTextView;
-
-
+                    
+                    obj =                                   obj.addCallbacksToInteractionManager;
+                    obj =                                   obj.addCallbacksToFileAndProject;
+           
                 otherwise
                     error('Invalid number of arguments')
             end
@@ -129,168 +143,459 @@ classdef PMMovieLibraryManager < handle
 
         end
 
-     end
-   
-    methods % getter
-        
-        function obj = showSummary(obj)
-            obj.ActiveMovieController = obj.ActiveMovieController.showSummary;
+        function obj =      setLoadedMovie(obj, LoadedMovie)
+            % SETLOADEDMOVIE allows visualization of a user-defined PMMovieTracking object:
+            % takes 1 argument:
+            % 1: PMMovieTracking
+            obj.ActiveMovieController =                 obj.ActiveMovieController.clear;
+            obj.ActiveMovieController =                 obj.ActiveMovieController.setViewsByProjectView(obj.getViews);
+            obj.ActiveMovieController  =                obj.ActiveMovieController.setLoadedMovie(LoadedMovie);
+            obj.ActiveMovieController =                 obj.ActiveMovieController.setNavigationControls;
+            obj.ActiveMovieController =                 obj.ActiveMovieController.updateMovieView;
+            obj.ActiveMovieController =                 obj.ActiveMovieController.setActiveCropOfMovieView;
+
         end
         
+        function obj =      setActiveMovieController(obj, Value)
+           % SETACTIVEMOVIECONTROLLER set active movie-controller
+           % takes 1 argument:
+           % 1: scalar PMMovieController
+           obj.ActiveMovieController  = Value;
+        end
         
-         function controller = getActiveMovieController(obj)
-           controller  = obj.ActiveMovieController ;
-         end
+        function obj =      callMovieControllerMethod(obj, varargin)
+            % CALLMOVIECONTROLLERMETHOD allows usage of method from active movie-controller;
+            % takes 1 or more arguments:
+            % 1: name of method
+            % 2: arguments for method (number depends on method)
+            obj.ActiveMovieController = obj.ActiveMovieController.(varargin{1})(varargin{2:end});
+            
+        end
         
-       function library = getMovieLibrary(obj)
-            library = obj.MovieLibrary;
-
-       end
+        function obj =      performMovieLibraryMethod(obj, varargin)
+           % PERFORMMOVIELIBRARYMETHOD allows usage of method from movie-library;
+            % takes 1 or more arguments:
+            % 1: name of method
+            % 2: arguments for method (number depends on method)
+            switch length(varargin)
+               
+                case 1
+                    assert(ischar(varargin{1}), 'Wrong input.')
+                    Output = obj.MovieLibrary.(varargin{1});
+                    if isa(Output, 'PMMovieLibrary')
+                        obj.MovieLibrary = Output;
+                    end
+                    
+                otherwise
+                    error('Input not supported.')
+                
+            end
+               
+        end
         
+    end
+   
+    methods % SETTERS MOVIE-LIBRARY
+       
+         function obj =      setMovieLibrary(obj, Value)
+             % SETMOVIELIBRARY set movie-library
+             % takes 1 argument:
+             % 1: scalar 'PMMovieLibrary'
+             % updates project movies and movie controller
+            obj.MovieLibrary =          Value;
+            obj =                       obj.finalizeProjectViews;
+            obj =                       obj.setEmpyActiveMovieController;       
+            obj.savePreviousSettings; 
+            
+        end
         
     end
     
-    methods
-
-        function obj = setActiveMovieController(obj, Value)
-           obj.ActiveMovieController  = Value;
-        end
-
-        function obj = setMovieLibrary(obj, Value)
-            obj.MovieLibrary = Value;
-        end
-
-        function fileName = getPreviouslyUsedFileName(obj)
-            if exist(obj.FileWithPreviousSettings,'file')==2
-                load(obj.FileWithPreviousSettings, 'FileNameOfProject')
-                if exist(FileNameOfProject)==2
-                    fileName =  FileNameOfProject;
-                else
-                    fileName =  '';
+    methods % GETTERS
+        
+          function library =        getMovieLibrary(obj)
+              % GETMOVIELIBRARY returns movie-library
+                library = obj.MovieLibrary;
+           end
+       
+          function controller =     getActiveMovieController(obj)
+                % GETACTIVEMOVIECONTROLLER returns active movie controller
+                assert(~isempty(obj.ActiveMovieController), 'No movie controller set.')
+                controller  = obj.ActiveMovieController ;
+         end
+         
+     end
+    
+    methods % SETTERS BATCH-PROCESSING
+        
+          function obj =        batchProcessingOfNickNames(obj, NickNames, ActionType, varargin)
+              % BATCHPROCESSINGOFNICKNAMES
+              % takes 2 or 3 arguments:
+              % 1: list with nicknames that should be modified (cell-string array);
+              % 2: descriptor of wanted action 'MapImages', 'SetChannelsByActiveMovie', 'createDerivativeFiles', 'saveInteractionMap', 'changeKeywords';
+              % 3:
+            
+            originalNickName =          obj.MovieLibrary.getSelectedNickname;  
+            OriginalController =        obj.ActiveMovieController;
+              
+            obj =                       obj.saveActiveMovieAndLibrary;
+            
+            for CurrentMovieIndex = 1 : size(NickNames,1)
+                
+                obj =        obj.setActiveMovieByNickName( NickNames{CurrentMovieIndex});
+                
+                switch ActionType                    
+                    case 'MapImages'
+                         obj.ActiveMovieController =       obj.ActiveMovieController.resetLoadedMovieFromImageFiles;
+                         
+                    case 'SetChannelsByActiveMovie'
+                        obj.ActiveMovieController =         obj.ActiveMovieController.setChannels(OriginalController.getLoadedMovie);
+                        
+                    case 'createDerivativeFiles'
+                        obj.ActiveMovieController =         obj.ActiveMovieController.createDerivativeFiles;
+                        obj =                               obj.saveInteractionsMapForActiveMovie;
+                        
+                    case 'saveInteractionMap'
+                         obj =                               obj.saveInteractionsMapForActiveMovie;
+                         
+                    case 'changeKeywords'
+                       obj.ActiveMovieController =         obj.ActiveMovieController.setKeywords(varargin{1});
+                         
+                    otherwise
+                        error('Batch analysis not specified.')
+                 
                 end
-
-            else
-                error('Previous settings not found.')
+                
+                obj =                           obj.saveActiveMovieAndLibrary;
+                obj.ActiveMovieController =     obj.ActiveMovieController.updateSaveStatusView;
+                
+                
+  
+                obj =                           obj.setInfoTextView;
+                obj=                            obj.callbackForFilterChange;
+                
             end
             
+            obj =         obj.setActiveMovieByNickName(originalNickName);
+            
+          end
+           
+    end
+    
+    methods % interaction
+        
+        function obj =          saveInteractionsMapsForAllShownMovies(obj)
+            % SAVEINTERACTIONSMAPSFORALLSHOWNMOVIES save interaction map for all selected movies;
+            SelectedNicknames =     obj.Viewer.getSelectedNicknames;
+            obj =                   obj.batchProcessingOfNickNames(SelectedNicknames, 'saveInteractionMap');
+
         end
-          
+
+        function obj =          saveInteractionsMapForActiveMovie(obj, varargin) 
+            % SAVEINTERACTIONSMAPFORACTIVEMOVIE saves interaction map for active movie;
+            % takes 0 or 2 arguments;
+            % 1: limit for XY neighbor area
+            % 2: limit for Z neighbor area
+
+             switch length(varargin)
+                 case 0
+
+                 case 2
+                        obj.XYLimitForNeighborArea = varargin{1};
+                        obj.ZLimitsForNeighborArea =  varargin{2};
+
+                 otherwise
+                     error('Wrong input.')
+
+             end
+
+           
+            obj.InteractionsManager =       obj.InteractionsManager.setExportFolder(obj.MovieLibrary.getInteractionFolder); % specify folder if you want to export detailed interaction measurement specifications
+            InteractionObject =             obj.InteractionsManager.getInteractionsMap;
+            save(obj.getFileNameWithInteractionAnalysis, 'InteractionObject');
+
+        end
+
+        function obj =          exportDetailedInteractionInfoOfActiveTrack(obj, varargin)
+            % EXPORTDETAILEDINTERACTIONINFOOFACTIVETRACK export detailed interaction of active track;
+            % takes 0 or 2 arguments;
+            % 1: limit for XY neighbor area
+            % 2: limit for Z neighbor area
+
+
+             switch length(varargin)
+                 case 0
+
+                 case 2
+
+                      obj.XYLimitForNeighborArea =      varargin{1};
+                      obj.ZLimitsForNeighborArea =      varargin{2};
+
+
+                 otherwise
+                     error('Wrong input.')
+
+
+
+             end
+
+            obj.InteractionsManager =       obj.InteractionsManager.setExportFolder(obj.MovieLibrary.getInteractionFolder);
+            obj.InteractionsManager =       obj.InteractionsManager.exportDetailedInteractionInfoForTrackIDs(obj.ActiveMovieController.getLoadedMovie.getIdOfActiveTrack);
+        end
+
+        function obj =          showTrackSummaryOfActiveMovie(obj)
+
+            fprintf('\n*** Summary of tracking data of active movie:\n')
+            mySuite = obj.getTrackingSuiteOfActiveMovie;
+
+            fprintf('\n2) Summary of active track:\n')
+            mySuite = mySuite.showSummaryOfTrackID(obj.ActiveMovieController.getLoadedMovie.getIdOfActiveTrack);
+
+            fprintf('\n3) Summary of tracks, segments, etc. by distance to target:\n')
+            for index = 1 : length(obj.DistanceLimits)
+              mySuite = mySuite.showTrackSummaryForDistanceRange(obj.DistanceLimits{index}, obj.DistanceType);
+
+            end
+
+        end
+
+        function mySuite =      getTrackingSuiteOfActiveMovie(obj)
+            % initialize tracking-suite:
+            mySuite =   PMTrackingSuite(...
+                                            obj.MovieLibrary.getFileName, ...
+                                            'CurrentMovieInManager', ...
+                                            {obj.ActiveMovieController.getNickName}, ...
+                                            {obj.getFileNameWithInteractionAnalysis}...
+                                            );
+            
+            mySuite =   mySuite.setSpaceTimeLimitsOfSuites(...
+                                obj.StopDistanceLimit, ...
+                                obj.MinStopDurationForStopInterval, ...
+                                obj.MaxStopDurationForGoSegment...
+                                );
+                            
+            fprintf('\n1) Summary of tracking suite:\n')
+            mySuite.showSummary;
+
+        end
+        
+         function fileName =     getFileNameWithInteractionAnalysis(obj)
+            Nickname =                obj.ActiveMovieController.getNickName;
+            fileName =                [obj.MovieLibrary.getInteractionFolder , Nickname, '_Map.mat'];
+
+         end
 
         
+
+    end
     
+    methods % EXPORT DATA
+       
+        function obj = exportMovieToFile(obj)
+            % EXPORTMOVIETOFILE allows export of current source into movie;
+            % user can select target file-name and frame range and fps;
+          
+              myMovieManager =                PMImagerViewerMovieManager(obj.ActiveMovieController);
+              myMovieManager.exportMovie;
+                 
+        end
         
-        function obj = setMovieFolders(obj, Value)
+     end
+     
+    methods (Access = private) % SETTERS
+
+        function obj =      setMovieFolders(obj, Value)
             obj.MovieLibrary =              obj.MovieLibrary.setMovieFolders(Value);
-            obj =                           obj.finishOffCurrentLibrary;
-            obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
+            obj =                           obj.saveActiveMovieAndLibrary;
+            obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController;
+            obj.ActiveMovieController =     obj.ActiveMovieController.setViewsByProjectView(obj.Viewer);
             obj =                           obj.setInfoTextView;
         end
         
-        function [obj]=             setInfoTextView(obj)
+        function obj=       setInfoTextView(obj)
              obj.Viewer =   obj.Viewer.setInfoView(obj.MovieLibrary.getProjectInfoText);  
         end
         
-        function obj = setInfoTextViewWith(obj, Value)
-            
+        function obj =      setInfoTextViewWith(obj, Value)
              obj.Viewer =   obj.Viewer.setInfoView(Value);  
             
         end
         
-        
-        
-     
-
-      
-    
-        
-        
-         
-     
-             
-  
-        
-      
-        
-      
-      
-        
-  
-     
-
-        function [obj] =    toggleProjectInfo(obj,~,~)
-            obj =                               obj.setInfoTextView;
-            
-        end
        
-  
-         %% respond to mouse or key input:
-          function [obj] =           keyPressed(obj,~,~)
-              
-              
-                 if isempty(obj.getPressedKey) || ~obj.ActiveMovieController.verifyActiveMovieStatus
 
-                 else
-                     
-                    if strcmp(obj.getPressedKey, 's') && length(obj.getModifier) == 1 && strcmp(obj.getModifier, 'command')
-                         obj = obj.finishOffCurrentLibrary;
-                    else
+
+        function obj =      setExportFolder(obj, UserSelectedFolder)
+                obj.MovieLibrary =              obj.MovieLibrary.setExportFolder(UserSelectedFolder);
+                % obj =                           obj.Viewer.getSelectedNicknames;
+                %    obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
+                obj =                           obj.setInfoTextView;
+
+        end
+
+        function obj =      addNewMovie(obj, Nickname, AttachedFiles)
+
+                if obj.MovieLibrary.checkWheterNickNameAlreadyExists(Nickname)
+                    warning('Nickname already exists and could therefore not be added.')
+
+                else
+                    
+                    obj =                   obj.saveActiveMovieAndLibrary;
                         
-                            try
-                                obj.ActiveMovieController.interpretKey(obj.getPressedKey, obj.getModifier);
-                            catch ME
-                                obj =   obj.setInfoTextViewWith(ME.message);
-                            end        
-                    end
+                    
+                    NewMovieTracking =      PMMovieTracking(...
+                                                            Nickname, ...
+                                                            obj.MovieLibrary.getMovieFolder, ...
+                                                            AttachedFiles, ...
+                                                            obj.MovieLibrary.getPathForImageAnalysis, ...
+                                                            );
+                                                        
+                    NewMovieTracking =                       NewMovieTracking.setPropertiesFromImageMetaData;
+
+                    NewMovieController =    PMMovieController(...
+                                                                    obj.Viewer, ...
+                                                                    NewMovieTracking...
+                                                                    );
+
+                    obj.MovieLibrary =      obj.MovieLibrary.addNewEntryToMovieList(NewMovieController);
+                    obj.MovieLibrary =      obj.MovieLibrary.sortByNickName;
+                    obj =                   obj.setActiveMovieByNickName(Nickname);
+                    obj =                   obj.callbackForFilterChange;
 
 
-                 end
-                 
-                 obj.Viewer = obj.Viewer.setCurrentCharacter('0');
-               
-                
-          end
-          
-          function PressedKey = getPressedKey(obj)
-              PressedKey=       get(obj.Viewer.getFigure,'CurrentCharacter');
-          end
-          
-          function Modifier = getModifier(obj)
-              Modifier =   obj.Viewer.getFigure.CurrentModifier;
-              
-          end
-          
+
+                end
+
+
+        end
+
+    end
+    
+    methods (Access = private) % getter
+        
+        function views = getViews(obj)
+           views = obj.Viewer; 
+        end
+        
+        function obj = showSummary(obj)
+            obj.ActiveMovieController = obj.ActiveMovieController.showSummary;
+        end
+
+        function PressedKey = getPressedKey(obj)
+          PressedKey=       get(obj.Viewer.getFigure,'CurrentCharacter');
+        end
+
+        function Modifier = getModifier(obj)
+          Modifier =   obj.Viewer.getFigure.CurrentModifier;
+
+        end
+
         function verifiedStatus =                     verifyActiveMovieStatus(obj)
             verifiedStatus = obj.ActiveMovieController.verifyActiveMovieStatus;
         end
-          
-          function [obj] =          mouseButtonPressed(obj,~,~)
-              obj.ActiveMovieController = obj.ActiveMovieController.mouseButtonPressed(obj.getPressedKey, obj.getModifier);
-          end
-
-          function [obj] =          mouseMoved(obj,~,~)
-              obj.ActiveMovieController = obj.ActiveMovieController.mouseMoved(obj.getPressedKey, obj.getModifier);
-          end
-            
-          function [obj] =          mouseButtonReleased(obj,~,~)
-              try 
-                    obj.ActiveMovieController = obj.ActiveMovieController.mouseButtonReleased(obj.getPressedKey, obj.getModifier);    
-              catch E
-                   throw(E) 
-              end
-                
-          end
-          
-          
-          
+ 
+    end
+    
+    methods (Access = private) % getters FILE
        
-        
+          function fileName = getPreviouslyUsedFileName(obj)
+              
+                if exist(obj.FileWithPreviousSettings,'file')==2
+                    
+                    load(obj.FileWithPreviousSettings, 'FileNameOfProject')
+                    if exist(FileNameOfProject)==2
+                        fileName =  FileNameOfProject;
+                    else
+                        fileName =  '';
+                    end
 
+                else
+                    error('Previous settings not found.')
+                    
+                end
+            
+        end
+          
         
-        function [obj] =            sliderActivity(obj,~,~)
+        
+    end
+    
+    methods (Access = private) % SETTERS FOR KEY AND MOUSE ACTION
+        
+        function obj =          keyPressed(obj,~,~)
+
+             if isempty(obj.getPressedKey) || ~obj.ActiveMovieController.verifyActiveMovieStatus
+
+             else
+
+                if strcmp(obj.getPressedKey, 's') && length(obj.getModifier) == 1 && strcmp(obj.getModifier, 'command')
+                     obj = obj.saveActiveMovieAndLibrary;
+                else
+
+                    try
+                        
+                        obj.ActiveMovieController.interpretKey(obj.getPressedKey, obj.getModifier);
+
+                    catch ME
+                        obj =   obj.setInfoTextViewWith(ME.message);
+                    end        
+                end
+
+
+             end
+
+             obj.Viewer = obj.Viewer.setCurrentCharacter('0');
+
+
+        end
+
+        function obj =          mouseButtonPressed(obj,~,~)
+          obj.ActiveMovieController = obj.ActiveMovieController.mouseButtonPressed(obj.getPressedKey, obj.getModifier);
+        end
+
+        function obj =          mouseMoved(obj,~,~)
+          obj.ActiveMovieController = obj.ActiveMovieController.mouseMoved(obj.getPressedKey, obj.getModifier);
+        end
+
+        function obj =          mouseButtonReleased(obj,~,~)
+
+          try 
+                obj.ActiveMovieController = obj.ActiveMovieController.mouseButtonReleased(obj.getPressedKey, obj.getModifier);    
+          catch E
+               throw(E) 
+          end
+
+        end
+
+        function obj =          sliderActivity(obj,~,~)
             obj.ActiveMovieController = obj.ActiveMovieController.setFrameBySlider;
         end
 
-
+        
+    end
+    
+    methods (Access = private) % SETTERS VIEWS
+        
+       
+        function obj = finalizeProjectViews(obj)
+            obj.Viewer =                obj.Viewer.adjustViews([11.5 0.1 21 3.5]);
+            obj =                       obj.setMenus;
+            obj =                       obj.addCallbacksToFileAndProject;
+            obj =                       obj.updateFilterView;
+            
+        end
+        
+        function obj = setMenus(obj)
+            obj =                       obj.setFileMenu;
+            obj =                       obj.setProjectMenu;
+            obj =                       obj.setMovieMenu;
+            obj =                       obj.setDriftMenu;
+            obj =                       obj.setTrackingMenu;
+            obj =                       obj.setInteractionsMenu;
+            obj =                       obj.setHelpMenu;
+        end
+       
+     
+        
     end
     
     methods (Access = private) % callbacks file menu
@@ -318,13 +623,13 @@ classdef PMMovieLibraryManager < handle
                 [FileName, SelectedPath] =    uiputfile;
                 if SelectedPath== 0
                     else
-                    obj =       obj.finishOffCurrentLibrary;
+                    obj =       obj.saveActiveMovieAndLibrary;
                     obj =       obj.changeToNewLibraryWithFileName([SelectedPath, FileName]);
                 end
              end
 
         function [obj] =    saveProjectClicked(obj,~,~)
-               obj =        obj.finishOffCurrentLibrary;
+               obj =        obj.saveActiveMovieAndLibrary;
         end
         
         function [obj] =    loadProjectClicked(obj,~,~)
@@ -340,7 +645,7 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % project menu
              
-        function obj = setProjectMenu(obj)
+        function obj =          setProjectMenu(obj)
 
             MenuLabels = {...
                     'Change image analysis folder'; ...
@@ -355,6 +660,7 @@ classdef PMMovieLibraryManager < handle
                     'Update movie summaries from file'; ...
                     'Set channels of selected movies by active movie'; ...
                     'Create derivative files'; ...
+                    'Views: Show image/movie files that have already been imported'; ...
                     'Views: Show image/movie files that have not yet been imported'; ...
                     'Show general info'...
                  };
@@ -373,6 +679,7 @@ classdef PMMovieLibraryManager < handle
                             @obj.updateMovieSummaryFromFiles,...
                             @obj.batchProcessingChannel...
                             @obj.createDerivativeFiles,...
+                            @obj.showIncludedCaptures,...
                             @obj.showMissingCaptures,...
                             @obj.toggleProjectInfo,...
                     };
@@ -380,34 +687,46 @@ classdef PMMovieLibraryManager < handle
                 SeparatorList = {'off', 'off', 'off', ...
                                   'on', 'off', 'off', 'off', ...
                                   'on', 'off', 'off', 'off', 'off', ...
-                                  'on', 'off'};
+                                  'on', 'off', 'off'};
 
 
         obj.Viewer =    obj.Viewer.setMenu('ProjectMenu', 'Project', MenuLabels, CallbackList, SeparatorList);
 
         end
 
-        function obj =    setPathForImageAnalysis(obj, ~, ~)
-
-            NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select tracking folder',...
-            'NumFiles', 1, 'Output', 'char');
-
-            if isempty(NewPath) || ~ischar(NewPath)
-            else
-            obj = obj.setImageAnalysisPath(NewPath);
-
-            end
+        function obj =          setPathForImageAnalysis(obj, ~, ~)
+             obj.MovieLibrary =         obj.MovieLibrary.letUserSetAnnotationPath(obj);
+             obj =                      obj.updateAfterAnnotationPathChange;
 
         end
+        
+       function obj =      updateAfterAnnotationPathChange(obj)
+            obj =                           obj.setInfoTextView;
+       end
+        
 
-        function obj =    changeMovieFolderClicked(obj,~,~)
-            NewPath=          uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select movie folder',...
-            'NumFiles', 1, 'Output', 'char');
-            if isempty(NewPath) || ~ischar(NewPath)
-            else
-            obj = obj.addMovieFolder(NewPath);
-            end
+        function obj =          changeMovieFolderClicked(obj,~,~)
+            obj.MovieLibrary =      obj.MovieLibrary.letUserSetMovieFolder;
+            obj =                   obj.updateAfterChangingMovieFolder;
+            
+             
         end
+        
+        
+        function obj =      updateAfterChangingMovieFolder(obj)
+            
+           
+            obj =                    obj.saveActiveMovieAndLibrary;
+            try 
+                 obj.ActiveMovieController =        obj.MovieLibrary.getActiveMovieController;
+                 obj.ActiveMovieController =        obj.ActiveMovieController.setViewsByProjectView(obj.Viewer);
+                    
+            catch
+                warning('Movie controller could not be reset.')
+            end
+            obj =                    obj.setInfoTextView;
+        end
+        
 
         function obj =    changeExportFolderClicked(obj,~,~)
             UserSelectedFolder=            uipickfiles('FilterSpec', obj.MovieLibrary.getPathForImageAnalysis, 'Prompt', 'Select export folder',...
@@ -440,10 +759,11 @@ classdef PMMovieLibraryManager < handle
         end
 
         function obj = removeActiveEntry(obj)
-            obj.ActiveMovieController =     obj.ActiveMovieController.deleteImageAnalysisFile;
+            obj.ActiveMovieController =     obj.ActiveMovieController.deleteMovieAnnotation;
             obj.MovieLibrary =              obj.MovieLibrary.removeActiveMovieFromLibrary;
-            obj =                           obj.callbackForFilterChange;
             obj =                           obj.setEmpyActiveMovieController;  
+            obj =                           obj.callbackForFilterChange;
+           
         end
 
         function obj = removeAllMoviesClicked(obj, ~, ~)
@@ -461,8 +781,8 @@ classdef PMMovieLibraryManager < handle
         end
 
         function obj = removeEntryWithNickName(obj, Value)
-        obj =           obj.setActiveMovieByNickName(Value);
-        obj =           obj.removeActiveEntry;
+            obj =           obj.setActiveMovieByNickName(Value);
+            obj =           obj.removeActiveEntry;
         end
 
         function obj =  mapUnMappedMovies(obj,~,~)
@@ -471,15 +791,24 @@ classdef PMMovieLibraryManager < handle
             obj =              obj.batchProcessingOfNickNames(obj.MovieLibrary.getAllFilteredNicknames, 'MapImages');
         end
 
-        function obj =  showMissingCaptures(obj,~,~)   
-
-        obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getFileNamesOfUnincorporatedMovies);
-
+        function obj = showIncludedCaptures(obj, ~, ~)
+            obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getAllAttachedMovieFileNames);
+        end
+        
+        function obj =  showMissingCaptures(obj,~,~)
+            obj.Viewer = obj.Viewer.setInfoView(obj.MovieLibrary.getFileNamesOfUnincorporatedMovies);
 
         end
+        
+        function obj =      toggleProjectInfo(obj,~,~)
+            obj =                               obj.setInfoTextView;
+            
+        end
+       
+        
 
         function obj = updateMovieSummaryFromFiles(obj,~,~)
-        obj.MovieLibrary = obj.MovieLibrary.updateMovieSummariesFromFiles;
+            obj.MovieLibrary = obj.MovieLibrary.setAllMovies;
         end
 
         function obj = replaceKeywords(obj,~,~)
@@ -494,12 +823,11 @@ classdef PMMovieLibraryManager < handle
     
     methods (Access = private) % set movie-menu
         
-        function obj =  setMovieMenu(obj)
+        function obj =          setMovieMenu(obj)
 
             MenuLabels = { 'File settings', 'Rename linked movie files', 'Relink movies', ...
                 'Remap image files', 'Delete image cache', ...
                 'Export active movie into mp4 file', 'Export active image into jpg file', 'Export track coodinates into csv file', 'Export detailed meta-data into txt file',  'Show meta-data summary in info text box'};
-
 
                 CallbackList =   {...
                     @obj.editMovieSettingsClicked, ...
@@ -519,15 +847,15 @@ classdef PMMovieLibraryManager < handle
                                       'on', 'off', 'off', 'off', 'off'};
 
 
-         obj.Viewer =    obj.Viewer.setMenu('MovieMenu', 'Movie', MenuLabels, CallbackList, SeparatorList);
+            obj.Viewer =    obj.Viewer.setMenu('MovieMenu', 'Movie', MenuLabels, CallbackList, SeparatorList);
 
         end
 
-        function obj =  editMovieSettingsClicked(obj,~,~)
+        function obj =          editMovieSettingsClicked(obj,~,~)
             obj =  obj.resetMovieTrackingFileController;
         end
 
-        function obj =  resetMovieTrackingFileController(obj)    
+        function obj =          resetMovieTrackingFileController(obj)    
              if isempty(obj.ActiveMovieController.getLoadedMovie)
                  fprintf('Currently no movie in memory. Cannot generate MovieTracking view.\n')
              else
@@ -537,69 +865,55 @@ classdef PMMovieLibraryManager < handle
              end
         end
 
-        function obj =  changeNicknameClicked(obj,~,~)
+        function obj =          changeNicknameClicked(obj,~,~)
 
-        MyNewNickName =                 obj.MovieTrackingFileController.getNickNameFromView;
-        obj.ActiveMovieController =     obj.ActiveMovieController.setNickName(MyNewNickName);
+            MyNewNickName =                 obj.MovieTrackingFileController.getNickNameFromView;
+            obj.ActiveMovieController =     obj.ActiveMovieController.setNickName(MyNewNickName);
+            obj.MovieLibrary =              obj.MovieLibrary.changeNickNameOfSelectedMovie(MyNewNickName);
 
-        obj =               obj.updatesAfterChangingMovieController;
-
-         if length(obj.ActiveMovieController.getLoadedMovie.getLinkedMovieFileNames) == 1
-
-            obj =                   obj.renameLinkedFileNamesOfActiveMovie({obj.convertNickNameIntoFileName(MyNewNickName)});
-
-         end
+            obj =                           obj.updatesAfterChangingMovieController;
 
         end
 
-        function obj =  updatesAfterChangingMovieController(obj)
-            obj.MovieLibrary =                      obj.MovieLibrary.setNickName(obj.ActiveMovieController);
+        function obj =          updatesAfterChangingMovieController(obj)
+          
             obj.MovieLibrary =                      obj.MovieLibrary.updateMovieListWithMovieController(obj.ActiveMovieController);
             obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
-
             obj =                                   obj.callbackForFilterChange;
-
-            obj =                            obj.setInfoTextView;
-
-        end
-
-        function FileName = convertNickNameIntoFileName(obj, NickName)
-         FileName =        [NickName, obj.ActiveMovieController.getLoadedMovie.getMovieFileExtension];
-        end
-
-        function obj =  renameLinkedFileNamesOfActiveMovie(obj, NewFileNames) 
-            cellfun(@(x, y) PMFileManagement(obj.MovieLibrary.getMovieFolder).renameFile(x, y), obj.ActiveMovieController.getLoadedMovie.getLinkedMovieFileNames, NewFileNames) 
-            obj.ActiveMovieController =      obj.ActiveMovieController.setNamesOfMovieFiles(NewFileNames);
-            obj =                            obj.updatesAfterChangingMovieController;
+            obj =                                   obj.setInfoTextView;
 
         end
 
-        function obj =  changeKeywordClicked(obj,~,~)
-
-        if isempty(obj.MovieTrackingFileController.getKeywordFromView)
-        else 
-              obj.ActiveMovieController =   obj.ActiveMovieController.setKeywords(obj.MovieTrackingFileController.getKeywordFromView);
-              obj =                         obj.updatesAfterChangingMovieController;
-
-
-
+        function FileName =     convertNickNameIntoFileName(obj, NickName)
+            FileName =        [NickName, obj.ActiveMovieController.getLoadedMovie.getMovieFileExtension];
         end
+
+        function obj =          changeKeywordClicked(obj,~,~)
+
+            if isempty(obj.MovieTrackingFileController.getKeywordFromView)
+            else 
+                  obj.ActiveMovieController =   obj.ActiveMovieController.setKeywords(obj.MovieTrackingFileController.getKeywordFromView);
+                  obj =                         obj.updatesAfterChangingMovieController;
+
+
+
+            end
 
         end
         
-        function obj =  changeLinkedMoviesClicked(obj,~,~)
+        function obj =          changeLinkedMoviesClicked(obj,~,~)
                 obj.ActiveMovieController =      obj.ActiveMovieController.setNamesOfMovieFiles(obj.MovieLibrary.askUserToSelectMovieFileNames);
                 obj =                           obj.updatesAfterChangingMovieController;
          end
              
-        function obj =  reapplySourceFilesClicked(obj,~,~)
+        function obj =          reapplySourceFilesClicked(obj,~,~)
              if isempty(obj.ActiveMovieController)
              else
                  obj.ActiveMovieController =      obj.ActiveMovieController.resetLoadedMovieFromImageFiles;
              end
         end
         
-        function  obj = deleteImageCacheClicked(obj,~,~) 
+        function  obj =         deleteImageCacheClicked(obj,~,~) 
             if isempty(obj.ActiveMovieController) 
             else
                 obj.ActiveMovieController    =      obj.ActiveMovieController.emptyOutLoadedImageVolumes;
@@ -607,33 +921,28 @@ classdef PMMovieLibraryManager < handle
             end
         end
         
-        function obj =  exportMovie(obj,~,~)
+        function obj =          exportMovie(obj,~,~)
 
-            obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-            myMovieManager =                PMImagerViewerMovieManager(obj.ActiveMovieController);
-          
-            myMovieManager =                myMovieManager.showExportWindow;
-            waitfor(myMovieManager.getDoneHandle, 'Value')
-            myMovieManager.exportMovie;
+            obj = obj.exportMovieToFile;
             
         end
         
-        function obj =  exportImage(obj, ~, ~)
+        function obj =          exportImage(obj, ~, ~)
             obj.ActiveMovieController =     obj.ActiveMovieController.setExportFolder(obj.MovieLibrary.getExportFolder);
             obj.ActiveMovieController =     obj.ActiveMovieController.exportCurrentFrameAsImage;
             
         end
         
-        function obj =  exportTrackCoordinates(obj,~,~)
+        function obj =          exportTrackCoordinates(obj,~,~)
             obj.ActiveMovieController =     obj.ActiveMovieController.exportTrackCoordinates;
         end
         
-        function obj = exportDetailedMetaDataIntoFile(obj, ~, ~)
+        function obj =          exportDetailedMetaDataIntoFile(obj, ~, ~)
             obj.ActiveMovieController = obj.ActiveMovieController.saveMetaData(obj.MovieLibrary.getExportFolder); 
         end
         
-        function obj = showMetaDataSummary(obj, ~, ~)
-             obj.Viewer =               obj.Viewer.setInfoView(obj.ActiveMovieController.getMetaDataSummary);
+        function obj =          showMetaDataSummary(obj, ~, ~)
+             obj.Viewer =               obj.Viewer.setInfoView(obj.ActiveMovieController.getLoadedMovie.getMetaDataSummary);
          end
         
         
@@ -656,26 +965,17 @@ classdef PMMovieLibraryManager < handle
         
        function  obj = applyManualDriftCorrectionClicked(obj,~,~)
              obj.ActiveMovieController =          obj.ActiveMovieController.setDriftCorrection('byManualEntries');  
-            obj = obj.finishOffCurrentLibrary;
+            obj = obj.saveActiveMovieAndLibrary;
             obj =  updatesAfterChangingMovieController(obj);
             
         end
         
        function  obj = eraseAllDriftCorrectionsClicked(obj,~,~)
-             obj.ActiveMovieController =         obj.ActiveMovieController.setDriftCorrection('remove'); 
-         obj = obj.finishOffCurrentLibrary;
-         obj =  updatesAfterChangingMovieController(obj);
+            obj.ActiveMovieController =         obj.ActiveMovieController.setDriftCorrection('remove'); 
+            obj = obj.saveActiveMovieAndLibrary;
+            obj =  updatesAfterChangingMovieController(obj);
         end
-        
-        
-        
-      
-        
-       
-        
-        
-        
-        
+           
     end
        
     methods (Access = private) % tracking menu
@@ -782,83 +1082,20 @@ classdef PMMovieLibraryManager < handle
         
         
     end
-    
-    methods % setters project:
-       
-           function obj =          setImageAnalysisPath(obj, NewPath)
-                obj.MovieLibrary =              obj.MovieLibrary.setPathForImageAnalysis(NewPath);  
-                obj =                           obj.setInfoTextView;
 
-           end
+    methods (Access = private) % setters ACTIVEMOVIECONTROLLER
         
-            function obj = addMovieFolder(obj, Value)
-                obj.MovieLibrary =                  obj.MovieLibrary.addMovieFolder(Value);
-                obj =                           obj.finishOffCurrentLibrary;
-                try 
-                    obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-                catch
-                    error('Could not reset movie controller.')
-                end
-                obj =                           obj.setInfoTextView;
-            end
-        
-                function obj = setExportFolder(obj, UserSelectedFolder)
-                      obj.MovieLibrary =              obj.MovieLibrary.setExportFolder(UserSelectedFolder);
-                           % obj =                           obj.Viewer.getSelectedNicknames;
-                        %    obj.ActiveMovieController =     obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-                            obj =                           obj.setInfoTextView;
-            
-                end
-                
-                
-         function obj =          addNewMovie(obj, Nickname, AttachedFiles)
-             
-             if obj.MovieLibrary.checkWheterNickNameAlreadyExists(Nickname)
-                warning('Nickname already exists and could therefore not be added.')
-                 
-             else
-                   NewMovieTracking = PMMovieTracking(...
-                Nickname, ...
-                obj.MovieLibrary.getMovieFolder, ...
-                AttachedFiles, ...
-                obj.MovieLibrary.getPathForImageAnalysis, ...
-                'Initialize' ...
-                );
-
-                NewMovieController =                    PMMovieController(obj.Viewer, NewMovieTracking);
-                
-                obj.MovieLibrary =                      obj.MovieLibrary.updateMovieListWithMovieController(NewMovieController);
-                obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(Nickname);
-                obj.MovieLibrary =                      obj.MovieLibrary.sortByNickName;
-                
-                 
-                
-                obj.ActiveMovieController =             obj.MovieLibrary.getActiveMovieController(obj.Viewer);
-                
-                obj = obj.finishOffCurrentLibrary;
-
-                obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);  
-                obj.MovieTrackingFileController =       obj.MovieTrackingFileController.updateWith(obj.ActiveMovieController.getLoadedMovie);
-                obj =                                   obj.addCallbacksToInteractionManager;
-                obj.InteractionsManager =               obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-                obj =                                   obj.setInfoTextView;
-    
-                obj =                                   obj.callbackForFilterChange;
-                
-               
-                 
-             end
-              
-
-         end
-        
+        function obj = setEmpyActiveMovieController(obj)
+            obj.ActiveMovieController=      PMMovieController(obj.Viewer);  
+            obj.Viewer =                    obj.Viewer.updateWith(obj.MovieLibrary);
+        end
         
         
     end
     
     methods (Access = private)% callbacks for file and project:
        
-           function [obj] =        addCallbacksToFileAndProject(obj)
+            function obj =        addCallbacksToFileAndProject(obj)
 
                 obj.Viewer = obj.Viewer.setCallbacks( ...
                     @obj.keyPressed, ...
@@ -870,35 +1107,47 @@ classdef PMMovieLibraryManager < handle
                     @obj.setViews, ...
                     @obj.movieListClicked...
                     );
-            
-          end
+
+
+            end
+
+            function obj =          movieListClicked(obj, ~, ~)
+
+                switch obj.Viewer.getMousClickType
+                    case 'open'
+                        obj = obj.openSelectedMovie;
+                end 
+
+            end
+        
           
-        
-        
     end
     
-    methods (Access = private) % create new library
+    methods (Access = private) % SETTERS MOVIE-LIBRARY
         
-          function obj = finishOffCurrentLibrary(obj)
+          function obj = saveActiveMovieAndLibrary(obj)
               
-              if obj.ActiveMovieController.verifyActiveMovieStatus && obj.MovieLibrary.allPropertiesAreValid
-                obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.MovieLibrary);
-                obj.ActiveMovieController =     obj.ActiveMovieController.saveMovie;
+              try
+                  
+                  if obj.ActiveMovieController.verifyActiveMovieStatus 
+                        obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.MovieLibrary); % set current file paths by movie library;
+                        obj.ActiveMovieController =     obj.ActiveMovieController.saveMovie;
+                        obj.MovieLibrary =              obj.MovieLibrary.updateMovieListWithMovieController(obj.ActiveMovieController);
 
-                obj.MovieLibrary =              obj.MovieLibrary.updateMovieListWithMovieController(obj.ActiveMovieController);
-                obj.MovieLibrary =              obj.MovieLibrary.saveMovieLibraryToFile;
-                
+                  end
+                  
+              catch
+                 warning('Library could not be saved for unknown reason.') 
+                 
               end
               
+              obj.MovieLibrary =              obj.MovieLibrary.saveMovieLibraryToFile;
+              
           end
-
-            
-          
 
           function obj = changeToNewLibraryWithFileName(obj, FileName)
                
-                obj =                   obj.finishOffCurrentLibrary;
-              
+             
                 [a, ~, ~] = fileparts(FileName);
                 obj.MovieLibrary =              PMMovieLibrary(...
                                         FileName, ...
@@ -907,36 +1156,61 @@ classdef PMMovieLibraryManager < handle
                                         a...
                                         );
                                                 
-                      obj =                  obj.resetAfterLibraryChange;
+                      obj =                       obj.saveActiveMovieAndLibrary;
+                obj =                       obj.setEmpyActiveMovieController;                
+                obj.savePreviousSettings; 
+                obj =                       obj.updateFilterView;
                       
                       
              
        
           end
           
-           function obj = letUserAddNewMovie(obj)
+          function obj = letUserAddNewMovie(obj)
                  ListWithMovieFileNames =    obj.MovieLibrary.askUserToSelectMovieFileNames;
                  NickName =                  obj.MovieLibrary.askUserToEnterUniqueNickName;
                  obj =                       obj.addNewMovie(NickName, ListWithMovieFileNames);
              
          end
          
-          
-         
-           function obj = setEmpyActiveMovieController(obj)
-                obj.ActiveMovieController=      PMMovieController(obj.Viewer);  
-                obj.Viewer.getMovieControllerView.blackOutMovieView;
-                obj.Viewer =    obj.Viewer.updateWith(obj.MovieLibrary);
-           end
-
-           
+    end
+    
+    methods (Access = private) % GETTERS MOVIE-LIBRARY
         
+           function Library = getMovieLibraryForInput(obj, varargin)
+            
+            NumberOfArguments = length(varargin);
+            switch NumberOfArguments
+                case 0
+                    PreviouslyUsedFileName = obj.getPreviouslyUsedFileName;
+                    if isempty(PreviouslyUsedFileName)
+                        Library =   PMMovieLibrary();
+                    else
+                        Library =   PMMovieLibrary(PreviouslyUsedFileName);
+                    end
+                    
+                case 1
+                    Type = class(varargin{1});
+                    switch Type
+                        case 'char'
+                            Library = PMMovieLibrary(varargin{1});
+                        case 'PMMovieLibrary'
+                            Library = varargin{1};
+                        otherwise
+                            error('Wrong input.')
+                    end
+                    
+                otherwise
+                    error('Wrong number of arguments.')
+
+            end
+            
+           end
         
     end
     
     methods (Access = private)
         
-           %% changeNameOfLinkeMoviesClicked
          function obj =           changeNameOfLinkeMoviesClicked(obj,~,~)
              if isempty(obj.ActiveMovieController.getLoadedMovie)
                  warning('Currently no movie loaded. Cannot complete request.')
@@ -949,9 +1223,25 @@ classdef PMMovieLibraryManager < handle
          end
          
          function [obj] =           renameFiles(obj,~,~)
-                obj.FileManagerViewer =     obj.FileManagerViewer.resetSelectedFiles;
-                NewFileNames =           obj.FileManagerViewer.getFileNames;
-                obj =                    obj.renameLinkedFileNamesOfActiveMovie(NewFileNames);
+             
+            obj.FileManagerViewer =     obj.FileManagerViewer.resetSelectedFiles;
+            NewFileNames =              obj.FileManagerViewer.getFileNames;
+            OldFileNames =              obj.ActiveMovieController.getLoadedMovie.getLinkedMovieFileNames;
+
+            cellfun(@(x, y) PMFileManagement(obj.MovieLibrary.getMovieFolder).renameFile(x, y), OldFileNames, NewFileNames);
+            obj.ActiveMovieController =      obj.ActiveMovieController.setNamesOfMovieFiles(NewFileNames);
+
+            
+            for index = 1 : length(OldFileNames)
+                 obj.MovieLibrary =     obj.MovieLibrary.changeMovieFileNamesFromTo(OldFileNames{index}, NewFileNames{index});
+            end
+            
+            
+           obj =                  obj.updatesAfterChangingMovieController;
+            
+           
+            
+            
          end
    
              
@@ -970,9 +1260,12 @@ classdef PMMovieLibraryManager < handle
                 if isempty(Path)
                 else
                     
-                      obj =                   obj.finishOffCurrentLibrary;
+                      obj =                   obj.saveActiveMovieAndLibrary;
                     obj.MovieLibrary =      PMMovieLibrary(Path);
-                    obj =                  obj.resetAfterLibraryChange;
+                    obj =                       obj.saveActiveMovieAndLibrary;
+                obj =                       obj.setEmpyActiveMovieController;                
+                obj.savePreviousSettings; 
+                obj =                       obj.updateFilterView;
                 end
             end
 
@@ -985,25 +1278,7 @@ classdef PMMovieLibraryManager < handle
                  end
             end
 
-            function [obj] =             resetAfterLibraryChange(obj)
-
-                obj.MovieLibrary =      obj.MovieLibrary.testIntactnessOfLibrary;
-                
-                obj =                   obj.finishOffCurrentLibrary;
-                
-                obj =                   obj.setEmpyActiveMovieController;                
-                obj.Viewer.getMovieControllerView.blackOutMovieView;
-
-                obj.savePreviousSettings; 
-
-                obj.MovieLibrary =          obj.MovieLibrary.updateFilterSettingsFromPopupMenu(...
-                            obj.Viewer.getProjectViews.FilterForKeywords,  ...
-                            obj.Viewer.getProjectViews.RealFilterForKeywords);
-
-                obj.Viewer =                obj.Viewer.updateWith(obj.MovieLibrary);
-                
-                
-            end
+         
 
             function savePreviousSettings(obj)
                 fprintf('PMMovieLibraryManager:@savePreviousSettings. During next start program will try to open file "%s".\n',  obj.MovieLibrary.getFileName)
@@ -1048,16 +1323,20 @@ classdef PMMovieLibraryManager < handle
          
     
         function obj =        callbackForFilterChange(obj, ~, ~) 
-            
-            obj.Viewer =                obj.Viewer.updateWith(obj.MovieLibrary);
+                obj = obj.updateFilterView;
+        end
+        
+        function obj = updateFilterView(obj)
             
             obj.MovieLibrary =          obj.MovieLibrary.updateFilterSettingsFromPopupMenu(...
                                         obj.Viewer.getProjectViews.FilterForKeywords,  ...
                                         obj.Viewer.getProjectViews.RealFilterForKeywords);
+            
                                     
             obj.Viewer =                obj.Viewer.updateWith(obj.MovieLibrary);
-            
         end
+        
+        
       
     
         
@@ -1136,8 +1415,6 @@ classdef PMMovieLibraryManager < handle
                                              '-----------------------------------'; ...
                                              '"e": remove pixel rim from current mask'; ...
                                              '-----------------------------------'; ...
-                                             '"f": autodetect masks of current frame (*)'; ...
-                                             '"shift-f": autodetect masks by circle recognition'; ...
                                              '"shift-command-f": set active track to finished and go to next unfinished track'; ...
                                              '-----------------------------------'; ...
                                              '"g": toggle forward gaps'; ...
@@ -1185,176 +1462,28 @@ classdef PMMovieLibraryManager < handle
         
     end
     
-    methods  % batchProcessingOfNickNames
-        
-          function obj =        batchProcessingOfNickNames(obj, NickNames, ActionType, varargin)
-            
-            originalNickName =        obj.MovieLibrary.getSelectedNickname;  
-            OriginalController =        obj.ActiveMovieController;
-              
-            obj =                           obj.finishOffCurrentLibrary;
-            
-            for CurrentMovieIndex = 1 : size(NickNames,1)
-                
-                obj =        obj.setActiveMovieByNickName( NickNames{CurrentMovieIndex});
-                switch ActionType                    
-                    case 'MapImages'
-                         obj.ActiveMovieController =       obj.ActiveMovieController.resetLoadedMovieFromImageFiles;
-                         
-      
-                    case 'SetChannelsByActiveMovie'
-                        obj.ActiveMovieController =         obj.ActiveMovieController.setChannels(OriginalController.getLoadedMovie);
-                        
-                    case 'createDerivativeFiles'
-                        obj.ActiveMovieController =         obj.ActiveMovieController.createDerivativeFiles;
-                        obj =                               obj.saveInteractionsMapForActiveMovie;
-                        
-                    case 'saveInteractionMap'
-                         obj =                               obj.saveInteractionsMapForActiveMovie;
-                         
-                    case 'changeKeywords'
-                       obj.ActiveMovieController =         obj.ActiveMovieController.setKeywords(varargin{1});
-                         
-                    otherwise
-                        error('Batch analysis not specified.')
-                 
-                end
-                
-                obj =                           obj.finishOffCurrentLibrary;
-                obj.ActiveMovieController.getViews.updateSaveStatusWith(obj.ActiveMovieController.getLoadedMovie);
-                obj =                           obj.setInfoTextView;
-                obj=                            obj.callbackForFilterChange;
-            end
-            
-            obj =         obj.setActiveMovieByNickName(originalNickName);
-            
-          end
-        
-         
-          
-        
-        
-    end
-    
-    methods % interaction
-        
-        function obj = saveInteractionsMapsForAllShownMovies(obj)
-            SelectedNicknames =     obj.Viewer.getSelectedNicknames;
-             [obj] =        obj.batchProcessingOfNickNames(SelectedNicknames, 'saveInteractionMap');
-
-            
-        end
-        
-        
-         function obj = saveInteractionsMapForActiveMovie(obj, varargin) 
-             
-             switch length(varargin)
-                 case 0
-                     
-                 case 2
-                     
-                        obj.XYLimitForNeighborArea = varargin{1};
-                        obj.ZLimitsForNeighborArea =  varargin{2};
-
-        
-                 otherwise
-                     error('Wrong input.')
-    
-             end
-             
-            obj =                          obj.initializeInteractionManager;
-            obj.InteractionsManager =       obj.InteractionsManager.setExportFolder(obj.MovieLibrary.getInteractionFolder); % specify folder if you want to export detailed interaction measurement specifications
-            InteractionObject =             obj.InteractionsManager.getInteractionsMap;
-            save(obj.getFileNameWithInteractionAnalysis, 'InteractionObject');
-
-         end
-            
-         function fileName = getFileNameWithInteractionAnalysis(obj)
-              Nickname =                      obj.ActiveMovieController.getNickName;
-                fileName =                          [obj.MovieLibrary.getInteractionFolder , Nickname, '_Map.mat'];
-             
-         end
-            
-       
-        function obj = exportDetailedInteractionInfoOfActiveTrack(obj, varargin)
-            
-             switch length(varargin)
-                 case 0
-                     
-                 case 2
-                     
-                      obj.XYLimitForNeighborArea = varargin{1};
-                            obj.ZLimitsForNeighborArea =  varargin{2};
-        
-        
-                 otherwise
-                     error('Wrong input.')
-                      
-        
-                 
-             end
-             
-            obj =                           obj.initializeInteractionManager;
-            obj.InteractionsManager =       obj.InteractionsManager.setExportFolder(obj.MovieLibrary.getInteractionFolder);
-            obj.InteractionsManager =       obj.InteractionsManager.exportDetailedInteractionInfoForTrackIDs(obj.ActiveMovieController.getLoadedMovie.getIdOfActiveTrack);
-        end
-        
-        function obj = showTrackSummaryOfActiveMovie(obj)
-            
-            fprintf('\n*** Summary of tracking data of active movie:\n')
-            mySuite = obj.getTrackingSuiteOfActiveMovie;
-          
-            fprintf('\n2) Summary of active track:\n')
-            mySuite = mySuite.showSummaryOfTrackID(obj.ActiveMovieController.getLoadedMovie.getIdOfActiveTrack);
-
-            fprintf('\n3) Summary of tracks, segments, etc. by distance to target:\n')
-            for index = 1 : length(obj.DistanceLimits)
-              mySuite = mySuite.showTrackSummaryForDistanceRange(obj.DistanceLimits{index}, obj.DistanceType);
-
-            end
-
-        end
-        
-        function mySuite = getTrackingSuiteOfActiveMovie(obj)
-            
-               % initialize tracking-suite:
-            mySuite = PMTrackingSuite( obj.MovieLibrary.getFileName, 'CurrentMovieInManager', {obj.ActiveMovieController.getNickName}, {obj.getFileNameWithInteractionAnalysis});
-            mySuite = mySuite.setSpaceTimeLimitsOfSuites(obj.StopDistanceLimit, obj.MinStopDurationForStopInterval, obj.MaxStopDurationForGoSegment);
-            fprintf('\n1) Summary of tracking suite:\n')
-             mySuite.showSummary;
-            
-        end
-        
-        
-    end
-    
     methods (Access = private) % interaction
 
         function obj = showInteractionsViewer(obj, ~, ~)
-
-          obj = obj.initializeInteractionView;
-
+            obj.InteractionsManager =    obj.InteractionsManager.showView;
+            obj =                       obj.addCallbacksToInteractionManager;
         end
 
-        function obj = initializeInteractionView(obj)
-            obj.InteractionsManager = obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-
-           obj.InteractionsManager = obj.InteractionsManager.showView;
-            obj =                     obj.addCallbacksToInteractionManager;
-
-        end
+        
 
         function obj =  addCallbacksToInteractionManager(obj)
-            obj.InteractionsManager =               obj.InteractionsManager.setCallbacks(@obj.interactionsManagerAction, @obj.updateInteractionSettings);    
+            obj.InteractionsManager =               obj.InteractionsManager.setCallbacks(...
+                                                                                            @obj.interactionsManagerAction, ...
+                                                                                            @obj.updateInteractionSettings...
+                                                                                            );    
         end
 
         function obj = interactionsManagerAction(obj, ~, ~)
 
-
             switch obj.InteractionsManager.getUserSelection
 
                 case 'Write raw analysis to file'
-                     obj = obj.initializeInteractionManager;
+                   
                     InteractionObject =             obj.InteractionsManager.getInteractionTrackingObject;
                     Nickname =                      obj.ActiveMovieController.getNickName;
                     Path =                          [obj.MovieLibrary.getInteractionFolder , Nickname, '.mat'];
@@ -1371,28 +1500,10 @@ classdef PMMovieLibraryManager < handle
 
         end
 
-        function obj = initializeInteractionManager(obj)
-
-            if ~obj.InteractionsManager.testViewsAreSetup
-                obj = obj.initializeInteractionView;    
-            end
-
-            obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
-            obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
-            obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-
-            obj.InteractionsManager =       obj.InteractionsManager.setXYLimitForNeighborArea(obj.XYLimitForNeighborArea);
-            obj.InteractionsManager =       obj.InteractionsManager.setZLimitForNeighborArea(obj.ZLimitsForNeighborArea);
-        end
 
         function obj = updateInteractionSettings(obj, ~, ~)
-
             obj.InteractionsManager =       obj.InteractionsManager.updateModelByView;
             obj.ActiveMovieController =     obj.ActiveMovieController.updateWith(obj.InteractionsManager);
-            obj.InteractionsManager =       obj.InteractionsManager.setMovieController(obj.ActiveMovieController);
-
-            Volume =                        obj.InteractionsManager.getImageVolume;
-            obj.ActiveMovieController =     obj.ActiveMovieController.setInteractionImageVolume(Volume);
 
         end
  
