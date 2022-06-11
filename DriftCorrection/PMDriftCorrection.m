@@ -1,5 +1,5 @@
 classdef PMDriftCorrection
-    %PMDRIFTCORRECTION Summary of this class goes here
+    %PMDRIFTCORRECTION For managing drift of captured movie-sequences;
     %   Detailed explanation goes here
     
     properties
@@ -8,10 +8,12 @@ classdef PMDriftCorrection
     
     properties (Access = private)
         
-        ListWithBestAlignmentPositions = cell(0,9);
+        Navigation
+        
+        
         ManualDriftCorrectionValues =               zeros(0,4);
         
-        Navigation
+        
         
         % this is a list of points clicked by the user: it is possible to build a drift correction from this;
         ManualDriftCorrectionColumnTitles =         {'Frame#','X-cooordinate (pixel)', 'Y-cooordinate (pixel)' 'Z-cooordinate (pixel)'};
@@ -22,6 +24,8 @@ classdef PMDriftCorrection
         % these values are used to actually correct for drift artifacts;
         ListWithBestAlignmentPositionsLabel =       {'Frame # (comparison)', 'Row of reference image', 'Row of comparison image', 'Column of reference image', ...
             'Column of comparison image', 'Plane of reference image', 'Plane of comparison image', 'RHO',  'Frame # (reference)'};
+        
+        ListWithBestAlignmentPositions = cell(0,9);
         
         DriftCorrectionIsOn = false
         
@@ -101,21 +105,21 @@ classdef PMDriftCorrection
 
         end
 
-        function [obj] =    updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
+        function obj =    updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
 
-         ListWithFrames = frame(:);
+             ListWithFrames = frame(:);
 
-         for frame = ListWithFrames'
-            obj.ManualDriftCorrectionValues(frame,2) = xEnd;
-            obj.ManualDriftCorrectionValues(frame,3) = yEnd;
-            obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
-         end
+             for frame = ListWithFrames'
+                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
+                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
+                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
+             end
 
         end
 
         function obj =      setByManualDriftCorrection(obj)
             obj =        obj.updateManualDriftCorrection;
-            obj =       obj.createDetailedDriftAnalysisFromManualAnalysis; 
+            obj =        obj.createDetailedDriftAnalysisFromManualAnalysis; 
         end
 
         function obj =      eraseDriftCorrection(obj)

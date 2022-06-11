@@ -193,6 +193,14 @@ classdef PMInteractionsCapture
      methods % SETTERS simple
          
         function obj = set(obj, varargin)
+            %SET sets thresholds and limits;
+            % takes 6 arguments:
+            % 1: image-volume thresholds
+            % 2: source frames
+            % 3: minimum target sizes
+            % 4: target channel numbers
+            % 5: maximum distance to target
+            % 6: show thresholded image
             
                 NumberOfArguments = length(varargin);
 
@@ -401,28 +409,7 @@ classdef PMInteractionsCapture
 
     
     
-    
-      methods (Access = private) % GETTERS:
-         
-        function  FluVolumeOfCurrentFrame =     getImageVolumeOfTarget(obj)
-            activeVolume =                  obj.MyMovieTracking.getActiveImageVolume; 
-            FluVolumeOfCurrentFrame =       obj.MyMovieTracking.filterImageVolumeForChannel(activeVolume, obj.ChannelNumbersForTarget);
-        end
 
-        function myFluShape_Pixels =            getPixelFluShape(obj)
-            myFluShape_Pixels =    PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
-        end
-        
-        function fluObj_Final =                 getImageVolumeObjectOfTarget(obj)
-          % make sure that the filter type is specified correctly:
-          % this will influence how exactly the 
-            fluObj=                         PM5DImageVolume(obj.getImageVolumeOfTarget);
-            fluObj_thresholded =            fluObj.threshold(obj.ThresholdsForImageVolumes);
-            fluObj_Final =                  fluObj_thresholded.removeSmallObjects(obj.MinimumSizesOfTarget);
-        end
-        
-          
-      end
 
     methods (Access = private) % EXPORT
         
@@ -454,25 +441,45 @@ classdef PMInteractionsCapture
 
     end
 
-    methods (Access = private) % create PMInteractions object from object properties;
+    methods (Access = private) % GETTERS: DRIFT-CORRECTION:
 
         function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
-             MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
+            MyDriftCorrection =                 obj.getPixelDriftCorrection;
             MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.MyMovieTracking.getSpaceCalibration);
-
+        end
+        
+        function MyDriftCorrection = getPixelDriftCorrection(obj)
+            MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
         end
 
 
     end
 
-    methods (Access = private) % shapes of "targets"
+    methods (Access = private) % GETTERS TARGET SHAPES:
 
-        function myFluShape_Metric = getMetricFluShape(obj)
+        function myFluShape_Metric =            getMetricFluShape(obj)
             myFluShape_Pixels =       obj.getPixelFluShape;
             myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
+        
+        function myFluShape_Pixels =            getPixelFluShape(obj)
+            myFluShape_Pixels =                 PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
+       end
+        
+        function fluObj_Final =                 getImageVolumeObjectOfTarget(obj)
+            % make sure that the filter type is specified correctly:
+            % this will influence how exactly the 
+            fluObj=                         PM5DImageVolume(obj.getImageVolumeOfTarget);
+            fluObj_thresholded =            fluObj.threshold(obj.ThresholdsForImageVolumes);
+            fluObj_Final =                  fluObj_thresholded.removeSmallObjects(obj.MinimumSizesOfTarget);
+        end
 
-        function obj = setChannelSettingsInMovieTracking(obj)
+        function  FluVolumeOfCurrentFrame =     getImageVolumeOfTarget(obj)
+            activeVolume =                  obj.MyMovieTracking.getActiveImageVolume; 
+            FluVolumeOfCurrentFrame =       obj.MyMovieTracking.filterImageVolumeForChannel(activeVolume, obj.ChannelNumbersForTarget);
+        end
+        
+        function obj =                          setChannelSettingsInMovieTracking(obj)
                 assert(~isempty(obj.MyMovieTracking), 'Need to set movie-controller before proceeding.')
                 obj.MyMovieTracking =                 obj.MyMovieTracking.setActiveChannel(obj.ChannelNumbersForTarget);
                 obj.MyMovieTracking =                 obj.MyMovieTracking.setReconstructionType(obj.FilterTypeForTargetChannel);
@@ -516,15 +523,6 @@ classdef PMInteractionsCapture
             values{6} = obj.ShowThresholdedImage;
 
         end
-
-
-
-
-
-        
-
-
-
 
     end
 

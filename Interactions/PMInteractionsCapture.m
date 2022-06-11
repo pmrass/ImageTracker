@@ -380,8 +380,8 @@ classdef PMInteractionsCapture
                  
                
                 myInteractions =                    PMInteractions(...
-                                                        obj.getMetricFluShape, ...
-                                                        obj.getPixelFluShape,...
+                                                        obj.getMetricTargetShape, ...
+                                                        obj.getPixelTargetShape,...
                                                         MyTrackingAnalysis_Metric, ...
                                                         MyTrackingAnalysis_Pixel, ...
                                                         obj.getMetricDriftCorrection, ...
@@ -444,9 +444,12 @@ classdef PMInteractionsCapture
     methods (Access = private) % GETTERS: DRIFT-CORRECTION:
 
         function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
-             MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
+            MyDriftCorrection =                 obj.getPixelDriftCorrection;
             MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.MyMovieTracking.getSpaceCalibration);
-
+        end
+        
+        function MyDriftCorrection = getPixelDriftCorrection(obj)
+            MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
         end
 
 
@@ -454,13 +457,13 @@ classdef PMInteractionsCapture
 
     methods (Access = private) % GETTERS TARGET SHAPES:
 
-        function myFluShape_Metric =            getMetricFluShape(obj)
-            myFluShape_Pixels =       obj.getPixelFluShape;
+        function myFluShape_Metric =            getMetricTargetShape(obj)
+            myFluShape_Pixels =       obj.getPixelTargetShape;
             myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
-        function myFluShape_Pixels =            getPixelFluShape(obj)
-            myFluShape_Pixels =         PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
+        function myFluShape_Pixels =            getPixelTargetShape(obj)
+            myFluShape_Pixels =                 PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
        end
         
         function fluObj_Final =                 getImageVolumeObjectOfTarget(obj)
