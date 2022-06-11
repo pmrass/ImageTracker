@@ -2,6 +2,7 @@ classdef PMInteractionsManager
     %PMINTERACTIONSMANAGER glue between view to control interaction-measurement PMInteractionsView and object that can do the actual processing PMInteractionsCapture;
     %  allows creation of "InteractionsMap";
     % this can be stored in a file and used by PMTrackingSuite to offer filtering tracks by distance to target locations;
+    % PMInteractionsCapture has submodels PMInteractions, which, in turn, has PMInteraction;
     
     properties (Access = private)
         Model 
@@ -14,35 +15,41 @@ classdef PMInteractionsManager
     
     methods % initialization
         
-           function obj = PMInteractionsManager(varargin)
-            %PMINTERACTIONSMANAGER Construct an instance of this class
-            %   takes 0 arguments
-            NumberOfArguments = length(varargin);
-            switch NumberOfArguments
-                case 0
-                    obj.View = PMInteractionsView;
-                case 1
-                    
-                    obj.View = varargin{1};
-                    
-                otherwise
-                    error('Wrong input.')
-            end
+        function obj =      PMInteractionsManager(varargin)
+                %PMINTERACTIONSMANAGER Construct an instance of this class
+                % takes 0, 1, or 2 arguments
+                % 1: PMInteractionsView
+                % 2: PMInteractionsCapture
+                NumberOfArguments = length(varargin);
+                switch NumberOfArguments
+                    case 0
+                        obj.View =          PMInteractionsView;
+                        obj.Model =         PMInteractionsCapture;
+
+                    case 1
+                        obj.View = varargin{1};
+                        obj.Model = PMInteractionsCapture;
+                        
+                    case 2
+                        obj.View = varargin{1};
+                        obj.Model = varargin{2};
+                        
+
+                    otherwise
+                        error('Wrong input.')
+                end
+
+          end
+        
+        function obj =      set.Model(obj, Value)
+            assert(isscalar(Value) && isa(Value, 'PMInteractionsCapture'), 'Wrong input.')
+            obj.Model =         Value;
             
-            
-  
         end
         
-        function obj = set.Model(obj, Value)
-            assert(isa(Value, 'PMInteractionsCapture'), 'Wrong input.')
-            obj.Model = Value;
-            
-        end
-        
-        function obj = set.View(obj, Value)
-            assert(isa(Value, 'PMInteractionsView'), 'Wrong input.')
-            obj.View = Value;
-            
+        function obj =      set.View(obj, Value)
+            assert(isscalar(Value) && isa(Value, 'PMInteractionsView'), 'Wrong input.')
+            obj.View =          Value;
         end
         
         
@@ -51,7 +58,7 @@ classdef PMInteractionsManager
     methods % summary
         
         function obj = showSummary(obj)
-            obj.Model = obj.Model.showSummary;
+            obj.Model =         obj.Model.showSummary;
             
         end
         
@@ -60,34 +67,35 @@ classdef PMInteractionsManager
     
     methods % SETTERS
         
-        function obj = resetModelByMovieController(obj, MovieController)
+        function obj =      resetModelByMovieTracking(obj, MovieTracking)
             % SETMOVIECONTROLLER sets PMMovieController used by PMInteractionsCapture model;
             % takes 1 argument:
             % 1: PMMovieController
-           
+            % also updates views;
             
-           switch class(MovieController.getLoadedMovie.getInteractions)
+           switch class(MovieTracking.getInteractionsCapture)
                    case 'PMInteractionsCapture'
-                        obj.Model = MovieController.getLoadedMovie.getInteractions; 
+                        obj.Model = MovieTracking.getInteractionsCapture; 
                    otherwise
                        error('Movie tracking input did not have PMInteractionsCapture')
             end
 
            if isempty(obj.Model.getThresholdsForImageVolumes)
-                obj.Model = obj.Model.setThresholdsForImageVolumeOfTarget(MovieController.getDefaultThresholdsForAllPlanes);
+                obj.Model = obj.Model.setThresholdsForImageVolumeOfTarget(MovieTracking.getDefaultThresholdsForAllPlanes);
            end
            
+            obj.Model =     obj.Model.setMovieTracking(MovieTracking);
             
-            obj.Model =     obj.Model.setMovieController(MovieController);
             obj =           obj.updateView;
            
         end
         
-          function obj = setExportFolder(obj, Value)
+        function obj =      setExportFolder(obj, Value)
                 obj.Model = obj.Model.setExportFolder(Value); 
           end
         
-        function obj = updateModelByView(obj)
+        function obj =      updateModelByView(obj)
+
              obj.Model =    obj.Model.set(...
                  obj.View.getPlaneThresholds, ...
                  obj.View.getReferenceTimeFrame, ...
@@ -96,14 +104,15 @@ classdef PMInteractionsManager
                  obj.View.getMaximumDistanceToTarget, ...
                  obj.View.getShowThresholdedImage ...
                  );
+
         end
         
-        
-        function obj = setWith(obj, Value)
+        function obj =      setWith(obj, Value)
+
             Type = class(Value);
             switch Type                                      
                 case 'PMMovieTracking'
-                   obj.Model =       Value.getInteractions;
+                   obj.Model =       Value.getInteractionsCapture;
                    
                 otherwise
                     error('Type not supported')
@@ -113,7 +122,13 @@ classdef PMInteractionsManager
             
         end
         
-        function obj = setCallbacks(obj, varargin)
+       
+    end
+    
+    methods % SETTERS: VIEW
+       
+        function obj =      setCallbacks(obj, varargin)
+        
             if isempty(obj.View ) || isempty(obj.View.getMainFigure) || ~isvalid(obj.View.getMainFigure)
                 warning('Views not available. No callbacks set.')
             else
@@ -121,62 +136,30 @@ classdef PMInteractionsManager
                 obj.View = obj.View.setCallbacks(varargin{1}, varargin{2});
             end
             
-            
         end
 
-        
-     
-        
-        function obj = setXYLimitForNeighborArea(obj, Value)
-            obj.Model = obj.Model.setXYLimitForNeighborArea(Value);
-        end
-        
-         function obj = setZLimitForNeighborArea(obj, Value)
-            obj.Model = obj.Model.setZLimitForNeighborArea(Value);
-        end
-         
-         
-        
-        function obj = updateView(obj)
+        function obj =      updateView(obj)
             if ~isempty(obj.View.getMainFigure) && isvalid(obj.View.getMainFigure)
-                obj.View = obj.View.setMovieDependentParameters(obj.Model.getMovie);
                 obj.View = obj.View.setWith(obj.Model);
             end
         end
         
-        %% showView
-        function obj = showView(obj)
+        function obj =      showView(obj)
             obj.View =      obj.View.makeVisibible;
             obj =           obj.updateView;
         end
         
-        
-        
     end
     
     
-    methods % getters
+    methods % GETTERS: MODEL
         
-        function ok = testViewsAreSetup(obj)
-            ok = obj.View.testViewsAreSetup;
-            
-        end
-        
-      
-     
-        function view = getView(obj)
-            view = obj.View;
-            
-        end
-        
-        function value = getModel(obj)
+        function value =                    getModel(obj)
             value = obj.Model;
             
         end
         
-        
-        %% getImageVolume:
-        function volume = getImageVolume(obj) 
+        function volume =                   getImageVolume(obj) 
            volume = obj.Model.getImageVolume; 
          
            if obj.getVisibilityOfTargetImage
@@ -186,74 +169,95 @@ classdef PMInteractionsManager
            end
            
         end
-        
-        function value = getVisibilityOfTargetImage(obj)
-           value =  obj.View.getShowThresholdedImage;
-        end
-        
-        %% accessors:
-        function Value = getThresholdsForImageVolumes(obj)
-            Value = obj.Model.getThresholdsForImageVolumes;
-        end
-
-        function Value = getSourceFramesForImageVolumes(obj)
-            Value = obj.Model.getSourceFramesForImageVolumes;
-        end
-
-        function Value = getMinimumSizesOfTarget(obj)
-            Value = obj.Model.getMinimumSizesOfTarget;
-        end
-
-        function Value = getChannelNumbersForTarget(obj)
-            Value = obj.Model.getChannelNumbersForTarget;
-        end
-
-        function Value = getMaximumDistanceToTarget(obj)
-            Value = obj.Model.getMaximumDistanceToTarget;
-        end
-
-         function Value = getShowThresholdedImage(obj)
-            Value = obj.Model.getShowThresholdedImage;
-        end
-
-        function Value = getUserSelection(obj)
-            Value = obj.View.getUserSelection;
-        end
-       
-        %% user converts image data into coordinate lists of searchers and targets;
-        function InteractionTracking = getInteractionTrackingObject(obj)
+         
+        function InteractionTracking =      getInteractionTrackingObject(obj)
             InteractionTracking =       obj.Model.getInteractionsObject;
             InteractionTracking =       InteractionTracking.minimizeSize;
 
         end
         
-      
+    end
+    
+    methods % GETTERS: VIEW:
+       
+        function ok = testViewsAreSetup(obj)
+            ok = obj.View.testViewsAreSetup;
+            
+        end
         
+        function view = getView(obj)
+            view = obj.View;
+            
+        end
         
-  
+        function Value =        getUserSelection(obj)
+            Value = obj.View.getUserSelection;
+        end
+        
     end
     
     methods % interaction measurement action
        
-        function Map = getInteractionsMap(obj)
+        function Map =          getInteractionsMap(obj)
             Map =       obj.Model.getInteractionsMap;
             
         end
         
-        function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs)
-            obj.Model = obj.Model.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
+        function obj =          exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
+            obj.Model = obj.Model.exportDetailedInteractionInfoForTrackIDs(TrackIDs, varargin{:});
             
         end
         
         
     end
     
-    methods (Access = private)
+    methods (Access = private) % GETTERS: NECESSARY?
+       
+        function value =        getVisibilityOfTargetImage(obj)
+           value =  obj.View.getShowThresholdedImage;
+        end
         
-      
+        function Value =        getThresholdsForImageVolumes(obj)
+            Value = obj.Model.getThresholdsForImageVolumes;
+        end
+
+        function Value =        getSourceFramesForImageVolumes(obj)
+            Value = obj.Model.getSourceFramesForImageVolumes;
+        end
+
+        function Value =        getMinimumSizesOfTarget(obj)
+            Value = obj.Model.getMinimumSizesOfTarget;
+        end
+
+        function Value =        getChannelNumbersForTarget(obj)
+            Value = obj.Model.getChannelNumbersForTarget;
+        end
+
+        function Value =        getMaximumDistanceToTarget(obj)
+            Value = obj.Model.getMaximumDistanceToTarget;
+        end
+
+        function Value =        getShowThresholdedImage(obj)
+            Value = obj.Model.getShowThresholdedImage;
+        end
+        
+    end
+    
+    methods (Access = private) % SETTERS: NECESSARY?
+        
+        function obj =      setXYLimitForNeighborArea(obj, Value)
+            obj.Model = obj.Model.setXYLimitForNeighborArea(Value);
+        end
+        
+        function obj =     setZLimitForNeighborArea(obj, Value)
+            obj.Model = obj.Model.setZLimitForNeighborArea(Value);
+        end
+            
         
         
     end
+    
+
     
     
 end

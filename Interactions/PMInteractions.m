@@ -128,16 +128,16 @@ classdef PMInteractions
     
     methods % setters
         
-        function obj = setExportFolder(obj, Value)
+        function obj =      setExportFolder(obj, Value)
            obj.ExportFolder = Value; 
         end
         
-         function obj = setMovieName(obj, Value)
+        function obj =      setMovieName(obj, Value)
              obj.MovieName = Value; 
         end
         
-        
     end
+    
     methods % summary:
         
         function text = getSummary(obj)
@@ -148,7 +148,7 @@ classdef PMInteractions
         
     end
     
-    methods % GETTERS MAIN
+    methods % ACTION
         
         function InteractionMapForAllTracks = getInteractionsMap(obj)
             %GETINTERACTIONSMAP main function of PMInteractions class
@@ -176,7 +176,12 @@ classdef PMInteractions
              
              
         end
-        
+      
+    end
+    
+    methods % EXPORT
+       
+          
         function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs)
             % EXPORTDETAILEDINTERACTIONINFOFORTRACKIDS exports images into file that show precisely how distances are measured;
             % does not create "actual numerical data" used for quantitative figures, this is done by "getInteractionMapFromAllFrames";
@@ -191,7 +196,7 @@ classdef PMInteractions
 
             for index = 1 : length(TrackIDs)
                 
-                obj.CurrentTrackIndex =         obj.MyTrackingAnalysis_Metric.getIndexInTrackCellForID(TrackIDs(index));
+                 obj.CurrentTrackIndex =         obj.MyTrackingAnalysis_Metric.getIndexInTrackCellForID(TrackIDs(index));
                  for FrameIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(obj.CurrentTrackIndex) 
                         obj.CurrentFrameIndex =         FrameIndex;
                          [~, InteractionObject] =       obj.getActiveInteractionMap;
@@ -203,10 +208,11 @@ classdef PMInteractions
 
         end
         
+        
     end
     
     
-    methods % GETTERS interaction map
+    methods (Access = private) % GETTERS interaction map
        
         function [InteractionMap_CurrentTrack] =                getInteractionMapFromAllFrames(obj)
             % GETINTERACTIONMAPFROMALLFRAMES returns cell array with interaction maps for each frame;
@@ -261,9 +267,17 @@ classdef PMInteractions
         
     end
     
-    methods (Access = private) % interaction map:
+    methods (Access = private) % GETTERS:
         
-        function myInteractionObject = getActiveInteractionObject(obj)
+         function number =                   getNumberOfTracks(obj)
+           number = size(obj.ListWithInteractions, 1);
+        end
+         
+    end
+    
+   methods (Access = private) % interaction map:
+        
+        function myInteractionObject =      getActiveInteractionObject(obj)
             CellCoordinates =                           obj.getCoordinatesOfActiveSearcher;
             MetricCoordinatesOfTarget(:, 2 : 4) =       obj.myFluShape_Metric.getCoordinatesInSquareAroundCenter(...
                                                             CellCoordinates(1, 2:4),  ...
@@ -273,149 +287,48 @@ classdef PMInteractions
             
         end
         
-        function ID = getTrackIDOfActiveSearcher(obj)
+        function ID =                       getTrackIDOfActiveSearcher(obj)
             ID = obj.MyTrackingAnalysis_Metric.getTrackIDForTrackIndex(obj.CurrentTrackIndex);
         end
         
-        function FrameNumber = getFrameNumberOfActiveSearcher(obj)
+        function FrameNumber =              getFrameNumberOfActiveSearcher(obj)
             FrameNumber = obj.MyTrackingAnalysis_Pixels.getFrameNumberForTrackIndexFrameIndex(obj.CurrentTrackIndex, obj.CurrentFrameIndex);
         end
         
-        function Time = getTimeOfActiveSearcher(obj)
-            Time = obj.MyTrackingAnalysis_Metric.getFrameNumberForTrackIndexFrameIndex(obj.CurrentTrackIndex, obj.CurrentFrameIndex); 
-        end
         
-        function FractionPositive = getFractionOfPositiveTargetVolume(obj)
+    end
+    
+   methods (Access = private) % GETTERS: getFractionOfPositiveTargetVolume;
+        
+        function FractionPositive =         getFractionOfPositiveTargetVolume(obj)
             
-                CellCoordinates =                           obj.getCoordinatesOfActiveSearcher;
-                ListOfSearcherProximalTargetCoordinates =   obj.myFluShape_Metric.getCoordinatesInCuboidAroundCenterSize(...
+                CellCoordinates =                               obj.getCoordinatesOfActiveSearcher;
+                MyFluShape =                                obj.myFluShape_Metric;
+                ListOfCoordinatesInVolume =                     MyFluShape.getCoordinatesInCuboidAroundCenterSize(...
                     CellCoordinates(1, 2:4), ...
                     obj.XYLimitForNeighborArea, ...
                     obj.XYLimitForNeighborArea, ...
                     obj.ZLimitForNeighborArea, ...
                     'ClosestZPlusLimits');
                 
-             
+
+           
                 
-                NumberOfNeighborTargetCoordinates =         size(ListOfSearcherProximalTargetCoordinates, 1); 
+                NumberOfNeighborTargetCoordinates =         size(ListOfCoordinatesInVolume, 1); 
+                Max =                                       (length(0: obj.myFluShape_Metric.getPixelSize : obj.XYLimitForNeighborArea * 2 ))^2;
                 
-                
-                
-                Max = (length(0: obj.myFluShape_Metric.getPixelSize : obj.XYLimitForNeighborArea * 2 ))^2;
-                
-               % fprintf('%i pixels positive. Pixel in one plane = %i\n', NumberOfNeighborTargetCoordinates, Max)
-                %
-                FractionPositive = NumberOfNeighborTargetCoordinates / Max;
-        end
-        
-        
-        
-    end
-    
-    methods (Access = private) % still in use?
-        
-          
-        function obj = minimizeSize(obj)
-            
-            obj.MyTrackingAnalysis_Pixels =     PMTrackingAnalysis();
-            obj.myFluShape_Metric =             PMShape();
-            obj.myFluShape_Pixels =             PMShape();
-            obj.MyTrackingAnalysis_Metric  =    PMTrackingAnalysis();
-            obj.DriftCorrection =               PMDriftCorrection();
-            
-            
-        end
-        
-        
-        function results = getData(obj, varargin)
-            NumberOfArguments = length(varargin);
-            switch NumberOfArguments
-               
-                case 1
-                    results = obj.getDataWithMethod(varargin{1});
-                case 2
-                    if strcmp(varargin{2}, 'poolAllData')
-                        results = obj.getDataWithMethod(varargin{1});
-                        results = vertcat(results{:});
-                    end
-                otherwise 
-                    error('Wrong input.')
-                
-            end
-            
-            
-        end
-        
-         function obj = initialize(obj)
-              
-            if obj.Visualize
-                [ViewStructure] =                 obj.initializeViews(obj.myFluShape_Pixels.getImageVolume);
-            end
-            
-            obj.MyTrackingAnalysis_Metric =     obj.MyTrackingAnalysis_Metric.initializeTrackCell;
-            obj.MyTrackingAnalysis_Pixels =     obj.MyTrackingAnalysis_Pixels.initializeTrackCell;
-            
-            ListWithAllInteractionsOfMovie =    cell(obj.MyTrackingAnalysis_Metric.getNumberOfTracks, 1);
-             for TrackIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfTracks
-                 TrackIndex
-
-                 InteractionsOfTrack =            cell(obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(TrackIndex) - 2 , 0);
-                 for FrameIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(TrackIndex) - 2
-
-                     CellCoordinates =         obj.getCellCoordinatesForTrackindexFrame(TrackIndex, FrameIndex);
-                     
-                     if CellCoordinates(1,4) < obj.ZLimitForNeighborArea
-                         TargetCoordinates =       obj.getTargetCoordinatesForCellCoordinates(CellCoordinates);
-                         Eccentricities =          obj.getEccentricitiesForTrackindexFrame(TrackIndex, FrameIndex);
-                         TrackID =                  obj.MyTrackingAnalysis_Metric.getTrackIDForTrackIndex(TrackIndex);
-
-
-                         NeighboringFluCoordinates =                  obj.myFluShape_Metric.getCoordinatesInCuboidAroundCenterSize(CellCoordinates(1, 2:4), obj.XYLimitForNeighborArea, obj.XYLimitForNeighborArea, obj.ZLimitForNeighborArea);
-                         NumberOfNeighborTargetCoordinates = size(NeighboringFluCoordinates, 1);
-                         InteractionsOfTrack{FrameIndex, 1} =     obj.getInteractionObjectFor(...
-                                                                    CellCoordinates, ...
-                                                                    TargetCoordinates, ...
-                                                                    TrackID, ...
-                                                                    Eccentricities, ...
-                                                                    NumberOfNeighborTargetCoordinates);
-
-                        obj =                        obj.updateViewsForTrackindexFrame(TrackIndex, FrameIndex);
-
-                     end
-                    
-
-                 end
-                 
-                 Empty = cellfun(@(x) isempty(x), InteractionsOfTrack);
-                 InteractionsOfTrack(Empty, :) = [];
-                 ListWithAllInteractionsOfMovie{TrackIndex,1} =                               InteractionsOfTrack;
-
-             end
-
-            obj.ListWithInteractions =              ListWithAllInteractionsOfMovie;
-
-
-        end
-       
-        
-    end
-    
-    methods (Access = private)
-        
-        function CellCoordinates_End = getCoordinatesOfActiveSearcher(obj)
-            CellCoordinates_End = obj.getCoordinatesForTrackindexFrameReferenceframe(obj.CurrentTrackIndex, obj.CurrentFrameIndex, obj.CurrentFrameIndex);
+                FractionPositive =          NumberOfNeighborTargetCoordinates / Max;
+          end
+      
+        function CellCoordinates_End =      getCoordinatesOfActiveSearcher(obj)
+            CellCoordinates_End = obj.getCoordinatesForTrackindexFrameReferenceframe(...
+                                                obj.CurrentTrackIndex, ...
+                                                obj.CurrentFrameIndex, ...
+                                                obj.CurrentFrameIndex);
             
         end
        
-        function CellTimeSpaceCoordinates = getCellCoordinatesForTrackindexFrame(obj, TrackIndex, ReferenceFrameIndex)
-            CellCoordinates_Start =         obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex, ReferenceFrameIndex);
-            CellCoordinates_Middle =        obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex + 1, ReferenceFrameIndex);
-            CellCoordinates_End =           obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex + 2, ReferenceFrameIndex);
-            CellTimeSpaceCoordinates =      [ CellCoordinates_Start; CellCoordinates_Middle; CellCoordinates_End];
-
-        end
-        
-        function CellCoordinates_End = getCoordinatesForTrackindexFrameReferenceframe(obj, TrackIndex, FrameIndex, ReferenceFrameIndex)
+        function CellCoordinates_End =      getCoordinatesForTrackindexFrameReferenceframe(obj, TrackIndex, FrameIndex, ReferenceFrameIndex)
              
             CellCoordinates_End =             obj.MyTrackingAnalysis_Metric.getTimeSpaceCoordinatesForTrackIndexFrameIndices(TrackIndex, FrameIndex);
              
@@ -425,59 +338,9 @@ classdef PMInteractions
              end
         end
         
-
-        
-        function FluReduced_TimeSpace_MetricNoDrift = getTargetCoordinatesForCellCoordinates(obj, CellTimeSpaceCoordinates)
-            
-            FluReduced_Space_MetricNoDrift =               obj.myFluShape_Metric.getCoordinatesInSquareAroundCenter(CellTimeSpaceCoordinates(1, 2:4),  obj.XYLimitForNeighborArea);
-            FluReduced_TimeSpace_MetricNoDrift =           FluReduced_Space_MetricNoDrift;
-            FluReduced_TimeSpace_MetricNoDrift(:, 2:4) =   FluReduced_Space_MetricNoDrift;
-            FluReduced_TimeSpace_MetricNoDrift(:, 1) =     CellTimeSpaceCoordinates(2, 1);
-
-            
-        end
-        
-        function Eccentricities = getEccentricitiesForTrackindexFrame(obj, TrackIndex, ReferenceFrameIndex)
-                MaskPixels =             arrayfun(@(x)   obj.MyTrackingAnalysis_Metric.getMaskPixelsForTrackIndexFrameIndex(TrackIndex, x), [ReferenceFrameIndex ; ReferenceFrameIndex + 1; ReferenceFrameIndex + 2], 'UniformOutput', false);
-                Eccentricities =         cellfun(@(x)        PMShape(x).getEccentricity, MaskPixels);
-                   
-        end
-        
-        function myInteractionObject = getInteractionObjectFor(~, CellCoordinates, TargetCoordinates, TrackID, Eccentricities, Number)
-                    myInteractionObject =       PMInteraction(CellCoordinates, TargetCoordinates);
-                    myInteractionObject=        myInteractionObject.setProperties;
-                    myInteractionObject =       myInteractionObject.setTrackID(TrackID);
-                    myInteractionObject =       myInteractionObject.setSearcherEccentricities(Eccentricities);
-                    myInteractionObject =       myInteractionObject.setNumberOfNeighborPixels(Number);
-                    
-                    myInteractionObject =       myInteractionObject.minimizeSize;
-        end
-        
-        
-        
-        %% getDataWithMethod
-        function data = getDataWithMethod(obj, MethodName)
-            data = cell(obj.getNumberOfTracks, 1);
-            for trackIndex = 1: obj.getNumberOfTracks
-                data{trackIndex, 1} =   cellfun(@(x) x.(MethodName),  obj.ListWithInteractions{trackIndex}, 'UniformOutput', false);
-            end   
-        end
-        
-        function number = getNumberOfTracks(obj)
-           number = size(obj.ListWithInteractions, 1);
-        end
-        
-        
-        
-        
-      
-
-
-    
- 
     end
     
-    methods (Access = private) % views
+   methods (Access = private) % ACTION initializeView (for export of thresholded images into file);
 
         function obj= initializeView(obj)
 
@@ -534,7 +397,11 @@ classdef PMInteractions
             
         end
 
-        function obj= exportMeasurementsIntoFile(obj, InteractionObject)
+   end
+   
+   methods (Access = private) % ACTION exportMeasurementsIntoFile
+       
+        function obj=       exportMeasurementsIntoFile(obj, InteractionObject)
 
             figure( obj.ViewStructure.FigureHandle)
             
@@ -546,14 +413,11 @@ classdef PMInteractions
             
                        
             obj.ViewStructure.textTrackNumber.String =      ['ID= ', num2str(obj.getTrackIDOfActiveSearcher)];
-            
             obj.ViewStructure.textFrameNumber.String =      ['Frame = ', num2str(obj.getFrameNumberOfActiveSearcher)];
-            
-            
-            obj.ViewStructure.textTrackFullness.String = sprintf('Fullness = %4.3f', obj.getFractionOfPositiveTargetVolume);
+            obj.ViewStructure.textTrackFullness.String =    sprintf('Fullness = %4.3f', obj.getFractionOfPositiveTargetVolume);
 
             
-              [shortestDistance, ~] =     InteractionObject.getDistanceToClosestTarget('2D');
+            [shortestDistance, ~] =     InteractionObject.getDistanceToClosestTarget('2D');
 
             obj.ViewStructure.textTrackDistance.String =    ['Distance= ', num2str(shortestDistance), ' µm'];
             
@@ -561,35 +425,36 @@ classdef PMInteractions
             
         end
         
-        function obj = updateImageViewWithInteractionObject(obj, InteractionObject)
+        function obj =      updateImageViewWithInteractionObject(obj, InteractionObject)
             
-            SearcherCoordinates = InteractionObject.getCoordinatesOfSearcher;
+            SearcherCoordinates =               InteractionObject.getCoordinatesOfSearcher;
+
+            TargetCoordinateListInRange =           obj.myFluShape_Metric.getCoordinatesInCuboidAroundCenterSize(...
+                                                            SearcherCoordinates(2:4),  ...
+                                                            obj.XYLimitForNeighborArea, ...
+                                                            obj.XYLimitForNeighborArea,  ...
+                                                            obj.ZLimitForNeighborArea, ...
+                                                            'ClosestZPlusLimits'...
+                                                            );
             
-           
-            
-             Coordinates =  obj.myFluShape_Metric.getCoordinatesInCuboidAroundCenterSize(SearcherCoordinates(2:4),  obj.XYLimitForNeighborArea, obj.XYLimitForNeighborArea,  obj.ZLimitForNeighborArea, 'ClosestZPlusLimits');
-            
-             UniquePlanes = unique(Coordinates(:,  3));
+             UniquePlanes =                     unique(TargetCoordinateListInRange(:,  3));
                
-               rows = arrayfun(@(x) Coordinates(:, 3) == x, UniquePlanes, 'UniformOutput', false);
-            CoordinatesPerPlane = cellfun(@(x) Coordinates(x, :), rows, 'UniformOutput', false);
-            Images = cellfun(@(x) PMShape(x).getMaximumProjection,    CoordinatesPerPlane, 'UniformOutput', false);
-            Images{1}(500,500,1) = 0;
-            Images{2}(500,500,1) = 0;
-            Images{3}(500,500,1) = 0;
+             rows =                             arrayfun(@(x) TargetCoordinateListInRange(:, 3) == x, UniquePlanes, 'UniformOutput', false);
+            CoordinatesPerPlane =               cellfun(@(x) TargetCoordinateListInRange(x, :), rows, 'UniformOutput', false);
+            Images =                            cellfun(@(x) PMShape(x).getMaximumProjection,    CoordinatesPerPlane, 'UniformOutput', false);
+            Images{1}(500, 500 , 1) =              0;
+            Images{2}(500, 500, 1) =              0;
+            Images{3}(500, 500, 1) =              0;
             
-            ExportImage =  uint8(0);
-            ExportImage(size(Images{1}, 1), size(Images{1}, 2),3) = 0;
+            FluPixelImage =                       uint8(0);
+            FluPixelImage(size(Images{1}, 1), size(Images{1}, 2),3) = 0;
             for index = 1 : length(Images)
-                
-                ExportImage(:,:, index) = Images{index};
+                FluPixelImage(:,:, index) = Images{index};
             end
             
 
             
-            obj.ViewStructure.Image.CData =     ExportImage;
-            
-            
+            obj.ViewStructure.Image.CData =     FluPixelImage;
             
             XStart =    SearcherCoordinates (2) - obj.XYLimitForNeighborArea;
             XEnd =      SearcherCoordinates (2) + obj.XYLimitForNeighborArea - 1;
@@ -602,7 +467,7 @@ classdef PMInteractions
             
         end
         
-        function obj = updateViewsOfSearcherForCoordinates(obj, InteractionObject)
+        function obj =      updateViewsOfSearcherForCoordinates(obj, InteractionObject)
             
             CoordinatesOfSearcher = InteractionObject.getCoordinatesOfSearcher;
             
@@ -616,7 +481,7 @@ classdef PMInteractions
             
         end
         
-        function obj = updateViewsForTargetCoordinates(obj, InteractionObject)
+        function obj =      updateViewsForTargetCoordinates(obj, InteractionObject)
             
             [~, CoordinatesOfTarget] =     InteractionObject.getDistanceToClosestTarget('2D');
 
@@ -630,7 +495,7 @@ classdef PMInteractions
             
         end
         
-          function obj = updateViewsForTargetToSearcherLine(obj, InteractionObject)
+        function obj =      updateViewsForTargetToSearcherLine(obj, InteractionObject)
             
                 CoordinatesOfSearcher =         InteractionObject.getCoordinatesOfSearcher;
                 [~, CoordinatesOfTarget] =     InteractionObject.getDistanceToClosestTarget('2D');
@@ -656,7 +521,155 @@ classdef PMInteractions
                 
         end
         
+        function obj =      saveImage(obj)
+            
+            folderName = [obj.ExportFolder, '/Movie_', obj.MovieName, '/Track_', num2str(obj.getTrackIDOfActiveSearcher)];
+            if exist(folderName) ~=7
+                mkdir(folderName)
+            end
+            
+            fileName = [folderName, '/Frame_',  num2str(obj.getFrameNumberOfActiveSearcher), '_', PMTime().getCurrentTimeString, '.jpg'];
+            Image =         frame2im(getframe(obj.ViewStructure.MainAxes));
+
+            imwrite(Image, fileName)
+          
+            
+        end
+
+       
+   end
+   
+
+   methods (Access = private) % still in use?
         
+            function results = getData(obj, varargin)
+            NumberOfArguments = length(varargin);
+            switch NumberOfArguments
+
+                case 1
+                    results = obj.getDataWithMethod(varargin{1});
+                case 2
+                    if strcmp(varargin{2}, 'poolAllData')
+                        results = obj.getDataWithMethod(varargin{1});
+                        results = vertcat(results{:});
+                    end
+                otherwise 
+                    error('Wrong input.')
+
+            end
+
+
+            end
+
+            function obj = initialize(obj)
+
+            if obj.Visualize
+                [ViewStructure] =                 obj.initializeViews(obj.myFluShape_Pixels.getImageVolume);
+            end
+
+            obj.MyTrackingAnalysis_Metric =     obj.MyTrackingAnalysis_Metric.initializeTrackCell;
+            obj.MyTrackingAnalysis_Pixels =     obj.MyTrackingAnalysis_Pixels.initializeTrackCell;
+
+            ListWithAllInteractionsOfMovie =    cell(obj.MyTrackingAnalysis_Metric.getNumberOfTracks, 1);
+             for TrackIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfTracks
+                 TrackIndex
+
+                 InteractionsOfTrack =            cell(obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(TrackIndex) - 2 , 0);
+                 for FrameIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfFramesForTrackIndex(TrackIndex) - 2
+
+                     CellCoordinates =         obj.getCellCoordinatesForTrackindexFrame(TrackIndex, FrameIndex);
+
+                     if CellCoordinates(1,4) < obj.ZLimitForNeighborArea
+                         TargetCoordinates =       obj.getTargetCoordinatesForCellCoordinates(CellCoordinates);
+                         Eccentricities =          obj.getEccentricitiesForTrackindexFrame(TrackIndex, FrameIndex);
+                         TrackID =                  obj.MyTrackingAnalysis_Metric.getTrackIDForTrackIndex(TrackIndex);
+
+
+                         NeighboringFluCoordinates =                  obj.myFluShape_Metric.getCoordinatesInCuboidAroundCenterSize(CellCoordinates(1, 2:4), obj.XYLimitForNeighborArea, obj.XYLimitForNeighborArea, obj.ZLimitForNeighborArea);
+                         NumberOfNeighborTargetCoordinates = size(NeighboringFluCoordinates, 1);
+                         InteractionsOfTrack{FrameIndex, 1} =     obj.getInteractionObjectFor(...
+                                                                    CellCoordinates, ...
+                                                                    TargetCoordinates, ...
+                                                                    TrackID, ...
+                                                                    Eccentricities, ...
+                                                                    NumberOfNeighborTargetCoordinates);
+
+                        obj =                        obj.updateViewsForTrackindexFrame(TrackIndex, FrameIndex);
+
+                     end
+
+
+                 end
+
+                 Empty = cellfun(@(x) isempty(x), InteractionsOfTrack);
+                 InteractionsOfTrack(Empty, :) = [];
+                 ListWithAllInteractionsOfMovie{TrackIndex,1} =                               InteractionsOfTrack;
+
+             end
+
+            obj.ListWithInteractions =              ListWithAllInteractionsOfMovie;
+
+
+            end
+            
+             function myInteractionObject = getInteractionObjectFor(~, CellCoordinates, TargetCoordinates, TrackID, Eccentricities, Number)
+                    myInteractionObject =       PMInteraction(CellCoordinates, TargetCoordinates);
+                    myInteractionObject=        myInteractionObject.setProperties;
+                    myInteractionObject =       myInteractionObject.setTrackID(TrackID);
+                    myInteractionObject =       myInteractionObject.setSearcherEccentricities(Eccentricities);
+                    myInteractionObject =       myInteractionObject.setNumberOfNeighborPixels(Number);
+                    
+                    myInteractionObject =       myInteractionObject.minimizeSize;
+             end
+        
+                function CellTimeSpaceCoordinates = getCellCoordinatesForTrackindexFrame(obj, TrackIndex, ReferenceFrameIndex)
+            CellCoordinates_Start =         obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex, ReferenceFrameIndex);
+            CellCoordinates_Middle =        obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex + 1, ReferenceFrameIndex);
+            CellCoordinates_End =           obj.getCoordinatesForTrackindexFrameReferenceframe(TrackIndex, ReferenceFrameIndex + 2, ReferenceFrameIndex);
+            CellTimeSpaceCoordinates =      [ CellCoordinates_Start; CellCoordinates_Middle; CellCoordinates_End];
+
+                end
+        
+                  function FluReduced_TimeSpace_MetricNoDrift = getTargetCoordinatesForCellCoordinates(obj, CellTimeSpaceCoordinates)
+            
+            FluReduced_Space_MetricNoDrift =               obj.myFluShape_Metric.getCoordinatesInSquareAroundCenter(CellTimeSpaceCoordinates(1, 2:4),  obj.XYLimitForNeighborArea);
+            FluReduced_TimeSpace_MetricNoDrift =           FluReduced_Space_MetricNoDrift;
+            FluReduced_TimeSpace_MetricNoDrift(:, 2:4) =   FluReduced_Space_MetricNoDrift;
+            FluReduced_TimeSpace_MetricNoDrift(:, 1) =     CellTimeSpaceCoordinates(2, 1);
+
+            
+                  end
+        
+                       
+        function Eccentricities = getEccentricitiesForTrackindexFrame(obj, TrackIndex, ReferenceFrameIndex)
+                MaskPixels =             arrayfun(@(x)   obj.MyTrackingAnalysis_Metric.getMaskPixelsForTrackIndexFrameIndex(TrackIndex, x), [ReferenceFrameIndex ; ReferenceFrameIndex + 1; ReferenceFrameIndex + 2], 'UniformOutput', false);
+                Eccentricities =         cellfun(@(x)        PMShape(x).getEccentricity, MaskPixels);
+                   
+        end
+        
+         function obj = minimizeSize(obj)
+            
+            obj.MyTrackingAnalysis_Pixels =     PMTrackingAnalysis();
+            obj.myFluShape_Metric =             PMShape();
+            obj.myFluShape_Pixels =             PMShape();
+            obj.MyTrackingAnalysis_Metric  =    PMTrackingAnalysis();
+            obj.DriftCorrection =               PMDriftCorrection();
+            
+            
+         end
+        
+               function data = getDataWithMethod(obj, MethodName)
+            data = cell(obj.getNumberOfTracks, 1);
+            for trackIndex = 1: obj.getNumberOfTracks
+                data{trackIndex, 1} =   cellfun(@(x) x.(MethodName),  obj.ListWithInteractions{trackIndex}, 'UniformOutput', false);
+            end   
+               end
+        
+                 function Time =                     getTimeOfActiveSearcher(obj)
+            Time = obj.MyTrackingAnalysis_Metric.getFrameNumberForTrackIndexFrameIndex(obj.CurrentTrackIndex, obj.CurrentFrameIndex); 
+                 end
+        
+                     
         function obj = updateViewsForTrackindexFrame(obj, TrackIndex, ReferenceFrameIndex)
                if obj.Visualize
 
@@ -670,26 +683,14 @@ classdef PMInteractions
             
         end
         
-        function obj = saveImage(obj)
-            
-            folderName = [obj.ExportFolder, '/Movie_', obj.MovieName, '/Track_', num2str(obj.getTrackIDOfActiveSearcher)];
-            if exist(folderName) ~=7
-                mkdir(folderName)
-            end
-            
-            fileName = [folderName, '/Frame_',  num2str(obj.getFrameNumberOfActiveSearcher), '_', PMTime().getCurrentTimeString, '.jpg'];
-            
-             Image =         frame2im(getframe(obj.ViewStructure.MainAxes));
-               
-                imwrite(Image, fileName)
-          
-            
-        end
-
-
         
         
+        
+        
+        
+
         
     end
+    
 end
 

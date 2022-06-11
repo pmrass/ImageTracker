@@ -34,15 +34,19 @@ classdef PMImageTrackingDataRetrieval
             switch NumberOfArguments
                 
                 case 4
+                    
                     obj.GroupNames =                        varargin{3};
-                    obj.LibraryFileNamePerGroup =           cellfun(@(x) x.getFileName, varargin{1}, 'UniformOutput', false);
+
+                    obj.LibraryFileNamePerGroup =           varargin{1};
+
                     obj.InteractionFolderNamePerGroup =     varargin{2};
 
                     obj.NicknamesPerGroup =                 varargin{4};
                     
                 case 5
+                    
                     obj.GroupNames =                        varargin{3};
-                    obj.LibraryFileNamePerGroup =            cellfun(@(x) x.getFileName, varargin{1}, 'UniformOutput', false);
+                    obj.LibraryFileNamePerGroup =           varargin{1};
                     obj.InteractionFolderNamePerGroup =     varargin{2};
                     
                     obj.NicknamesPerGroup =                 varargin{4};
@@ -124,12 +128,17 @@ classdef PMImageTrackingDataRetrieval
 
     methods % GETTERS:
         
+        function libraries = getMovieLibraries(obj)
+            libraries =  cellfun(@(x) PMMovieLibrary(x), obj.LibraryFileNamePerGroup);
+        end
+        
+            
         function MyGroupData =          getGroupData(obj)
             %GETGROUPDATA returns PMTrackingGroups
             MyGroupData = obj.GroupData;
         end
         
-        function TrackingSuites =       getTrackinSuites(obj)
+        function TrackingSuites =       getTrackingSuites(obj)
             % GETTRACKINSUITES returns TrackingSuites vector;
             % each group has each on TrackingSuites object
             TrackingSuites = obj.GroupData.getTrackingSuites;
@@ -145,14 +154,12 @@ classdef PMImageTrackingDataRetrieval
         
         function Images =               getInteractionImageVolumes(obj)
 
+            FileNames = obj.getInteractionMapFileNamesPerGroup;
+            for index = 1 : obj.getNumberOfGroups
+                FilenamesForCurrentGroup = FileNames{index};
+                Images{index, 1} = cellfun(@(x) imread(x), obj.NicknamesPerGroup{index}, 'UniformOutput', false); 
 
-
-        FileNames = obj.getInteractionMapFileNamesPerGroup;
-        for index = 1 : obj.getNumberOfGroups
-
-            FilenamesForCurrentGroup = FileNames{index};
-            Images{index, 1} = cellfun(@(x) imread(x), obj.NicknamesPerGroup{index}, 'UniformOutput', false);  
-        end
+            end
 
         end
 
@@ -170,12 +177,12 @@ classdef PMImageTrackingDataRetrieval
     
     methods (Access = private)
     
-        function obj = setGroupData(obj, MovieLibraries)
+        function obj = setGroupData(obj)
                                     
             if isempty(obj.InteractionFolderNamePerGroup)
                 
                   MyTrackingSuites =          cellfun(@(file, x, y) PMTrackingSuite(file, x, y), ...
-                                            MovieLibraries, ...
+                                            num2cell(obj.getMovieLibraries), ...
                                             obj.GroupNames, ...
                                             obj.NicknamesPerGroup  ...
                                             );
@@ -184,7 +191,7 @@ classdef PMImageTrackingDataRetrieval
             elseif isempty(obj.PlaneFilters)
                 
                     MyTrackingSuites =          cellfun(@(file, x, y, z) PMTrackingSuite(file, x, y, z), ...
-                                            MovieLibraries, ...
+                                            num2cell(obj.getMovieLibraries), ...
                                             obj.GroupNames, ...
                                             obj.NicknamesPerGroup,  ...
                                             obj.getInteractionMapFileNamesPerGroup...
@@ -193,8 +200,6 @@ classdef PMImageTrackingDataRetrieval
              
                 
             else
-                
-             
 
                      MyTrackingSuites =          cellfun(@(file, x, y, z, plane) PMTrackingSuite(file,x,y, z, plane), ...
                         MovieLibraries, ...
@@ -208,6 +213,8 @@ classdef PMImageTrackingDataRetrieval
             obj.GroupData =             PMTrackingGroups(MyTrackingSuites);
 
         end
+        
+    
 
         function number = getNumberOfGroups(obj)
            number = length(obj.GroupNames); 

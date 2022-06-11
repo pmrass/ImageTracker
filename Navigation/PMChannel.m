@@ -224,7 +224,10 @@ classdef PMChannel
                 case 'Cyan'
                      code = [0 1 1];
                 case 'White'
-                       code = [1 1 1];  
+                       code = [1 1 1]; 
+                case 'Black'
+                     code = [0 0 0];
+                    
                 otherwise
                     error('Color not supported')
             end
@@ -251,7 +254,7 @@ classdef PMChannel
                 elseif isequal(Vector, [0 0 0])
                       code = 'Black';  
                 else
-                       code = 'UnknownColor';
+                       error('Unkown color');
                 end
            end
         

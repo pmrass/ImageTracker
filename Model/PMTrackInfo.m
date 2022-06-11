@@ -5,7 +5,6 @@ classdef PMTrackInfo
     % column 1: all frame numbers of track; column 2: "row" where track is located at each frame;
     
     properties
-       
         Finalized = false
         TrackID
         

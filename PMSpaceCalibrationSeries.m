@@ -9,7 +9,8 @@ classdef PMSpaceCalibrationSeries
     methods
         function obj = PMSpaceCalibrationSeries(varargin)
             %PMSPACECALIBRATIONSERIES Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 0 or 1 arguments:
+            % 1: vector of PMSpaceCalibration objects
             NumberOfInputArguments =     length(varargin);
             switch NumberOfInputArguments
                 case 0
@@ -21,6 +22,10 @@ classdef PMSpaceCalibrationSeries
          function obj = set.Calibrations(obj,Value)
             assert(isa(Value, 'PMSpaceCalibration'), 'Wrong input format.')
             obj.Calibrations =  Value;
+         end
+         
+         function obj = showSummary(obj)
+             cellfun(@(x) fprintf('%s\n', x), obj.getSummary{1});
          end
         
          function result = getDistanceBetweenZPixels_MicroMeter(obj)

@@ -4,19 +4,35 @@ classdef PMMovieTracking < PMChannels
  
     properties (Access = private) % crucial to save these data:
 
-        AnnotationFolder =          ''   % folder that contains files with annotation information added by user;
+        AnnotationFolder =                      ''   % folder that contains files with annotation information added by user;
         NickName
-        Keywords =                  cell(0,1)   
+        Keywords =                              cell(0,1)   
          
-        MovieFolder                 % movie folder:
-        AttachedFiles =             cell(0,1) % list files that contain movie-information;
+        MovieFolder                             % movie folder:
+        AttachedFiles =                         cell(0,1) % list files that contain movie-information;
+        WantedScene
        
 
-        DriftCorrection =           PMDriftCorrection
-        Interactions      
+        DriftCorrection =                       PMDriftCorrection
+              
         
-        CurrentVersion =            'AfterAugust2021';
-
+        CurrentVersion =                        'AfterAugust2021';
+        
+        LoadedImageVolumes
+        DefaultNumberOfLoadedFrames =           40
+              
+        MaskColor =                             [NaN NaN 150]; % some settings for how 
+         
+        
+        SegmentationCapture
+        
+    end
+    
+    properties (Access = private) % interactions
+        
+        Interactions
+        
+        
     end
 
     properties (Access = private) % stop tracking settings:
@@ -25,7 +41,11 @@ classdef PMMovieTracking < PMChannels
         MaxStopDurationForGoSegment =       5
         MinStopDurationForStopSegment =     20
 
-        Tracking =                  PMTrackingNavigation
+        Tracking =                          PMTrackingNavigationController
+        
+        
+        
+        AutoCellRecognition
 
 
     end
@@ -54,12 +74,11 @@ classdef PMMovieTracking < PMChannels
 
         CollapseAllPlanes =             1
         
-          ActiveTrackIsVisible =             true
+        ActiveTrackIsVisible =             true
         SelectedTracksAreVisible  =    true
         RestingTracksAreVisible =       true
         
         
-
         CroppingOn =                     0
         CroppingGate =                  [1 1 1 1]
 
@@ -75,11 +94,11 @@ classdef PMMovieTracking < PMChannels
     end
 
     properties (Access = private) % for view; this should be moved somewhere else
-    EnforeMaxProjectionForTrackViews = true;
+        EnforeMaxProjectionForTrackViews = true;
 
     end
 
-    methods %initialization 
+    methods % INITIALIZATION 
         
         function obj =  PMMovieTracking(varargin)
             % PMMOVIETRACKING create instance
@@ -134,7 +153,7 @@ classdef PMMovieTracking < PMChannels
                             obj.MovieFolder =               varargin{2};
                             obj.AttachedFiles =             InputStructure.AttachedFiles;
                             obj.DriftCorrection =           PMDriftCorrection();
-                            obj.Tracking =                  PMTrackingNavigation();
+                            obj.Tracking =                  PMTrackingNavigationController(PMTrackingNavigation());
 
                         case 2 % this is for getting date from an older version;
                             obj.NickName =                  InputStructure.NickName;
@@ -149,7 +168,7 @@ classdef PMMovieTracking < PMChannels
                        
                             if isfield(InputStructure.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
                                  NumberOfChannels =     InputStructure.MetaData.EntireMovie.NumberOfChannels;
-                                obj.Channels =      obj.setDefaultChannelsForChannelCount(NumberOfChannels);
+                                obj =      obj.setChannels(obj.setDefaultChannelsForChannelCount(NumberOfChannels));
                              end
 
                             obj.CollapseAllPlanes =                     InputStructure.ViewMovieSettings.MaximumProjection;
@@ -163,7 +182,7 @@ classdef PMMovieTracking < PMChannels
                                 obj =                      obj.resetCroppingGate;
                             end
                             obj.CroppingOn =                            0;
-                            obj.Tracking =                               PMTrackingNavigation(InputStructure.TrackingResults,NumericCode);
+                            obj.Tracking =                               PMTrackingNavigationController(PMTrackingNavigation(InputStructure.TrackingResults,NumericCode));
                         
                         otherwise
                             error('Wrong input.')
@@ -172,7 +191,6 @@ classdef PMMovieTracking < PMChannels
  
                 case 4
                     
-                    assert(strcmp(varargin{5}, 'Initialize'), 'Wrong input.')
                     
                     obj.NickName =              varargin{1};
                     obj.MovieFolder        =    varargin{2};  
@@ -183,16 +201,34 @@ classdef PMMovieTracking < PMChannels
                     error('Wrong number of arguments')
             end
             
-            if ~isa(obj.Interactions, 'PMInteractionsCapture') % not sure if this is a good thing;
+            if ~isa(obj.Interactions, 'PMInteractionsCapture')
                 obj.Interactions = PMInteractionsCapture;
+                XYLimitForNeighborArea =                50;
+                ZLimitsForNeighborArea =                8;
+
+                obj.Interactions =       obj.Interactions.setXYLimitForNeighborArea(XYLimitForNeighborArea);
+                obj.Interactions =       obj.Interactions.setZLimitForNeighborArea(ZLimitsForNeighborArea);
+
+            
             end
 
+        end
+        
+        function obj = set.AutoCellRecognition(obj, Value)
+            assert(isa(Value, 'PMAutoCellRecognition') && isscalar(Value), 'Wrong input.')
+           obj.AutoCellRecognition = Value ;
+        end
+        
+        function obj = set.Tracking(obj, Value)
+            assert(isscalar(Value) && isa(Value, 'PMTrackingNavigationController'), 'This property was PMTrackingNavigation but is now PMTrackingNavigationController. Please convert.')
+            
+           obj.Tracking= Value; 
         end
         
         function obj = set.ImageMapPerFile(obj, Value)
             
             assert(isvector(Value) && length(Value) == obj.getNumberOfLinkedMovieFiles, 'Wrong input')
-            cellfun(@(x) PMImageMap(x), Value); % run this simply to provoke an error if input is wrong;
+        %    cellfun(@(x) PMImageMap(x), Value); % run this simply to provoke an error if input is wrong; don't use it super slow;
             obj.ImageMapPerFile = Value;
             
         end
@@ -228,6 +264,19 @@ classdef PMMovieTracking < PMChannels
             assert(ischar(Value), 'Wrong argument type.')
             obj.NickName =   Value; 
         end
+        
+        function obj = set.WantedScene(obj, Value)
+            
+            if isempty(Value)
+                
+            else
+                assert(isnumeric(Value) && Value >= 1 && mod(Value, 1) == 0, 'Wrong argument type.')
+                
+            end
+            
+            
+            obj.WantedScene =   Value; 
+        end
 
         function obj = set.Keywords(obj, Value)
             assert(iscellstr(Value) && isvector(Value), 'Invalid argument type.')
@@ -256,10 +305,10 @@ classdef PMMovieTracking < PMChannels
         
         function obj = set.Interactions(obj, Value)
             assert(isa(Value, 'PMInteractionsCapture') && isscalar(Value), 'Wrong input.')
-            obj.Interactions =      Value;
+            obj.Interactions =      Value;  
+      
+          
         end
-        
-       
         
         function obj = set.Navigation(obj,Value)
              assert(isa(Value,'PMNavigationSeries') && length(Value) == 1, 'Wrong input format.')
@@ -343,6 +392,19 @@ classdef PMMovieTracking < PMChannels
             obj.CroppingGate = Value;
         end
         
+           function obj = set.LoadedImageVolumes(obj, Value)
+            
+             assert(iscell(Value) && isvector(Value), 'Wrong input.')
+             assert(length(Value) == obj.getMaxFrame, 'Wrong input.')
+
+            obj.LoadedImageVolumes = Value;
+            
+          
+          
+            
+           end
+        
+        
     end
 
     methods % initialize advanced tracking
@@ -365,87 +427,9 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-   
-    methods % SETTERS ADVANCED TRACKING
-        
-        function obj = setSpaceAndTimeLimits(obj, Space, TimeMax, TimeMin)
-            % SETSPACEANDTIMELIMITS sets limits for confinment duration;
-            % takes 3 arguments:
-            % 1: maximum distance of confined area
-            % 2: maximum time to be considered go segment;
-            % 3: minimum time required to be considered go segment;
-            obj.StopDistanceLimit =                     Space;
-            obj.MaxStopDurationForGoSegment =           TimeMax;
-            obj.MinStopDurationForStopSegment =         TimeMin;
-        
-         end
-        
-    end
-    
-    methods % SIMPLE GETTERS
-       
-        
-         function possibleActivities = getPossibleEditingActivities(obj)
-            possibleActivities = obj.AllPossibleEditingActivities;
-         end
-        
-         
-        
-    end
-    
-    methods % SIMPLE SETTERS
-       
-        function obj =          setNickName(obj, String)
-            % SETNICKNAME simply sets nickname of movie
-            % takes 1 argument:
-            % 1: character string
-            obj.NickName =       String;
-        end
-
-        function obj =          setKeywords(obj, Value)
-            % SETKEYWORDS set keywords
-            % takes 1 argument:
-            % 1: cell-string with keywords (default: {'Regular image'});
-            
-               if isempty(Value)
-                  Value = 'Regular image'; 
-               end
-               
-               if iscell(Value)
-                  Value = Value{1,1}; 
-               end
-               
-                obj.Keywords{1,1} =                   Value;
-        end
-          
-        function obj =          setNavigation(obj, Value)
-            % SETNAVIGATION set navigation
-            % takes 1 argument:
-            % 1: scalar of 'PMNavigationSeries';
-            % also updates drift-correction with new navigation
-            obj.Navigation =        Value;
-            obj.DriftCorrection =   obj.DriftCorrection.setNavigation(Value);
-        end
-        
-    end
-    
-    methods % SETTERS VIEW
-       
-          function obj =      setCollapseAllTrackingTo(obj, Value)
-              % SETCOLLAPSEALLTRACKINGTO set whether tracked data of all planes, or just of "visible" planes are shown;
-            obj.CollapseAllTracking = Value;
-          end
-        
-        function Value =                            getCollapseAllTracking(obj)
-            % GETCOLLAPSEALLTRACKING returns whether tracked data of all planes, or just of "visible" planes are shown;
-            Value = obj.CollapseAllTracking;
-        end
-           
-    end
-    
     methods % SETTERS FILE-MANAGEMENT
 
-        function obj =    setImageAnalysisFolder(obj, FolderName)
+        function obj =          setImageAnalysisFolder(obj, FolderName)
             % SETIMAGEANALYSISFOLDER set image analysis/ annotation folder;
             % takes 1 argument:
             % 1: name of folder ('char')
@@ -455,20 +439,20 @@ classdef PMMovieTracking < PMChannels
                 
         end
         
-        function obj =      setMovieFolder(obj, Value)
+        function obj =          setMovieFolder(obj, Value)
             % SETMOVIEFOLDER
             % takes 1 argument
             obj.MovieFolder = Value;   
         end
           
-        function obj =      setNamesOfMovieFiles(obj, Value)
+        function obj =          setNamesOfMovieFiles(obj, Value)
             % SETNAMESOFMOVIEFILES set names of attached movie files
             % takes 1 argument:
             % 1: cell-string with filenames
             obj.AttachedFiles =       Value;
         end
 
-        function obj =      changeMovieFileNamesFromTo(obj, Old, New)
+        function obj =          changeMovieFileNamesFromTo(obj, Old, New)
             % CHANGEMOVIEFILENAMESFROMTO change name of attached filenames;
             % takes 2 arguments:
             % 1: "old" filename;
@@ -482,7 +466,7 @@ classdef PMMovieTracking < PMChannels
             
         end
 
-        function obj =      load(obj, varargin)
+        function obj =          load(obj, varargin)
             %LOAD load all data from file (in current file format);
             % takes 0 or 1 argument:
             % 1: files of version that should be loaded: 'BeforeAugust2021', 'AfterAugust2021';
@@ -501,9 +485,14 @@ classdef PMMovieTracking < PMChannels
                     assert(ischar(varargin{1}), 'Wrong input.')
                     switch varargin{1}
                         case 'BeforeAugust2021'
-                            obj = obj.load_FormatBeforeAugust2021;
+                            obj =               obj.load_FormatBeforeAugust2021;
                         case 'AfterAugust2021'
-                            obj = obj.loadCurrentVersion;
+                            obj =               obj.loadCurrentVersion;
+                        case 'LoadMasks'
+                            obj =               obj.loadCurrentVersion;
+                          
+                            
+                            
                         otherwise
                             error('Wrong input.')
 
@@ -516,11 +505,14 @@ classdef PMMovieTracking < PMChannels
             end
 
 
-            obj.Tracking =          obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
+               obj.Tracking =          obj.Tracking.performMethod('setTrackingCellForTimeWithDriftByDriftCorrection', obj.DriftCorrection);
+            
+               obj.Interactions =        obj.Interactions.setMovieTracking(obj);
+       
 
         end
 
-        function obj =      save(obj)
+        function obj =          save(obj)
             % SAVE all permanent data into file
             % saves only as current format;
             
@@ -529,83 +521,62 @@ classdef PMMovieTracking < PMChannels
             save(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo')
             a =                 toc;
             fprintf('Saving movie "%s" at path "%s" took %6.1f seconds.\n', obj.NickName, obj.getPathOfMovieTrackingForSmallFile, a)
-            obj.Tracking =      obj.Tracking.saveBasic;
+            
+            obj.Tracking =      obj.Tracking.performMethod('setMainFolder', obj.getTrackingFolder);
+            obj.Tracking =      obj.Tracking.performMethod('saveBasic');
             fprintf('\n')
 
         end
-
-        function obj =      delete(obj, varargin)
+        
+        function obj =          saveMasks(obj)
+            %SAVEMASKS save mask pixels
+            obj.Tracking =      obj.Tracking.performMethod('setMainFolder', obj.getTrackingFolder);
+            obj.Tracking =      obj.Tracking.performMethod('saveMasks');
+        end
+        
+        function obj =          delete(obj, varargin)
             % DELETE delete all files of current format (older formats are left untouched);
             % takes 1 argument:
             % 1: files of version that should be loaded: 'BeforeAugust2021', 'AfterAugust2021';
 
             switch length(varargin)
-
+                
+                case 0
+                     ListWithFiles = obj.getAllAnnotationPaths(); 
+                    
                 case 1
-                       assert(ischar(varargin{1}), 'Wrong input.')
-
-                      ListWithFiles = obj.getAllAnnotationPaths(varargin{1}); 
-
-                       for index = 1 : length(ListWithFiles)
-                            CurrentPath =   ListWithFiles{index};
-                            if exist(CurrentPath) == 2
-                                  delete(CurrentPath);
-                            elseif exist(CurrentPath) == 7
-                                delete([CurrentPath, '/*']);
-                                rmdir(CurrentPath);
-                            end
-                        end
-
+                      assert(ischar(varargin{1}), 'Wrong input.')
+                      ListWithFiles =   obj.getAllAnnotationPaths(varargin{1}); 
 
                 otherwise
                     error('Wrong input.')
 
 
             end
+            
+            for index = 1 : length(ListWithFiles)
+                
+                    CurrentPath =   ListWithFiles{index};
+                    if exist(CurrentPath) == 2
+                          delete(CurrentPath);
+                    elseif exist(CurrentPath) == 7
+                        delete([CurrentPath, '/*']);
+                        rmdir(CurrentPath);
+                    end
+             end
 
 
 
         end 
 
-        function obj =      setPropertiesFromImageMetaData(obj)
-            % SETPROPERTIESFROMIMAGEFILES
-            % sets image map, space-calibration, time-calibration, navigation from file (also updates navigation used by drift correction);
-
-            assert(~isempty(obj.getPathsOfImageFiles), 'Could not get paths.')
-            
-            fprintf('\nPMMovieTracking:@setPropertiesFromImageMetaData.\n')
-            myImageFiles =      PMImageFiles(obj.getPathsOfImageFiles);
-            assert(~myImageFiles.notAllFilesCouldBeRead, 'Could not connect to all movie-files.')
-            
-            fprintf('All source files could be accessed. Retrieving MetaData and ImageMaps.\n')
-
-            obj.ImageMapPerFile =              myImageFiles.getImageMapsPerFile; 
-            obj.SpaceCalibration =             myImageFiles.getSpaceCalibration; 
-            obj.TimeCalibration =              myImageFiles.getTimeCalibration; 
-            obj.Navigation =                   myImageFiles.getNavigation; 
-
-            obj.DriftCorrection =              obj.DriftCorrection.setNavigation(obj.Navigation);
-
-            if obj.getNumberOfChannels ~= obj.Navigation.getMaxChannel
-                obj = obj.setDefaultChannelsForChannelCount(obj.Navigation.getMaxChannel);
-
-            end
-            
-            obj.DriftCorrection =       obj.DriftCorrection.setBlankDriftCorrection;
-                    
-
-              
-
-        end
-        
-        function obj =      setSavingStatus(obj, Value)
+        function obj =          setSavingStatus(obj, Value)
             % SETSAVINGSTATUS sets whether most recent version has been saved;
             % takes 1 argument:
             % 1: logical scalar
             obj.UnsavedTrackingDataExist = Value;
         end
         
-        function obj =      saveMetaData(obj, varargin)
+        function obj =          saveMetaData(obj, varargin)
             % SAVEMETADATA save meta-data
             % takes 1 argument:
             % 1: preferred target path:
@@ -649,16 +620,14 @@ classdef PMMovieTracking < PMChannels
 
         end
         
-        function obj =      saveDerivativeData(obj)
+        function obj =          saveDerivativeData(obj)
             % SAVEDERIVATIVEDATA exports "derivative" data that are obtained from "raw" data and saved so that they can be retrieved more easily;
             % currently saves metric and pixel "TrackCells" (maks pixels are not saved);
               
             assert(obj.isMapped, 'Need movie to be mapped for this analysis. Use setPropertiesFromImageMetaData');
 
-            TrackingAnalysis =      obj.getTrackingAnalysis;
-            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
-            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
-            TrackCell_Metric =      TrackingAnalysis.getTrackCell;
+            
+            TrackCell_Metric =      obj.getMetricTrackingAnalysis.getTrackCell;
             TrackCell_Metric =      cellfun(@(x) x(:, 1 : 5), TrackCell_Metric, 'UniformOutput', false);
 
             SavePath =              obj.getPathForTrackCell;
@@ -672,13 +641,14 @@ classdef PMMovieTracking < PMChannels
             SavePath =              obj.getPathForTrackCell('TrackCell_Pixels');
             save(SavePath, 'TrackCell_Pixels')
   
-          end
-            
-    end
-
+        end
+          
+     
+       end
+    
     methods % GETTERS FILE-MANAGEMENT
         
-        function exist = verifyThatEssentialPropertiesAreSet(obj)
+        function exist =        verifyThatEssentialPropertiesAreSet(obj)
               % VERIFYTHATESSENTIALPROPERTIESARESET
               % tests that annotation paths, nickname, movie-folder anbd attached movie-names are all set;
             existOne =          obj.verifyExistenceOfAnnotationPaths;
@@ -687,7 +657,7 @@ classdef PMMovieTracking < PMChannels
             exist =             existOne && existTwo && existThree;
          end
            
-        function value = canConnectToSourceFile(obj, varargin)
+        function value =        canConnectToSourceFile(obj, varargin)
             % CANCONNECTTOSOURCEFILE tests whether all necessary source files are available;
             % takes 0 or 1 arguments:
             % 1: string of version that should be checked (default: current version);
@@ -720,7 +690,7 @@ classdef PMMovieTracking < PMChannels
         
         end
 
-        function Data = getDerivedData(obj, Type)
+        function Data =         getDerivedData(obj, Type)
             % GETDERIVEDDATA get derivative data from file
             % takes 1 argument:
             % 1: type of wanted derivative data ('char': 'TrackCell_Metric', 'TrackCell_Pixels';
@@ -746,15 +716,496 @@ classdef PMMovieTracking < PMChannels
 
         end
         
-        function status = getUnsavedDataExist(obj)
+        function status =       getUnsavedDataExist(obj)
             % GETUNSAVEDDATAEXIST
             status = obj.UnsavedTrackingDataExist; 
         end
 
-        
-  
     end
-  
+   
+    methods % SETTERS IMAGE-VOLUMES
+       
+        function obj =                      setLoadedImageVolumes(obj, Value)
+            % SETLOADEDIMAGEVOLUMES sets LoadedImageVolumes (which contains stored images of source files so that they don't have to be loaded from file each time);
+            obj.LoadedImageVolumes =      Value; 
+        end
+
+        function obj    =                   emptyOutLoadedImageVolumes(obj)
+            % EMPTYOUTLOADEDIMAGEVOLUMES delete loaded image volumes from memory;
+            obj.LoadedImageVolumes =        cell(obj.getMaxFrame,1);   
+        end
+
+        function obj =                      updateLoadedImageVolumes(obj, varargin)
+            % UPDATELOADEDIMAGEVOLUMES for all "empty" frames that are "needed", load image from file;
+            if isempty(obj.LoadedImageVolumes)
+                obj = obj.emptyOutLoadedImageVolumes; 
+            end
+            
+            switch length(varargin)
+               
+                case 0
+                     WantedFrames =          obj.getSetFrameRanged;
+                    
+                case 1
+                    
+                    switch varargin{1}
+                       
+                        case 'All'
+                            WantedFrames =  obj.getEntireFrameRange;
+                            
+                        otherwise
+                            error('Wrong input.')
+                        
+                    end
+                    
+                    
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+
+            MyFrames =              obj.removeAlreadyLoadedFramesFromFrames(WantedFrames);
+           
+            obj =                   obj.updateLoadedImageVolumesForFrames(MyFrames);
+
+
+        end
+        
+        function obj =                      updateLoadedImageVolumesForFrames(obj, MyFrames)
+             obj.LoadedImageVolumes(MyFrames,1 ) = obj.loadImageVolumesForFrames(MyFrames);
+        end
+ 
+    end
+   
+    methods % GETTERS LOADED IMAGEVOLUMES
+        
+
+        
+        function volumes =                 getLoadedImageVolumes(obj, varargin)
+            switch length(varargin)
+                case 0
+                     volumes = obj.LoadedImageVolumes;
+                    
+                case 1
+                     volumes = obj.LoadedImageVolumes{varargin{1}};
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+           
+        end
+
+        function TempVolumes =              loadImageVolumesForFrames(obj, numericalNeededFrames)
+            % LOADIMAGEVOLUMESFORFRAMES loads all unloaded image-volumes of specified time frames;
+            % input: vector with indices of frames that should be loaded;
+            TempVolumes = obj.loadImageVolumesForFramesInternal(numericalNeededFrames);
+        end
+        
+        function AllConnectionsOk =         checkConnectionToImageFiles(obj)
+             % CHECKCONNECTIONTOIMAGEFILES
+             AllConnectionsOk = obj.checkWhetherAllImagePathsCanBeLinked;
+        end
+         
+       
+
+    end
+    
+    methods % GETTERS LOADED IMAGE-VOLUMES: DERIVATIVE
+       
+        function CleanedUpVolume =      getActiveImage(obj, varargin)
+            % GETACTIVEIMAGE returns image of active channel;
+            % shown is signal of active channel, pixels outside of crop are blacked out;
+            activeVolume =          obj.getActiveImageVolume(varargin{:});
+            CleanedUpVolume =       obj.convertImageVolumeToActiveImage(activeVolume);
+
+        end
+        
+        function activeVolume =         getActiveImageVolume(obj, varargin)
+
+            obj =     obj.updateLoadedImageVolumes;
+
+            switch length(varargin)
+
+            case 0
+                Frame = obj.getActiveFrames;
+
+            case 1
+                assert(isnumeric(varargin{1}) && isscalar(varargin{1}) && varargin{1} >= 1 && mod(varargin{1}, 1) == 0, 'Wrong input.')
+                Frame = varargin{1};
+            end
+
+            activeVolume =          obj.getLoadedImageVolumes{Frame, 1};
+
+
+        end
+
+        function rgbImage =             getRgbImage(obj)
+            % GETRGBIMAGE returns active image (with cell masks);
+            activeVolume =          obj.getActiveImageVolume;
+            rgbImage =              obj.convertImageVolumeIntoRgbImage(activeVolume); 
+            rgbImage =              obj.addInteractionImageToImage(rgbImage);
+            rgbImage =              obj.addMasksToImage(rgbImage);
+
+        end
+        
+       
+        
+    end
+    
+    methods % CONVERSION: IMAGE-VOLUMES:
+       
+        function Volume =               filterImageVolumeForChannel(obj, Volume, ChannelIndex)
+            Volume =            Volume(:, :, :, 1, ChannelIndex);
+        end
+
+        function rgbImage =             highlightPixelsInRgbImage(~, rgbImage, CoordinateList, Channel, Intensity)
+
+            if isempty(CoordinateList)
+
+            else
+
+            assert(isnumeric(CoordinateList) && ismatrix(CoordinateList) && size(CoordinateList, 2) >=2, 'Wrong input.')    
+             CoordinateList(isnan(CoordinateList(:,1)),:) = []; % this should not be necessary if everything works as expected;
+             NumberOfPixels =                        size(CoordinateList,1);
+            if ~isnan(Intensity)
+                for CurrentPixel =  1:NumberOfPixels
+                    rgbImage(CoordinateList(CurrentPixel, 1), CoordinateList(CurrentPixel, 2), Channel)= rgbImage(CoordinateList(CurrentPixel, 1), CoordinateList(CurrentPixel, 2), Channel) + Intensity;
+                end
+            end
+
+            end
+
+        end
+
+        function rgbImage =             convertImageVolumeIntoRgbImage(obj, SourceImageVolume)
+            % CONVERTIMAGEVOLUMEINTORGBIMAGE converts "image-volume" into 3-channel rgb image;
+            rgbImage = obj.convertImageVolumeIntoRgbImageInternal(SourceImageVolume);
+
+        end
+        
+    end
+    
+    
+    
+    
+ 
+    
+    
+    
+    
+    
+    methods % GETTERS TRACKING ANALYSIS
+           
+         function TrackingAnalysis =                 getMetricTrackingAnalysis(obj)
+            TrackingAnalysis =      obj.getTrackingAnalysis;
+            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
+            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
+
+        end
+
+        function MyTrackingAnalysis_Pixel =             getPixelTrackingAnalysis(obj)
+
+            MyTrackingAnalysis_Pixel =                  obj.getTrackingAnalysis;
+            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setTimeUnits('frames');
+            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setSpaceUnits('pixels');
+
+
+        end
+
+           
+           
+    end
+
+    methods % AUTO-DETECTION
+        
+        function obj = removeFromActiveMaskPixelList(obj, UserSelectedY, UserSelectedX)
+            pixelListWithoutSelected =          obj.getPixelsFromActiveMaskAfterRemovalOf([UserSelectedY, UserSelectedX]);
+            MySegmentationCapture =             obj.getDefaultSegmentationCapture;
+            MySegmentationCapture =             MySegmentationCapture.setImageVolume(obj.getActiveImage);
+            MySegmentationCapture =             obj.applyActiveStateToSegmentationCapture(MySegmentationCapture);
+            MySegmentationCapture =             MySegmentationCapture.setSegmentationType('Manual');
+             MySegmentationCapture =            MySegmentationCapture.setMaskCoordinateList(pixelListWithoutSelected);
+            obj =                               obj.resetActivePixelListWith(MySegmentationCapture);
+            
+        end
+            
+        
+       
+    
+    end
+    
+    methods % SEGMENTATIONCAPTURE
+        
+        function obj =                              setSegmentationCapture(obj, Value)
+            obj.SegmentationCapture = Value; 
+        end
+
+        function SegementationOfReference =         getSegmentationCapture(obj)
+            SegementationOfReference = obj.getDefaultSegmentationCapture;
+        end
+
+        function SegementationOfReference =         getDefaultSegmentationCapture(obj)
+
+            if isempty(obj.SegmentationCapture)
+
+                SegementationOfReference =      PMSegmentationCapture(obj);
+                SegementationOfReference =      SegementationOfReference.setPixelShiftForEdgeDetection(4);
+                SegementationOfReference =      SegementationOfReference.setMaximumCellRadius(80);
+                SegementationOfReference =      SegementationOfReference.setMaximumDisplacement(120);
+                SegementationOfReference =      SegementationOfReference.setAllowedExcessSizeFactor(1.3);
+                SegementationOfReference =      SegementationOfReference.setFactorForThreshold(1);  
+                SegementationOfReference =      SegementationOfReference.setNumberOfPixelsForBackground(30);  
+
+
+                SegementationOfReference =      SegementationOfReference.setSizeForFindingCellsByIntensity(5);
+                SegementationOfReference =      SegementationOfReference.setShowSegmentationProgress(false);
+
+
+            else
+                SegementationOfReference =    obj.SegmentationCapture.resetWithMovieTracking(obj);
+
+
+
+            end
+
+
+
+
+
+
+        end
+
+    end
+
+    methods % SETTERS ADVANCED TRACKING
+        
+        function obj = setSpaceAndTimeLimits(obj, Space, TimeMax, TimeMin)
+            % SETSPACEANDTIMELIMITS sets limits for confinment duration;
+            % takes 3 arguments:
+            % 1: maximum distance of confined area
+            % 2: maximum time to be considered go segment;
+            % 3: minimum time required to be considered go segment;
+            obj.StopDistanceLimit =                     Space;
+            obj.MaxStopDurationForGoSegment =           TimeMax;
+            obj.MinStopDurationForStopSegment =         TimeMin;
+        
+         end
+        
+    end
+    
+    methods % SIMPLE GETTERS
+       
+         function possibleActivities = getPossibleEditingActivities(obj)
+            possibleActivities = obj.AllPossibleEditingActivities;
+         end
+         
+        function Value =                getCollapseAllPlanes(obj)
+            % GETCOLLAPSEALLPLANES
+            Value = obj.CollapseAllPlanes;
+        end
+         
+    end
+    
+    methods % GETTERS THAT MODIFIY INPUT
+        
+        
+        function mySegmentationObject = applyActiveStateToSegmentationCapture(obj, mySegmentationObject)
+            
+                mySegmentationObject =        mySegmentationObject.setActiveZCoordinate(obj.getActivePlanes);
+                mySegmentationObject =        mySegmentationObject.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
+                mySegmentationObject =        mySegmentationObject.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
+                mySegmentationObject =      mySegmentationObject.setBlackedOutPixelsByPreviousTrackedPixels;
+
+            
+        end
+        
+        
+    end
+    
+    methods % SIMPLE SETTERS
+       
+        function obj = performMethod(obj, Value, varargin)
+           
+            obj = obj.(Value)(varargin{:});
+            
+        end
+        
+        function obj = performLoadedMovieMethod(obj, Value, varargin)
+           obj = obj.performMethod(Value, varargin{:});
+           
+        end
+        
+        function obj = setTrackingNavigationControllerView(obj, Value)
+            
+            
+        end
+        
+        function obj =          setNickName(obj, String)
+            % SETNICKNAME simply sets nickname of movie
+            % takes 1 argument:
+            % 1: character string
+            obj.NickName =       String;
+        end
+        
+        function obj =          setWantedScene(obj, String)
+            % SETNICKNAME simply sets nickname of movie
+            % takes 1 argument:
+            % 1: character string
+            obj.WantedScene =       String;
+        end
+        
+        
+        
+
+        function obj =          setKeywords(obj, Value)
+            % SETKEYWORDS set keywords
+            % takes 1 argument:
+            % 1: cell-string with keywords (default: {'Regular image'});
+            
+               if isempty(Value)
+                  Value = 'Regular image'; 
+               end
+               
+               if iscell(Value)
+                  Value = Value{1,1}; 
+               end
+               
+                obj.Keywords{1,1} =                   Value;
+        end
+          
+        function obj =          setNavigation(obj, Value)
+            % SETNAVIGATION set navigation
+            % takes 1 argument:
+            % 1: scalar of 'PMNavigationSeries';
+            % also updates drift-correction with new navigation
+            obj.Navigation =        Value;
+            obj.DriftCorrection =   obj.DriftCorrection.setNavigation(Value);
+        end
+        
+    end
+    
+    methods % SETTERS VIEW
+       
+          function obj =      setCollapseAllTrackingTo(obj, Value)
+              % SETCOLLAPSEALLTRACKINGTO set whether tracked data of all planes, or just of "visible" planes are shown;
+            obj.CollapseAllTracking = Value;
+          end
+        
+        function Value =                            getCollapseAllTracking(obj)
+            % GETCOLLAPSEALLTRACKING returns whether tracked data of all planes, or just of "visible" planes are shown;
+            Value = obj.CollapseAllTracking;
+        end
+           
+    end
+    
+    methods % SETTERS IMAGE MAP
+       
+           function obj =      setPropertiesFromImageMetaData(obj)
+            % SETPROPERTIESFROMIMAGEFILES
+            % sets image map, space-calibration, time-calibration, navigation from file (also updates navigation used by drift correction);
+            % takes 0 arguments;
+            assert(~isempty(obj.getPathsOfImageFiles), 'Could not get paths.')
+            
+            fprintf('\nPMMovieTracking:@setPropertiesFromImageMetaData.\n')
+            myImageFiles =                      PMImageFiles(...
+                                                    obj.getPathsOfImageFiles, ...
+                                                    obj.WantedScene...
+                                                    );
+            assert(~myImageFiles.notAllFilesCouldBeRead, 'Could not connect to all movie-files.')
+            
+            fprintf('All source files could be accessed. Retrieving MetaData and ImageMaps.\n')
+            obj.ImageMapPerFile =              myImageFiles.getImageMapsPerFile; 
+            obj.SpaceCalibration =             myImageFiles.getSpaceCalibration; 
+            obj.TimeCalibration =              myImageFiles.getTimeCalibration; 
+            obj.Navigation =                   myImageFiles.getNavigation; 
+           
+            
+            MyTiffsDir =    myImageFiles.getTIFFImageFileDirectoryContents;
+            MyTiffDir = MyTiffsDir{1}{1};
+            
+            if obj.getNumberOfChannels ~= obj.Navigation.getMaxChannel
+                    obj =                           obj.setDefaultChannelsForChannelCount(obj.Navigation.getMaxChannel);
+            end
+            
+            if isempty(obj.DriftCorrection)
+                    obj.DriftCorrection =               PMDriftCorrection;
+            end
+            
+            obj.DriftCorrection =           obj.DriftCorrection.setNavigation(obj.Navigation);
+            obj.DriftCorrection =           obj.DriftCorrection.setBlankDriftCorrection;
+           
+                    
+        end
+        
+        
+    end
+    
+    methods % GETTERS IMAGE MAP
+        
+        function imageMapOncell =           getSimplifiedImageMapForDisplay(obj)
+            % GETSIMPLIFIEDIMAGEMAPFORDISPLAY returns cell array of image map that is suitable for graphical display;
+            
+            function result =    convertMultiCellToSingleCell(input)
+
+                Dim =    size(input,1);
+                if Dim > 1
+                   result = '';
+                   for index = 1 : Dim
+                       result = [result ' ' num2str(input(index))];
+                   end
+                else
+                   result = input;
+                end
+
+            end
+
+            myImageMap =        obj.getImageSource.getImageMap;
+            imageMapOncell =    cellfun(@(x) convertMultiCellToSingleCell(x), myImageMap(2:end,:), 'UniformOutput', false);
+
+        end
+        
+        function imageSource =              getImageSource(obj, varargin)
+            % GETIMAGESOURCE
+            
+            obj= obj.replaceImageMapPaths;
+            
+            switch length(varargin)
+               
+                case 0
+                      imageSource = PMImageSource(...
+                                        obj.ImageMapPerFile, ...
+                                        obj.Navigation...
+                                        );
+                    
+                case 1
+                    settings.SourceChannels =          [];
+                    settings.TargetChannels =          [];
+                    settings.SourcePlanes =            [];
+                    settings.TargetPlanes =            [];
+
+                    settings.TargetFrames =             1;
+                    settings.SourceFrames =             varargin{1};
+
+                    imageSource =                PMImageSource(...
+                                            obj.ImageMapPerFile, ...
+                                            obj.Navigation, ...
+                                            settings);
+                   
+                                                    
+                    
+                otherwise
+                    error('Wrong input.')
+                
+                
+                
+            end
+          
+        end
+
+    end
+    
     methods % SETTERS MOVIE FILE AND DESCRIPTION
         
         function obj = unmap(obj)
@@ -818,7 +1269,7 @@ classdef PMMovieTracking < PMChannels
         function paths =        getPathsOfImageFiles(obj)
             % GETPATHSOFIMAGEFILES returns empty (no movie-folder exists) or cell array with complete paths of all movie-files;
             assert(~isempty(obj.getMovieFolder), 'Paths can only be created when the movie-folder is set.')
-            paths =         obj.getMovieFolderPathsForStrings(obj, obj.getLinkedMovieFileNames);
+            paths =         obj.getMovieFolderPathsForStrings(obj.getLinkedMovieFileNames);
 
         end
         
@@ -856,69 +1307,7 @@ classdef PMMovieTracking < PMChannels
            assert(length(extension) == 1, 'Cannot process diverse extensions.')
            extension = extension{1};
         end
-
-        
-        
-    end
-    
-    methods % GETTERS TO GENERATE MOVIE-VIEW
-       
-        function TempVolumes =          loadImageVolumesForFrames(obj, numericalNeededFrames)
-            % LOADIMAGEVOLUMESFORFRAMES loads all unloaded image-volumes of specified time frames;
-            % input: vector with indices of frames that should be loaded;
-            TempVolumes = obj.loadImageVolumesForFramesInternal(numericalNeededFrames);
-        end
-        
-        function AllConnectionsOk =     checkConnectionToImageFiles(obj)
-             % CHECKCONNECTIONTOIMAGEFILES
-             AllConnectionsOk = obj.checkWhetherAllImagePathsCanBeLinked;
-         end
-
-        function Value =                getCollapseAllPlanes(obj)
-            % GETCOLLAPSEALLPLANES
-            Value = obj.CollapseAllPlanes;
-        end
-  
-        function imageMapOncell =        getSimplifiedImageMapForDisplay(obj)
-            % GETSIMPLIFIEDIMAGEMAPFORDISPLAY returns cell array of image map that is suitable for graphical display;
-            
-            function result =    convertMultiCellToSingleCell(input)
-
-            Dim =    size(input,1);
-            if Dim > 1
-               result = '';
-               for index = 1 : Dim
-                   result = [result ' ' num2str(input(index))];
-               end
-            else
-               result = input;
-            end
-            end
-
-            myImageMap =        obj.getImageSource.getImageMap;
-            imageMapOncell =    cellfun(@(x) convertMultiCellToSingleCell(x), myImageMap(2:end,:), 'UniformOutput', false);
-
-        end
-        
-        function imageSource = getImageSource(obj)
-            % GETIMAGESOURCE
-            imageSource = PMImageSource(obj.ImageMapPerFile, obj.Navigation);
-        end
-
-        function  rgbImage = convertImageVolumeIntoRgbImage(obj, SourceImageVolume)
-            % CONVERTIMAGEVOLUMEINTORGBIMAGE converts "image-volume" into 3-channel rgb image;
-            rgbImage = obj.convertImageVolumeIntoRgbImageInternal(SourceImageVolume);
-        end
-
-        function filtered = filterImageVolumeByActivePlanes(obj, Volume)
-            % FILTERIMAGEVOLUMEBYACTIVEPLANES
-            filtered =    Volume(:, :, obj.getListOfVisiblePlanesWithoutDriftCorrection, :, :);
-        end
-
-        
-        
-        
-        
+   
     end
     
     methods % SETTERS CROPPING
@@ -1034,7 +1423,7 @@ classdef PMMovieTracking < PMChannels
              % takes 1 argument:
              % 1: frame number
             obj.Navigation =     obj.Navigation.setActiveFrames(FrameNumber);
-            obj.Tracking =       obj.Tracking.setActiveFrameTo(FrameNumber);
+            obj.Tracking =       obj.Tracking.performMethod('setActiveFrameTo', FrameNumber);
         end
         
         function obj =       setFocusOnActiveMask(obj)
@@ -1125,12 +1514,12 @@ classdef PMMovieTracking < PMChannels
             % all values add the currently applied drift correction to the values;
             rows =      obj.getMaxRowWithAppliedDriftCorrection;
             columns =   obj.getMaxColumnWithAppliedDriftCorrection;
-            planes =    obj.getMaxPlaneWithAppliedDriftCorrection;
+            planes =    obj.getMaxPlane;
         end
 
         function frames =                       getActivePlanes(obj)
             % GETACTIVEPLANES returns active planes (this seems to include drift: if so, inconsistent with max planes, this needs to be fixed);
-            frames = obj.Navigation.getActivePlanes;
+            frames = double(obj.Navigation.getActivePlanes);
         end
         
         function frames =                       getActiveFrames(obj)
@@ -1144,7 +1533,7 @@ classdef PMMovieTracking < PMChannels
             
             switch obj.CollapseAllTracking
                 case 1
-                   visiblePlanes =          1 : obj.Navigation.getMaxPlaneWithAppliedDriftCorrection;
+                   visiblePlanes =          1 : obj.Navigation.getMaxPlane;
                 otherwise
                     visiblePlanes =         obj.getActivePlanes;
             end
@@ -1152,7 +1541,7 @@ classdef PMMovieTracking < PMChannels
     
         function planeOfActiveTrack =            getPlaneOfActiveTrack(obj)
             % GETPLANEOFACTIVETRACK returns plane of active mask (with active drift-correction);
-            [~, ~, planeOfActiveTrack ] =       obj.addDriftCorrection( 0, 0, obj.Tracking.getPlaneOfActiveTrackForFrame(obj.getActiveFrames));
+            [~, ~, planeOfActiveTrack ] =       obj.addDriftCorrection( 0, 0, obj.Tracking.performMethod('getPlaneOfActiveTrackForFrame', obj.getActiveFrames));
             planeOfActiveTrack =                round(planeOfActiveTrack);
         end
         
@@ -1198,8 +1587,8 @@ classdef PMMovieTracking < PMChannels
         function obj =      setDriftDependentParameters(obj)
             % SETDRIFTDEPENDENTPARAMETERS sets properties that are influenced by drift-correction;
             obj.DriftCorrection =       obj.DriftCorrection.setNavigation(obj.Navigation);
-            obj.Tracking =              obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
-            obj.Tracking =              obj.Tracking.setTrackingCellForTimeWithDriftByDriftCorrection(obj.DriftCorrection);
+            obj.Tracking =              obj.Tracking.performMethod('setTrackingAnalysis', obj.getTrackingAnalysis);
+            obj.Tracking =              obj.Tracking.performMethod('setTrackingCellForTimeWithDriftByDriftCorrection', obj.DriftCorrection);
             % % this really slow and not necessary I think;
 
         end
@@ -1305,10 +1694,24 @@ classdef PMMovieTracking < PMChannels
             % SHOWSUMMARY shows summary of object
             
             fprintf('\n*** This PMMovieTracking object manages annotation of a movie-sequence.\n')
+            fprintf('Annotation folder = "%s".\n', obj.AnnotationFolder)
+            fprintf('Movie folder = "%s".\n', obj.getMovieFolder)
+            fprintf('Export folder = "%s".\n', obj.AnnotationFolder)
+            
+            if isempty(obj.LoadedImageVolumes)
+                fprintf('No images are loaded.\n')
+            else
+               fprintf('Images are loaded.\n') 
+            end
+            
+            
+            
             fprintf('The most important functions are to track cells and to correct drift of movie-sequences.\n')
             fprintf('\nTracking is done with the following PMTrackingNavigation object:\n')
             
-            obj.Tracking = obj.Tracking.showSummary;
+            
+            
+            obj.Tracking = obj.Tracking.performMethod('showSummary');
             
             fprintf('\nAnother important feature is support for interaction analysis.\n')
             fprintf('The foundation for this support comes from the following object:\n')
@@ -1407,13 +1810,28 @@ classdef PMMovieTracking < PMChannels
            % SETCHANNELS set Channel property
            % takes 1 argument:
            % 1: 'PMMovieTracking' scalar (extracts its Channels property);
-            assert(isa(Value, 'PMMovieTracking') && iscalar(Value), 'Wrong argument type.')
-            obj.Channels = Value.Channels;
+            assert(isvector(Value), 'Wrong argument type.')
+            
+            switch class(Value)
+               
+                case 'PMMovieTracking'
+                    assert(isscalar(Value), 'Wrong input.')
+                    obj = setChannels@PMChannels(obj, Value.getChannels);
 
+                case 'PMChannel'
+                    obj = setChannels@PMChannels(obj,Value);
+
+                otherwise
+                    error('Wrong input.')
+                
+                
+            end
+            
+            
         end
 
        function obj =    resetChannelSettings(obj, Value, Field)
-           % RESETCHANNELSETTINGS allows setting of Channel property;
+           % RESETCHANNELSETTINGS allows setting of properties of active channel;
            % takes 2 arguments:
            % 1: Value
            % 2: property name 'ChannelTransformsLowIn', 'ChannelTransformsHighIn', 'ChannelColors', 'ChannelComments', 'SelectedChannels', 'ChannelReconstruction';
@@ -1443,7 +1861,18 @@ classdef PMMovieTracking < PMChannels
             end
 
        end
-          
+       
+       function obj = setVisibilityToActiveChannel(obj)
+             % SETVISIBILITYTOACTIVECHANNEL sets active channel to visible and all other channels to nvisible;
+            AllChannelsFalse = false(1, obj.getNumberOfChannels);
+            AllChannelsFalse(obj.getActiveChannelIndex) = true; 
+            obj = obj.setVisibleForAllChannels(AllChannelsFalse);
+             
+            
+           
+       end
+       
+       
     end
     
     methods % SETTERS TRACKING STATE
@@ -1455,8 +1884,16 @@ classdef PMMovieTracking < PMChannels
             % 2: column of current position
             % 3: row of current position
             [SelectedTrackID , FrameNumber]   =    obj.getWantedTrackIDFrameFor(Code, Column, Row);
-            obj =                                   obj.setActiveTrackWith(SelectedTrackID);
-            obj =                                   obj.setFrameTo(FrameNumber); 
+            if isnan(SelectedTrackID)
+                
+            else
+                  obj =                                   obj.setActiveTrackWith(SelectedTrackID);
+                  if ~isnan(FrameNumber)
+                        obj =                                   obj.setFrameTo(FrameNumber); 
+                  end
+                
+            end
+          
 
         end
 
@@ -1464,54 +1901,48 @@ classdef PMMovieTracking < PMChannels
             % SETACTIVETRACKWITH set active track
             % takes 1 argument:
             % 1: track ID
-            obj.Tracking =      obj.Tracking.setActiveTrackIDTo(NewTrackID);
+            obj.Tracking =      obj.Tracking.performMethod('setActiveTrackIDTo', NewTrackID);
         end
 
         function obj =      deleteActiveTrack(obj)
             % DELETEACTIVETRACK deletes a active track
-            obj.Tracking  =     obj.Tracking.removeActiveTrack;
+            obj.Tracking  =     obj.Tracking.performMethod('removeActiveTrack');
         end
         
         function obj =      setSelectedTrackIdsTo(obj, Value)
             % SETSELECTEDTRACKIDSTO sets selected track IDs to input;
-            obj.Tracking =  obj.Tracking.setSelectedTrackIdsTo(Value);
+            obj.Tracking =  obj.Tracking.performMethod('setSelectedTrackIdsTo', Value);
         end
 
         function obj =      addToSelectedTrackIds(obj, TracksToAdd)
             % ADDTOSELECTEDTRACKIDS adds input values to selected tracks;
-            obj.Tracking =    obj.Tracking.addToSelectedTrackIds(TracksToAdd);
+            obj.Tracking =    obj.Tracking.performMethod('addToSelectedTrackIds', TracksToAdd);
         end
 
         function obj =      selectAllTracks(obj)
             % SELECTALLTRACKS all tracks become selected
-            obj.Tracking =  obj.Tracking.selectAllTracks;
+            obj.Tracking =  obj.Tracking.performMethod('selectAllTracks');
         end
 
         function obj = deleteAllTracks(obj)
             % DELETEALLTRACKS delete all tracks
-           obj.Tracking =     PMTrackingNavigation();
-           obj.Tracking =     obj.Tracking.initializeWithDrifCorrectionAndFrame(obj.DriftCorrection, obj.getMaxFrame);
+           obj.Tracking =     PMTrackingNavigationController(PMTrackingNavigation());
+           obj.Tracking =     obj.Tracking.performMethod('initializeWithDrifCorrectionAndFrame', obj.DriftCorrection, obj.getMaxFrame);
         end
 
         function obj =      setTrackingAnalysis(obj)
              % SETTRACKINGANALYSIS set tracking analysis of PMTrackingNavigation object;
              % takes 0 arguments 
-            obj.Tracking =      obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
+            obj.Tracking =      obj.Tracking.performMethod('setTrackingAnalysis', obj.getTrackingAnalysis);
         end
 
-        function obj =      setPreventDoubleTracking(obj, Value, Value2)
-            % SETPREVENTDOUBLETRACKING sets whether double tracking should be prevented;
-            % takes 2 arguments:
-            % 1: logical scalar
-            % 2: distance in which double tracking should be prevented
-            obj.Tracking = obj.Tracking.setPreventDoubleTracking(Value, Value2);
-        end
+    
 
         function obj =      setFinishStatusOfTrackTo(obj, input)
             % SETFINISHSTATUSOFTRACKTO sets "finished-status of active track;
               % takes 1 argument:
                 % 1: 'char': 'Finished', 'Unfinished'
-            obj.Tracking = obj.Tracking.setInfoOfActiveTrack(input);
+            obj.Tracking = obj.Tracking.performMethod('setInfoOfActiveTrack', input);
             fprintf('Finish status of track %i was changed to "%s".\n', obj.getIdOfActiveTrack, input)
         end
 
@@ -1519,27 +1950,63 @@ classdef PMMovieTracking < PMChannels
     
     methods % SETTERS TRACKING MANUAL TRACKING
        
-        function obj =      updateTrackingWith(obj, Value)
-             % UPDATETRACKINGWITH updates state of Tracking object with input;
-             % takes 1 argument:
-             % 1: 'PMTrackingNavigationAutoTrackView' or 'PMAutoCellRecognitionView';
-            obj.Tracking = obj.Tracking.updateWith(Value); 
-        end
+        function obj =      addMaskByClickedCoordiante(obj, Coordinate)      
+            
+            rowPos =                        Coordinate(1);
+            columnPos =                     Coordinate(2);
+            planePos =                      Coordinate(3);
+            
+            mySegmentationObject =          obj.getDefaultSegmentationCapture;
+            mySegmentationObject =          mySegmentationObject.setImageVolume(obj.getActiveImage);
+            mySegmentationObject =          obj.applyActiveStateToSegmentationCapture(mySegmentationObject);
+            mySegmentationObject =          mySegmentationObject.setActiveCoordinateBy(rowPos, columnPos, planePos);
+            mySegmentationObject =          mySegmentationObject.generateMaskByClickingThreshold;
+            
+             obj =                          obj.resetActivePixelListWith(mySegmentationObject);
+            
+            if 1== 2
+                  children =                          mySegmentationObject.getSegmentationCaptureChildren;
+                   NewTrackID = obj.findNewTrackID;
+                    for index = 1 : length(children)
+                        % children(index) = children(index).setTrackId(NewTrackID + index - 1);
+                         obj.Tracking =       obj.Tracking.performMethod('setActiveTrackID', NewTrackID + index - 1);
+                        obj =                 obj.resetActivePixelListWith(children(index));
 
-        function obj =      performTrackingMethod(obj, Value)
+                        obj =       obj.addToSelectedTrackIds(NewTrackID + index - 1);
+                    end
+                
+                
+            end
+            
+          
+                            
+            
+        end
+        
+        function obj =      performTrackingMethod(obj, Value, varargin)
             % PERFORMTRACKINGMETHOD call method of PMTrackingNavigation object;
-            % takes 1 argument: allows calling a method of the object's, PMTrackingNavigation object;
+            % takes 1 or more arguments: allows calling a method of the object's, PMTrackingNavigation object;
             % 1: character string: name of method
+            assert(ischar(Value), 'First argument must be character-string.')
             try
                 if ismethod(obj.Tracking, Value)
-                     obj.Tracking =      obj.Tracking.(Value);
+                     obj.Tracking =      obj.Tracking.performMethod(Value, varargin{:});
                 end
 
             catch ME
                 throw(ME)
             end
+            
+         end
+ 
+        function obj =      updateTrackingWith(obj, Value)
+             % UPDATETRACKINGWITH updates state of Tracking object with input;
+             % takes 1 argument:
+             % 1: 'PMTrackingNavigationAutoTrackView' or 'PMAutoCellRecognitionView';
+            obj.Tracking = obj.Tracking.performMethod('updateWith', Value); 
         end
 
+       
         function obj =      updateMaskOfActiveTrackByAdding(obj, yList, xList, plane)
             % UPDATEMASKOFACTIVETRACKBYADDING update tracking of active mask with coordinate list;
             % takes 3 arguments:
@@ -1551,7 +2018,7 @@ classdef PMMovieTracking < PMChannels
             else
                 pixelListToAdd =                [yList,xList];
                 pixelListToAdd(:,3) =           plane;
-                pixelList_AfterAdding =         unique([obj.Tracking.getPixelsOfActiveTrackForFrames(obj.getActiveFrames); pixelListToAdd], 'rows');
+                pixelList_AfterAdding =         unique([obj.Tracking.get('PixelsOfActiveTrackForFrames', obj.getActiveFrames); pixelListToAdd], 'rows');
                 mySegementationCapture =        PMSegmentationCapture(pixelList_AfterAdding, 'Manual');
                 obj =                           obj.resetActivePixelListWith(mySegementationCapture);
 
@@ -1574,13 +2041,16 @@ classdef PMMovieTracking < PMChannels
                % obj.Tracking.setTrackingAnalysis(obj.getTrackingAnalysis);
                % % this is done somewhere else now; otherwise too slow;
                % check if this is ok now;
-                try 
-                    obj.Tracking =      obj.Tracking.addSegmentation(SegmentationCapture);
-                catch ME
-                    throw(ME)
-                end
-
-                obj =               obj.setSavingStatus(true);
+               
+               if isempty(obj.Tracking.get('TrackingAnalysis'))
+                   obj.Tracking = obj.Tracking.performMethod('setTrackingAnalysis', obj.getTrackingAnalysis);
+                   
+               end
+              
+                obj.Tracking =      obj.Tracking.performMethod('addSegmentation', SegmentationCapture);
+                obj =               obj.setSavingStatus(false);
+                
+      
 
             end
 
@@ -1590,117 +2060,243 @@ classdef PMMovieTracking < PMChannels
             % MERGEACTIVETRACKWITHTRACK merges active track with inputted track ID;
             % takes 1 argument:
             % 1: numeric scalar: ID of track with which to merge;
-            obj.Tracking =      obj.Tracking.splitTrackAtFrame(obj.getActiveFrames-1, obj.getIdOfActiveTrack, obj.Tracking.generateNewTrackID);
-            obj.Tracking =      obj.Tracking.mergeTracks([obj.getIdOfActiveTrack,    IDOfTrackToMerge]);
+            obj.Tracking =      obj.Tracking.performMethod('splitTrackAtFrame', obj.getActiveFrames-1, obj.getIdOfActiveTrack, obj.Tracking.get('NewTrackID'));
+            obj.Tracking =      obj.Tracking.performMethod('mergeTracks', [obj.getIdOfActiveTrack,    IDOfTrackToMerge]);
         end
 
         function obj =      minimizeMasksOfActiveTrackAtFrame(obj, FrameIndex)
            % MINIMIZEMASKSOFACTIVETRACKATFRAME replaces mask of active cell by point mask;
            % takes 1 argument:
            % 1: frame number where mask should be minimized
-           obj.Tracking =       obj.Tracking.minimizeActiveTrackAtFrame(FrameIndex);
+           obj.Tracking =       obj.Tracking.performMethod('minimizeActiveTrackAtFrame', FrameIndex);
             obj =               obj.setFrameTo(SourceFrames(FrameIndex));
             obj =               obj.setFocusOnActiveMask;
         end
 
         function obj =      deleteSelectedTracks(obj)
             % DELETESELECTEDTRACKS deletes all selected tracks
-            obj.Tracking  =         obj.Tracking.deleteAllSelectedTracks;
+            obj.Tracking  =         obj.Tracking.performMethod('deleteAllSelectedTracks');
         end
 
         function obj =      deleteActiveTrackAfterActiveFrame(obj)
             % DELETEACTIVETRACKAFTERACTIVEFRAME 
-            obj.Tracking =     obj.Tracking.deleteActiveTrackAfterFrame(obj.getActiveFrames);
+            obj.Tracking =     obj.Tracking.performMethod('deleteActiveTrackAfterFrame', obj.getActiveFrames);
         end
 
         function obj =      deleteActiveTrackBeforeActiveFrame(obj)
             % DELETEACTIVETRACKBEFOREACTIVEFRAME
-            obj.Tracking =   obj.Tracking.deleteActiveTrackBeforeFrame(obj.getActiveFrames);
+            obj.Tracking =   obj.Tracking.performMethod('deleteActiveTrackBeforeFrame', obj.getActiveFrames);
         end
 
         function obj =      splitTrackAfterActiveFrame(obj)
             %SPLITTRACKAFTERACTIVEFRAME
-            obj.Tracking =     obj.Tracking.splitActiveTrackAtFrame(obj.getActiveFrames);
+            obj.Tracking =     obj.Tracking.performMethod('splitActiveTrackAtFrame', obj.getActiveFrames);
         end
 
         function obj =      generalCleanup(obj)
             % GENERALCLEANUP calls generalCleanup method of PMTrackingNavigation;
-           obj.Tracking = obj.Tracking.generalCleanup;
+           obj.Tracking = obj.Tracking.performMethod('generalCleanup');
         end
 
     end
     
-    methods % SETTERS TRACKING AUTO-CELL RECOGNITION
+    methods % AUTOCELLRECOGNITION
         
-         function obj =          executeAutoCellRecognition(obj, myCellRecognition)
+        function Value = getAutoCellRecognition(obj)
+            Value = obj.AutoCellRecognition; 
+        end
+        
+        function obj =      setAutoCellRecognition(obj)
+            
+            if isempty(obj.AutoCellRecognition)
+                obj.AutoCellRecognition = PMAutoCellRecognition ;
+            end
+
+            if ~isempty(obj.getLoadedImageVolumes)
+              obj.AutoCellRecognition = obj.AutoCellRecognition.performMethod('setImageSequence', obj.getLoadedImageVolumes);
+            end
+                 
+        end
+
+        function obj =      interpolateAutoCellRecognitionController(obj, View) 
+            MyController =                  obj.getAutoCellRecognitionControllerInternal(View).interpolateCircleRecognitionLimits;  
+            obj.AutoCellRecognition =       MyController.getModel;
+            
+        end
+        
+
+        
+         function obj =     setActiveTrackToNewTrack(obj)
+             obj =      obj.setActiveTrackWith(obj.findNewTrackID);
+             
+         end
+         
+        function obj =      AutoCellRecognitionChannelChanged(obj, View, third)
+                MyController =                  obj.getAutoCellRecognitionControllerInternal(View);
+                
+                MyController =                  MyController.setActiveChannel(third.DisplayIndices(1));
+                MyController =                  MyController.setModelByView;
+                
+                obj.AutoCellRecognition =       MyController.getModel;
+           
+        end
+
+        function obj =      AutoCellRecognitionFramesChanged(obj, View, third)
+            MyController =                  obj.getAutoCellRecognitionControllerInternal(View);
+
+            myFrames =                      third.DisplayIndices(:, 1);
+            MyController =                  MyController.setSelectedFrames(myFrames);
+            MyController =                  MyController.setModelByView;
+            
+            obj.AutoCellRecognition =       MyController.getModel;
+
+        end
+
+        function obj =      AutoCellRecognitionTableChanged(obj,View, src)
+            
+            MyController =              obj.getAutoCellRecognitionControllerInternal(View);
+             
+            MyController =              MyController.setCircleLimitsBy(src.Data);
+            MyController =              MyController.setModelByView;
+            
+            obj.AutoCellRecognition =   MyController.getModel;
+
+        end
+        
+        function obj =      changeOfAutoCellRecognitionView(obj, View)
+            MyController =                      obj.getAutoCellRecognitionControllerInternal(View);
+            MyController =                      MyController.setModelByView;
+           obj.AutoCellRecognition =            MyController.getModel;
+
+        end
+       
+        
+         
+         
+
+    end
+    
+    methods % AUTOCELLRECOGNITION: ACTION
+       
+        function obj =          autDetectMasksByIntensity(obj)
+
+
+            SegmentationCaptureSourceList =             obj.getSegmenationCaptureSourceListForFrames(...
+                                                obj.AutoCellRecognition.getSelectedFrames);
+            obj =                                   obj.setTrackingAnalysis;     
+            
+            
+             obj.Tracking =               obj.Tracking.performMethod('performIntensityAutoRecognition', ...
+                                                            SegmentationCaptureSourceList, ...
+                                                            obj.AutoCellRecognition.getSelectedFrames, ...
+                                                            obj.AutoCellRecognition.getPreventDoubleTracking, ...
+                                                            obj.AutoCellRecognition.getPreventDoubleTrackingDistance ...
+                                                            );
+            
+          
+
+            
+            obj =                                   obj.updateTrackingDataBySegmentationList(...
+                                                            ListWithSegmentationCaptureResults, ...
+                                                            obj.AutoCellRecognition.getSelectedFrames...
+                                                            );
+
+        end
+
+        function obj =      updateTrackingDataBySegmentationList(obj, ListWithSegmentationCaptureResults, FramesThatShouldBeTracked)
+
+            StartFrame =                    obj.getActiveFrames;
+            for frameIndex = 1 :length(FramesThatShouldBeTracked)
+                obj =   obj.setFrameTo(FramesThatShouldBeTracked(frameIndex));  
+                SegmentationCapturesOfCurrentFrame = ListWithSegmentationCaptureResults{frameIndex};
+                for index = 1 : length(SegmentationCapturesOfCurrentFrame)
+                    obj =       obj.setActiveTrackWith(obj.findNewTrackID);
+                    obj =       obj.resetActivePixelListWith(SegmentationCapturesOfCurrentFrame(index));
+                end
+            end
+            obj =      obj.setFrameTo( StartFrame);
+
+        end
+         
+
+        function obj =          executeAutoCellRecognition(obj)
             % EXECUTEAUTOCELLRECOGNITION recognizes new cells by circle recognition and addes to PMMovieTracking object;
             % takes 1 argument:
             % 1: cell recognition object
 
-            myCellRecognition =     myCellRecognition.performAutoDetection;
-            obj.Tracking =          obj.Tracking.setAutomatedCellRecognition(myCellRecognition);
+            %  obj.getLoadedImageVolumes
+            obj.AutoCellRecognition =       obj.AutoCellRecognition.performAutoDetection;
+            obj.Tracking =                  obj.Tracking.performMethod('setAutomatedCellRecognition', autoCellRecongition);
             fprintf('\nCell recognition finished!\n')
 
-            obj.Tracking =          obj.Tracking.setPreventDoubleTracking(true);
-
+        
+            FramesThatShouldBeTracked = obj.AutoCellRecognition.getSelectedFrames';
+            
             fprintf('\nAdding cells into track database ...\n')
-            for CurrentFrame = myCellRecognition.getSelectedFrames' % loop through each frame 
+            for CurrentFrame = FramesThatShouldBeTracked % loop through each frame 
                 fprintf('Processing frame %i ...\n', CurrentFrame)
                 obj =           obj.setFrameTo(CurrentFrame);
 
-                PixelsOfCurrentFrame =      myCellRecognition.getDetectedCoordinates{CurrentFrame,1};
+                PixelsOfCurrentFrame =      obj.AutoCellRecognition.getDetectedCoordinates{CurrentFrame,1};
                 for CellIndex = 1 : size(PixelsOfCurrentFrame,1) % loop through all cells within each frame and add to Tracking data
-                    obj =      obj.setActiveTrackWith(obj.findNewTrackID);
+                    obj =       obj.setActiveTrackWith(obj.findNewTrackID);
                     try
-                        obj =      obj.resetActivePixelListWith(PMSegmentationCapture(PixelsOfCurrentFrame{CellIndex,1}, 'DetectCircles'));
+                        mySegmentation = PMSegmentationCapture(PixelsOfCurrentFrame{CellIndex,1}, 'DetectCircles');
+                        obj =      obj.resetActivePixelListWith(mySegmentation);
                     catch
 
                     end
                 end
             end
 
-            obj.Tracking = obj.Tracking.setPreventDoubleTracking(true);
-
-            fprintf('Cell were added into the database!\n')
-        end
-
+        
+            fprintf('Cells were added into the database!\n')
+         end
+         
+        
     end
-    
+
     methods % SETTERS TRACKING AUTO-TRACKING
        
-        function obj =          mergeTracksWithinDistance(obj, distance)
-              % MERGETRACKSWITHINDISTANCE linking tracks
-              % takes 1 argument:
-              % 1: number of accepted "gap frames":
-              % negative: connects tracks that show some overlap
-              % positive: connects tracks that are separated by 1 or more frames;
-              % 0: connects gap that fit exactly;
-                 obj.Tracking =             obj.Tracking.setDistanceLimitZForTrackingMerging(2);
-                 obj.Tracking =             obj.Tracking.setShowDetailedMergeInformation(true);
-                 if isnan(distance)
-                 else
-                    obj.Tracking =        obj.Tracking.trackingByFindingUniqueTargetWithinConfines(distance);
-                 end
-          end
-          
+
         function obj =          performAutoTrackingOfExistingMasks(obj)
             % PERFORMAUTOTRACKINGOFEXISTINGMASKS performs autTrackingProcedure method of Tracking;
-             obj.Tracking =     obj.Tracking.autTrackingProcedure(obj.DriftCorrection, obj.SpaceCalibration, obj.TimeCalibration);
+             obj.Tracking =     obj.Tracking.performMethod('autTrackingProcedure', obj.DriftCorrection, obj.SpaceCalibration, obj.TimeCalibration);
         end
          
     end
     
     methods % GETTERS TRACKING: BASIC
           
-        function numberOfTracks =                   getNumberOfTracks(obj)
-            % GETNUMBEROFTRACKS returns number of tracks
-            numberOfTracks = obj.Tracking.getNumberOfTracks;
+        function obj = showTrackingNavigationWindow(obj)
+            obj.Tracking = obj.Tracking.show;
+            
         end
         
-        function tracking =                         getTracking(obj)
-            % GETTRACKING returns Tracking object
-            tracking = obj.Tracking; 
+        function Value = getTrackingNavigationView(obj)
+           Value = obj.Tracking.getView;
         end
+        
+        function obj = setTrackingNavigationView(obj, Value)
+            
+           obj.Tracking  = obj.Tracking.setView(Value); 
+        end
+        
+         function tracking =                         getTracking(obj)
+            % GETTRACKING returns Tracking object
+            tracking = obj.Tracking.get('Model'); 
+         end
+         
+ 
+         
+ 
+        
+        function numberOfTracks =                   getNumberOfTracks(obj)
+            % GETNUMBEROFTRACKS returns number of tracks
+            numberOfTracks = obj.Tracking.get('NumberOfTracks');
+        end
+        
+       
         
          function Tracking =                       testForExistenceOfTracking(obj)
             % TESTFOREXISTENCEOFTRACKING tests whether tracking was performed;
@@ -1709,7 +2305,7 @@ classdef PMMovieTracking < PMChannels
             if isempty(obj.Tracking)
                 Tracking =           false;
             else
-                Tracking=            obj.Tracking.testForExistenceOfTracks;
+                Tracking=            obj.Tracking.get('TracksExist');
             end
          end
          
@@ -1729,15 +2325,15 @@ classdef PMMovieTracking < PMChannels
             % GETIDSOFALLVISIBLETRACKS returns list of all track-IDs that should be shown;
             TrackIDsToShow = zeros(0,1);
             if obj.getTrackVisibility
-                TrackIDsToShow = [TrackIDsToShow; obj.getIdOfActiveTrack];
+                TrackIDsToShow = [TrackIDsToShow; obj.Tracking.get('IdOfActiveTrack')];
             end
 
             if obj.getSelectedTracksAreVisible
-                TrackIDsToShow = [TrackIDsToShow; obj.getSelectedTrackIDs];
+                TrackIDsToShow = [TrackIDsToShow; obj.Tracking.get('IdsOfSelectedTracks')];
             end
 
             if obj.getRestingTracksAreVisible
-                TrackIDsToShow = [TrackIDsToShow; obj.getIdsOfRestingTracks];
+                TrackIDsToShow = [TrackIDsToShow; obj.Tracking.get('IdsOfRestingTracks')];
             end
 
 
@@ -1745,27 +2341,27 @@ classdef PMMovieTracking < PMChannels
         
         function IdOfActiveTrack =      getIdOfActiveTrack(obj)
             % GETIDOFACTIVETRACK
-            IdOfActiveTrack =               obj.Tracking.getIdOfActiveTrack;
+            IdOfActiveTrack =               obj.Tracking.get('IdOfActiveTrack');
         end
 
         function trackIds =             getAllTrackIDs(obj)
             % GETALLTRACKIDS
-            trackIds =                      obj.Tracking.getListWithAllUniqueTrackIDs;
+            trackIds =                      obj.Tracking.get('ListWithAllUniqueTrackIDs');
         end
 
         function trackIds =             getSelectedTrackIDs(obj)
             % GETSELECTEDTRACKIDS
-            trackIds =                      obj.Tracking.getIdsOfSelectedTracks;
+            trackIds =                      obj.Tracking.get('IdsOfSelectedTracks');
         end
 
         function trackIds =             getIdsOfRestingTracks(obj)
             % GETIDSOFRESTINGTRACKS returns all non-active and non-selected tracks;
-            trackIds =                      obj.Tracking.getIdsOfRestingTracks;
+            trackIds =                      obj.Tracking.get('IdsOfRestingTracks');
         end
 
         function trackIDs =             getUnfinishedTrackIDs(obj)
             % GETUNFINISHEDTRACKIDS
-            trackIDs =                      obj.Tracking.getUnfinishedTrackIDs;
+            trackIDs =                      obj.Tracking.get('UnfinishedTrackIDs');
         end  
         
         function SelectedTrackID =      getTrackIDClosestToPosition(obj, MouseColumn, MouseRow)
@@ -1782,8 +2378,7 @@ classdef PMMovieTracking < PMChannels
 
         function newTrackID =           findNewTrackID(obj)
             % FINDNEWTRACKID returns suitable ID for new track (ID that is not used yet);
-            newTrackID =    obj.Tracking.generateNewTrackID;
-            fprintf('Tracking identified %i as new track ID.\n', newTrackID)
+            newTrackID =    obj.Tracking.get('NewTrackID');
         end
        
         function trackIDs =             getTrackIDsWhereNextFrameHasNoMask(obj)
@@ -1791,7 +2386,7 @@ classdef PMMovieTracking < PMChannels
             if obj.getActiveFrames >= obj.Navigation.getMaxFrame 
                 trackIDs =                                  zeros(0,1);
             else                
-                TrackIDsOfNextFrame =                                   obj.Tracking.getTrackIDsOfFrame(obj.getActiveFrames + 1);
+                TrackIDsOfNextFrame =                                   obj.Tracking.get('TrackIDsOfFrame', obj.getActiveFrames + 1);
                 trackIDs =                                setdiff(obj.getTrackIDsOfCurrentFrame, TrackIDsOfNextFrame);
             end
             
@@ -1799,7 +2394,7 @@ classdef PMMovieTracking < PMChannels
         
         function trackIDs =             getTrackIDsOfCurrentFrame(obj)
             % GETTRACKIDSOFCURRENTFRAME % returns list of track-IDs of current frame;
-            trackIDs =                                   obj.Tracking.getTrackIDsOfFrame(obj.getActiveFrames);
+            trackIDs =                                   obj.Tracking.get('TrackIDsOfFrame', obj.getActiveFrames);
         end
     
     end
@@ -1814,19 +2409,19 @@ classdef PMMovieTracking < PMChannels
             % cell array:   one cell contains coordinates for each track:
             %               each cell contains numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;    
             % coordinates are filtered for "visible planes" and coordinates are adjusted for active drift-correction;
-            coordinates =        obj.Tracking.getCoordinatesForTrackIDsPlanes(TrackIDs, obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
+            coordinates =        obj.Tracking.get('CoordinatesForTrackIDsPlanes', TrackIDs, obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
         end
 
         function segmentationOfActiveTrack =        getSegmentationOfActiveMask(obj)
             % GETSEGMENTATIONOFACTIVEMASK returns segmentation of active track filtered for active frame ("active mask");
-            segmentationOfActiveTrack =    obj.Tracking.getActiveSegmentationForFrames(obj.Navigation.getActiveFrames);
+            segmentationOfActiveTrack =    obj.Tracking.get('ActiveSegmentationForFrames', obj.Navigation.getActiveFrames);
         end 
 
         function pixelList_Modified =               getPixelsFromActiveMaskAfterRemovalOf(obj, pixelListToRemove)
             % GETPIXELSFROMACTIVEMASKAFTERREMOVALOF returns pixel list of active track (after removal of pixels where X and Y coordinates match input pixel list);
 
             if ~(isempty(pixelListToRemove(:,1)) || isempty(pixelListToRemove(:,2)))  
-                pixelList_Original =        obj.Tracking.getPixelsOfActiveTrackForFrames(obj.getActiveFrames);
+                pixelList_Original =        obj.Tracking.get('PixelsOfActiveTrackForFrames', obj.getActiveFrames);
                 deleteRows =                ismember(pixelList_Original(:,1:2), [pixelListToRemove(:,1) pixelListToRemove(:,2)], 'rows');
                 pixelList_Modified =        pixelList_Original;
                 pixelList_Modified(deleteRows,:) =               [];
@@ -1837,14 +2432,18 @@ classdef PMMovieTracking < PMChannels
             % GETUNFILTEREDSEGMENTATIONOFACTIVETRACK returns segmentation for track ID;
             % returns 1 value:
             % segmentation list for all frames where wanted TrackID was successfully tracked;
-            MySegmentation =        obj.Tracking.getSegmentationForTrackID(obj.getIdOfActiveTrack);
+            MySegmentation =        obj.Tracking.get('SegmentationForTrackID', obj.getIdOfActiveTrack);
         end
 
         function [segmentationOfCurrentFrame ] =    getUnfilteredSegmentationOfCurrentFrame(obj)
             % GETUNFILTEREDSEGMENTATIONOFCURRENTFRAME returns segmentation of current frame;
             % returns 1 value:
             % segmentation list for all cells of current frame;
-            segmentationOfCurrentFrame =        obj.Tracking.getSegmentationOfFrame( obj.Navigation.getActiveFrames);
+             [segmentationOfCurrentFrame ] = obj.getUnfilteredSegmentationOfFrame(obj.Navigation.getActiveFrames);
+        end
+        
+        function [Segmentation ] = getUnfilteredSegmentationOfFrame(obj, Frame)
+            Segmentation =        obj.Tracking.get('SegmentationOfFrame', Frame);
         end
 
         function metricCoordinatesForEachSegment =  getMetricCoordinatesOfActiveTrackFilteredForFrames(obj, myFrames)
@@ -1854,8 +2453,11 @@ classdef PMMovieTracking < PMChannels
             % returns 1 value:
             % numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;   
             % out of plane-range coordinates are replaced with NaN;
-            MyTrackMatrix =                         [obj.Tracking.getFramesOfActiveTrack, obj.getMetricCoordinatesOfActiveTrack];
-            metricCoordinatesForEachSegment =       obj.Tracking.filterMatrixByFirstColumnForValues(MyTrackMatrix, myFrames);
+            MyTrackMatrix =                         [obj.Tracking.get('FramesOfActiveTrack'), obj.getMetricCoordinatesOfActiveTrack];
+            
+                 MatchingRows =      ismember(MyTrackMatrix(:, 1), myFrames);
+        metricCoordinatesForEachSegment =        MyTrackMatrix(MatchingRows,:);
+            
             metricCoordinatesForEachSegment =       metricCoordinatesForEachSegment(:, 2:4);
         end
 
@@ -1872,7 +2474,7 @@ classdef PMMovieTracking < PMChannels
             % returns 1 value:
             % numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;   
             % out of plane-range coordinates are replaced with NaN;
-            coordinates =        obj.Tracking.getCoordinatesForActiveTrackPlanes(obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
+            coordinates =        obj.Tracking.get('CoordinatesForActiveTrackPlanes', obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
         end
 
     end
@@ -1896,7 +2498,7 @@ classdef PMMovieTracking < PMChannels
             % GETMETRICFRAMESOFGOSEGMENTSOFACTIVETRACK returns cell-array;
             % each cell contains list of time of all frames in minutes
              TimeInMinutesForEachFrame=         obj.TimeCalibration.getRelativeTimeStampsInSeconds / 60;
-             FramesInMinutesForGoSegments =     cellfun(@(x)   TimeInMinutesForEachFrame(x),obj.getFramesOfGoSegmentsOfActiveTrack, 'UniformOutput', false);
+             FramesInMinutesForGoSegments =     cellfun(@(x)   TimeInMinutesForEachFrame(x),  obj.getFramesOfGoSegmentsOfActiveTrack,  'UniformOutput', false);
         end
 
         function frameList =                     getFramesOfGoSegmentsOfActiveTrack(obj)
@@ -1908,7 +2510,7 @@ classdef PMMovieTracking < PMChannels
         function TimeInMinutesForActiveTrack =   getFramesInMinutesOfActiveTrack(obj)
             % GETFRAMESINMINUTESOFACTIVETRACK returns numerical vector with minute times of all frames of active track; 
             TimeInMinutesForEachFrame=          obj.TimeCalibration.getRelativeTimeStampsInSeconds / 60;
-            TimeInMinutesForActiveTrack =       TimeInMinutesForEachFrame(obj.Tracking.getFramesOfActiveTrack);
+            TimeInMinutesForActiveTrack =       TimeInMinutesForEachFrame(obj.Tracking.get('FramesOfActiveTrack'));
         end
 
         function GapFrames =                     getGapFrames(obj, Parameter)
@@ -1951,7 +2553,7 @@ classdef PMMovieTracking < PMChannels
             % if no tracked after current frame: return last frame
             % otherwise: get frame before next tracked frame
 
-            FramesOfActiveTrack  =          obj.Tracking.getFramesOfActiveTrack;
+            FramesOfActiveTrack  =          obj.Tracking.get('FramesOfActiveTrack');
 
             Index = find(FramesOfActiveTrack > obj.getActiveFrames,  1, 'first');
             if isempty(Index)
@@ -1967,7 +2569,7 @@ classdef PMMovieTracking < PMChannels
         function firstUntrackedFrame =           firstUntrackedFrame(obj)
             % FIRSTUNTRACKEDFRAME returns last untracked frame (in reverse direction);
 
-            FramesOfActiveTrack  =              obj.Tracking.getFramesOfActiveTrack;
+            FramesOfActiveTrack  =              obj.Tracking.get('FramesOfActiveTrack');
             % get first untracked frame:
             BeforeFirstUntrackedFrame =             find(FramesOfActiveTrack < obj.getActiveFrames,  1, 'last');
             if isempty(BeforeFirstUntrackedFrame)
@@ -1995,7 +2597,7 @@ classdef PMMovieTracking < PMChannels
             % 'up': if the current frame is tracked: find last tracked frame after current frame;
             % 'down': if the current frame is tracked: find first tracked frame before current frame;
             
-             AllFramesOfActiveTrack = obj.Tracking.getFrameNumbersForTrackID(obj.getIdOfActiveTrack);
+             AllFramesOfActiveTrack = obj.Tracking.get('FrameNumbersForTrackID', obj.getIdOfActiveTrack);
             
                 % from a contiguous stretch of tracked frames: get first or last frame in this contiguous sequence;
                 if ~ismember(obj.getActiveFrames, AllFramesOfActiveTrack) % perform this analysis only when the current position is tracked;
@@ -2017,12 +2619,12 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    methods % GETTERS TRACKING ANALYSIS
+    methods % GETTERS TRACKING ANALYSIS 
 
     function TrackingAnalysis =     getTrackingAnalysis(obj)
         % GETTRACKINGANALYSIS
         TrackingAnalysis =  PMTrackingAnalysis(...
-                                    obj.Tracking, ...
+                                    obj.Tracking.get('Model'), ...
                                     obj.DriftCorrection, ...
                                     obj.SpaceCalibration, ...
                                     obj.TimeCalibration...
@@ -2032,49 +2634,64 @@ classdef PMMovieTracking < PMChannels
 
     end
 
-    methods % SETTERS INTERACTIONS
+    methods % SETTERS INTERACTIONS 
 
-     function obj = updateWith(obj, Value)
-         % UPDATEWITH 
-         % takes 1 argument:
-         % 1: PMInteractionsCapture object
+        function obj = updateWith(obj, Value)
+             % UPDATEWITH 
+             % takes 1 argument:
+             % 1: PMInteractionsCapture object
 
-         switch class(Value)
-             case 'PMInteractionsCapture'
-                  obj.Interactions =          Value;
-             otherwise
-                 error('Input not supported.')
+             switch class(Value)
+                 case 'PMInteractionsCapture'
+                      obj.Interactions =          Value;
+                 otherwise
+                     error('Input not supported.')
+             end
+
+        end
+
+        function obj = setInteractionsCapture(obj, Value)
+            obj.Interactions = Value;
+            
+          
+        
+          
+        end
 
 
-         end
+        function obj = setInteractions(obj, Value)
+            error('Use setInteractionsCapture instead.')
+        end
 
+
+        
+    
+  
 
     end
 
-    end
-
-    methods % GETTERS INTERACTIONS
+    methods % GETTERS INTERACTIONS 
+        
+        function interactions = getInteractionsCapture(obj)
+              interactions = obj.Interactions;
+        end
         
          function interactions = getInteractions(obj)
              % GETINTERACTIONS returns 'PMInteractionsCapture' object;
-            interactions = obj.Interactions;
+                error('Use getInteractionsCapture instead.')
          end
-        
-    end
-
-    
-    methods % GETTERS INTERACTION
-        
+         
         function thresholds = getDefaultThresholdsForAllPlanes(obj)
-           % GETDEFAULTTHRESHOLDSFORALLPLANES returns default threshold values;
-           % numeric vector with a number for each plane;
+            % GETDEFAULTTHRESHOLDSFORALLPLANES returns default threshold values;
+            % numeric vector with a number for each plane;
             thresholds(1: obj.getMaxPlane, 1) = 30;
 
-       end
+        end
+
         
     end
-    
-    methods % SETTERS TRACKING ANNOTATION VIEWS
+ 
+    methods % SETTERS TRACKING ANNOTATION VIEWS 
 
         function obj = toggleCentroidVisibility(obj)
             % TOGGLECENTROIDVISIBILITY
@@ -2133,7 +2750,7 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    methods % GETTERS TRACKING ANNOTATION VIEWS
+    methods % GETTERS TRACKING ANNOTATION VIEWS 
         
         function Value = getMaskVisibility(obj)
             % GETMASKVISIBILITY
@@ -2285,23 +2902,59 @@ classdef PMMovieTracking < PMChannels
        
         function summary =              getMetaDataSummary(obj)
             % GETMETADATASUMMARY
-            summary = PMImageFiles(obj.getPathsOfImageFiles).getMetaDataSummary;
+            summary = PMImageFiles(obj.getPathsOfImageFiles, obj.WantedScene).getMetaDataSummary;
         end
         
         function MetaDataString =       getMetaDataString(obj)
             % GETMETADATASTRING
-            MetaDataString =             PMImageFiles(obj.getPathsOfImageFiles).getMetaDataString;
+            MetaDataString =             PMImageFiles(obj.getPathsOfImageFiles, obj.WantedScene).getMetaDataString;
         end
    
     end
     
+    methods (Access = private) % AUTOCELLRECOGNTION
+        
+        function controller =                           getAutoCellRecognitionControllerInternal(obj, View)
+            controller =                            PMAutoCellRecognitionController(obj.AutoCellRecognition, View);
+            
+        end
+  
+        function SegmentationCaptureSourceList =        getSegmenationCaptureSourceListForFrames(obj, FramesThatShouldBeTracked)
+            % GETSEGMENATIONCAPTURESOURCELISTFORFRAMES returns PMSegmentationCapture vector for input frames;
+            % this vector can be used for various cell tracking objectives;
 
+            if isempty(obj.LoadedImageVolumes)
+                obj = obj.emptyOutLoadedImageVolumes; 
+            end
+            FramesINeed =                       obj.removeAlreadyLoadedFramesFromFrames(FramesThatShouldBeTracked);
+            obj =                               obj.updateLoadedImageVolumesForFrames(FramesINeed);
+
+
+            ChannelIWant =                      obj.AutoCellRecognition.getActiveChannel;
+            obj =                               obj.setActiveChannel(ChannelIWant);
+
+            mySegmentationCaptureSource =       obj.getDefaultSegmentationCapture;
+
+            MyActiveImages =                    arrayfun(@(x) obj.getActiveImage(x), FramesThatShouldBeTracked, 'UniformOutput', false);
+            MySegmentationLists =               arrayfun(@(x) obj.getUnfilteredSegmentationOfFrame(x), FramesThatShouldBeTracked, 'UniformOutput', false);
+
+            SegmentationCaptureSourceList =     cellfun(@(x)                        mySegmentationCaptureSource.setSegmentationOfCurrentFrame(x), MySegmentationLists, 'UniformOutput', false);
+            SegmentationCaptureSourceList =     cellfun(@(segmentation, x)          mySegmentationCaptureSource.setImageVolume(x), SegmentationCaptureSourceList, MyActiveImages); 
+
+            MyPlane =                           obj.getActivePlanes;
+            SegmentationCaptureSourceList =     arrayfun(@(x) x.setActiveZCoordinate(MyPlane), SegmentationCaptureSourceList);
+
+
+        end
+        
+    end
+    
     methods (Access = private) % SETTERS CROPPING
         
         function obj =              moveCroppingGateToActiveMask(obj)
             % MOVECROPPINGGATETOACTIVEMASK sets center of cropping gate to current position of active track;
             % takes 0 arguments
-            Coordinates =   obj.Tracking.getCoordinatesOfActiveTrackForFrame(obj.getActiveFrames);
+            Coordinates =   obj.Tracking.get('CoordinatesOfActiveTrackForFrame', obj.getActiveFrames);
             if isempty(Coordinates)
             else
                 obj =           obj.moveCroppingGateToNewCenter(Coordinates(1), Coordinates(2));
@@ -2341,19 +2994,19 @@ classdef PMMovieTracking < PMChannels
         function obj =      setPathsThatDependOnAnnotationFolder(obj)
             % SETPATHSTHATDEPENDONANNOTATIONFOLDER changes paths that depend on annotation folder path
             % sets folder for tracking-data
-             obj.Tracking =          obj.Tracking.setMainFolder(obj.getTrackingFolder);
+             obj.Tracking =          obj.Tracking.performMethod('setMainFolder', obj.getTrackingFolder);
 
         end
         
         function obj =      loadCurrentVersion(obj)
-            assert(obj.canConnectToSourceFile, 'File was not stored in currently required format.')
+            assert(obj.canConnectToSourceFile, 'Cannot connect to movie-tracking file.')
 
             obj =                   obj.loadDataForFileFormat_AfterAugust2021;
-            obj.Tracking =          PMTrackingNavigation(obj.getTrackingFolder);
+            obj.Tracking =          PMTrackingNavigationController(PMTrackingNavigation(obj.getTrackingFolder));
             try
-                obj.Tracking =      obj.Tracking.load;
+                obj.Tracking =      obj.Tracking.performMethod('load');
             catch
-            % if no file is available, simply use the "blank" tracking
+                warning('Tracking was not loaded.')
             end
 
         end
@@ -2380,8 +3033,13 @@ classdef PMMovieTracking < PMChannels
             obj.NickName  =                     MovieTrackingInfo.File.NickName         ;
             obj.MovieFolder =                   MovieTrackingInfo.File.MovieFolder   ;                % movie folder:
             obj.AttachedFiles =                 MovieTrackingInfo.File.AttachedFiles     ;
-            obj.AnnotationFolder =              MovieTrackingInfo.File.AnnotationFolder   ;
+          %  obj.AnnotationFolder =              MovieTrackingInfo.File.AnnotationFolder   ;
 
+            if isfield(MovieTrackingInfo.File, 'WantedScene')
+                obj.WantedScene =              MovieTrackingInfo.File.WantedScene      ;
+
+            end
+            
             obj.Keywords =                      MovieTrackingInfo.File.Keywords;
             
             obj.DriftCorrection  =              MovieTrackingInfo.File.DriftCorrection     ;
@@ -2415,13 +3073,13 @@ classdef PMMovieTracking < PMChannels
                 obj.SelectedTracksAreVisible =  true;
              end
             
-              if isfield(MovieTrackingInfo.MovieView, 'RestingTracksAreVisible')
+            if isfield(MovieTrackingInfo.MovieView, 'RestingTracksAreVisible')
                 obj.RestingTracksAreVisible =              MovieTrackingInfo.MovieView.RestingTracksAreVisible      ;
             else
                 obj.RestingTracksAreVisible =  false;
             end
             
-            
+        
             
             
             
@@ -2434,12 +3092,13 @@ classdef PMMovieTracking < PMChannels
             obj.CroppingOn =                    logical(MovieTrackingInfo.MovieView.CroppingOn            );
             obj.CroppingGate =                  MovieTrackingInfo.MovieView.CroppingGate      ;
 
-            obj.ActiveChannel =                 MovieTrackingInfo.Channels.ActiveChannel  ;
-
+          
             if isempty(MovieTrackingInfo.Channels.Channels)
 
             else
-                obj.Channels = MovieTrackingInfo.Channels.Channels ;
+                obj =   obj.setChannels(MovieTrackingInfo.Channels.Channels);
+                obj =   obj.setActiveChannel(MovieTrackingInfo.Channels.ActiveChannel);
+
             end
             
             time = toc;
@@ -2479,11 +3138,10 @@ classdef PMMovieTracking < PMChannels
              fprintf(' Setting interactions, channels, navigation, calibrations and drift correction took %5.1f seconds.\n', toc)
 
 
-            obj.Tracking =              obj.Tracking.initializeWithDrifCorrectionAndFrame(obj.DriftCorrection, obj.Navigation.getMaxFrame);
+            obj.Tracking =              obj.Tracking.permformMethod('initializeWithDrifCorrectionAndFrame', obj.DriftCorrection, obj.Navigation.getMaxFrame);
 
             if isempty(obj.Interactions) || ~isa(obj.Interactions, 'PMInteractionsCapture')
                 obj.Interactions =      PMInteractionsCapture;
-                obj.Interactions =      obj.Interactions.setWith(obj);
 
             end
             
@@ -2518,6 +3176,8 @@ classdef PMMovieTracking < PMChannels
         function exists = sourceFileExists_Internal(obj, Version)
             assert(ischar(Version), 'Wrong input.')
                 switch Version
+                    case 'LoadMasks'
+                        exists = exist(obj.getPathOfMovieTrackingForSmallFile) == 2 ;
                     case 'BeforeAugust2021'
                        exists =  exist(obj.getPathOfMovieTrackingForSingleFile) == 2;
                     case 'AfterAugust2021'
@@ -2534,11 +3194,7 @@ classdef PMMovieTracking < PMChannels
          end
          
         
-        
-          
-        
-        
-        
+     
     end
     
     methods (Access = private) % GETTERS FILE-MANAGEMENT
@@ -2591,6 +3247,9 @@ classdef PMMovieTracking < PMChannels
             MovieTrackingInfo.File.AttachedFiles =                  obj.AttachedFiles;
             MovieTrackingInfo.File.AnnotationFolder  =              obj.AnnotationFolder;
 
+               MovieTrackingInfo.File.WantedScene =             obj.WantedScene;
+          
+            
             MovieTrackingInfo.File.DriftCorrection  =               obj.DriftCorrection;
             MovieTrackingInfo.File.Interactions       =             obj.Interactions.getMiniObject;
 
@@ -2626,9 +3285,11 @@ classdef PMMovieTracking < PMChannels
             MovieTrackingInfo.MovieView.CroppingOn =                obj.CroppingOn;
             MovieTrackingInfo.MovieView.CroppingGate =              obj.CroppingGate;
 
-             MovieTrackingInfo.Channels.ActiveChannel =             obj.ActiveChannel ;
-             MovieTrackingInfo.Channels.Channels =                  obj.Channels;
+             MovieTrackingInfo.Channels.ActiveChannel =             obj.getActiveChannelIndex ;
+             MovieTrackingInfo.Channels.Channels =                  obj.getChannels;
 
+             
+             
         end
   
         function number =                       getNumberOfLinkedMovieFiles(obj)
@@ -2655,6 +3316,11 @@ classdef PMMovieTracking < PMChannels
         function paths =        getAllAnnotationPaths(obj, varargin)
 
             switch length(varargin)
+                case 0
+                     paths{1,1 } =       obj.getPathOfMovieTrackingForSmallFile;
+                            paths{2,1 } =       obj.getTrackingFolder;
+                            
+                
                
                 case 1
                     
@@ -2708,6 +3374,64 @@ classdef PMMovieTracking < PMChannels
 
     end
 
+    methods (Access = private) % GETTERS LOADED IMAGE-VOLUMES
+        
+       
+        
+        function requiredFrames =                   removeAlreadyLoadedFramesFromFrames(obj, requiredFrames)
+            requiredFrames(obj.getAlreadyLoadedFrames, 1) =     false;
+            requiredFrames =                            find(requiredFrames);
+        end
+
+        function requiredFrames =                   getSetFrameRanged(obj)
+            requiredFrames(1: obj.getMaxFrame, 1) = false;
+            
+            range =                                 obj.getActiveFrames - obj.getLimitForLoadingFrames : obj.getActiveFrames + obj.getLimitForLoadingFrames;
+            range(range <= 0) =                       [];
+            range(range > obj.getMaxFrame) =        [];
+            requiredFrames(range,1) =               true;
+        end
+        
+        function requiredFrames =                   getEntireFrameRange(obj)
+             requiredFrames(1: obj.getMaxFrame, 1) = true;
+            
+        end
+        
+        function frames =                           getLimitForLoadingFrames(obj, varargin)  
+            
+            switch length(varargin)
+
+            case 0
+               Key = 'LoadSet';
+            case 1
+               Key = 'LoadOnlyOne';
+            otherwise
+               error('Wrong input.')
+
+
+            end
+
+            switch Key
+
+            case 'LoadOnlyOne'
+                frames =        0;
+            otherwise
+                frames =        obj.DefaultNumberOfLoadedFrames;
+
+            end
+
+
+        end
+        
+        function framesThatHaveTheMovieAlreadyLoaded = getAlreadyLoadedFrames(obj)
+            framesThatHaveTheMovieAlreadyLoaded =         cellfun(@(x)  ~isempty(x),     obj.LoadedImageVolumes);   
+        end
+         
+        
+        
+        
+    end
+    
     methods (Access = private) % GETTERS MOVIE-FILES
         
         function paths = getMovieFolderPathsForStrings(obj, Value)
@@ -2724,7 +3448,7 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    methods (Access = private) % load images from file
+    methods (Access = private) % GETTER IMAGES FROM FILE:
         
          function number = getNumberOfOpenFiles(obj)
              number = length(fopen('all'));
@@ -2732,7 +3456,12 @@ classdef PMMovieTracking < PMChannels
          
 
             function TempVolumes = loadImageVolumesForFramesInternal(obj, ListOfFramesThatShouldBeLoaded)
-                assert(isnumeric(ListOfFramesThatShouldBeLoaded) && isvector(ListOfFramesThatShouldBeLoaded), 'Wrong input.')
+                
+                if isempty(ListOfFramesThatShouldBeLoaded)
+                    TempVolumes = '';
+                    
+                else
+                     assert(isnumeric(ListOfFramesThatShouldBeLoaded) && isvector(ListOfFramesThatShouldBeLoaded), 'Wrong input.')
                 
                   TempVolumes =                   cell(length(ListOfFramesThatShouldBeLoaded), 1);
                   if obj.checkWhetherAllImagePathsCanBeLinked 
@@ -2742,7 +3471,11 @@ classdef PMMovieTracking < PMChannels
                   else
                       warning('Image files cannot be accessed. Image files are not updated right now. It is still possible to navigate the tracked cells without image information.')
 
-                  end  
+                  end 
+                        
+                end
+                
+                
             end
 
             function obj =    replaceImageMapPaths(obj)
@@ -2786,23 +3519,22 @@ classdef PMMovieTracking < PMChannels
          end
          
         function ProcessedVolume = getImageVolumeForFrame(obj, FrameNumber)
-            
+
                 tic
             
-                settings.SourceChannels =          [];
-                settings.TargetChannels =          [];
-                settings.SourcePlanes =            [];
-                settings.TargetPlanes =            [];
-                
-                settings.TargetFrames =            1;
-                settings.SourceFrames =         FrameNumber;
-                
-                VolumeReadFromFile =      PMImageSource(obj.ImageMapPerFile, obj.Navigation, settings).getImageVolume;
-                ProcessedVolume =         PM5DImageVolume(VolumeReadFromFile).filter(obj.getReconstructionTypesOfChannels).getImageVolume;
+                MyImageSource =             obj.getImageSource(FrameNumber);                                    
+                VolumeReadFromFile =         MyImageSource.getImageVolume;
+                                                    
+                ProcessedVolume =           PM5DImageVolume(VolumeReadFromFile).filter(obj.getReconstructionTypesOfChannels).getImageVolume;
                 
                 Time =  toc;
                 fprintf('PMMovieTracking: @getImageVolumeForFrame. Loading frame %i from file. Duration: %8.5f seconds.\n', FrameNumber, Time)
 
+        end
+        
+        function BitInformation = getBitsForFrame(obj, FrameNumber)
+            
+            
         end
         
      
@@ -2812,6 +3544,158 @@ classdef PMMovieTracking < PMChannels
         
     end
    
+     methods (Access = private) %  GETTERS IMAGES
+
+        function rgbImage =             addInteractionImageToImage(obj, rgbImage)
+
+        InteractionImage =      obj.getInteractionImage;
+        if isempty(InteractionImage)
+
+        else
+            rgbImage = PMRGBImage().addImageWithColor(...
+                                                        rgbImage, ...
+                                                        InteractionImage, ...
+                                                        'Red'...
+                                                        );
+        end
+        end
+
+        function image =                getInteractionImage(obj)
+        % GETINTERACTIONIMAGE 
+        % returns processed "interaction image";
+        % thresholded image that contains all "target pixels" for interaction analysis;
+
+        if ~obj.Interactions.getShowThresholdedImage
+
+        image = '';
+
+        else
+
+        MyInteractionsCapture =         obj.getInteractionsCapture;
+        MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
+        ThresholdedImage =              MyInteractionsCapture.getImageVolume * 150;
+        filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
+        image =                         max(filtered, [], 3);
+
+        end
+
+        end
+        
+         function filtered = filterImageVolumeByActivePlanes(obj, Volume)
+            % FILTERIMAGEVOLUMEBYACTIVEPLANES
+            filtered =    Volume(:, :, obj.getListOfVisiblePlanesWithoutDriftCorrection, :, :);
+         end
+        
+
+        function rgbImage =             addMasksToImage(obj, rgbImage)
+
+            if obj.getMaskVisibility 
+
+
+            ColorOfSelectedTracks =     obj.getColorOfSelectedMasksForImage(rgbImage);
+            MyFrame =                   obj.getActiveFrames;
+            MyPlanes =                  obj.getPlanesThatAreVisibleForSegmentation;
+            MyDriftCorrection =         obj.getDriftCorrection;
+
+            MasksSelected =             obj.getTracking.get('SelectedMasksAtFramePlaneDrift', MyFrame, MyPlanes, MyDriftCorrection);
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 1, ColorOfSelectedTracks(1));
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 2, ColorOfSelectedTracks(2));
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 3, ColorOfSelectedTracks(3));
+
+            ActiveMask =                obj.getTracking.get('ActiveMasksAtFramePlaneDrift', MyFrame, MyPlanes, MyDriftCorrection);
+            Intensity =                 obj.getColorOfActiveMaskForImage(rgbImage);
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ActiveMask, 1:3, Intensity);
+
+            end
+
+        end
+        
+        function MaskColor =                        getColorOfSelectedMasksForImage(obj, rgbImage)
+            MaskColor(1) =          obj.MaskColor(1);
+            MaskColor(2) =          obj.MaskColor(2);
+            MaskColor(3) =          obj.MaskColor(3);
+
+            if strcmp(class(rgbImage), 'uint16')
+                MaskColor(1) =          MaskColor(1) * 255;
+                MaskColor(2) =          MaskColor(2) * 255;
+                MaskColor(3) =          MaskColor(3) * 255;
+            end
+        end
+        
+        function Intensity =                        getColorOfActiveMaskForImage(~, rgbImage)
+            Intensity =    100;
+            switch(class(rgbImage))
+            case 'uint8'
+            case 'uint16'
+            Intensity = Intensity * 255;        
+            otherwise
+            error('Input not supported.')
+            end
+        end
+
+        function  CleanedUpVolume =     convertImageVolumeToActiveImage(obj, activeVolume)
+            % CONVERTIMAGEVOLUMETOACTIVEIMAGE returns 2D-image matrix, where each pixel has intensity of active channel;
+            % all pixels outside of applied cropping rectange are set to zero;
+
+            obj =                           obj.setVisibilityToActiveChannel;
+            obj =                           obj.resetChannelSettings('Red', 'ChannelColors');
+            Image =                         obj.convertImageVolumeIntoRgbImage(activeVolume); 
+            MyImageVolume =                 Image(:,:,1);
+            CleanedUpVolume =               MyImageVolume;
+            CleanedUpVolume(:, :) =         0;
+            Rectangle =                     obj.getAppliedCroppingRectangle;
+            CleanedUpVolume(Rectangle(2): Rectangle(2) + Rectangle(4)-1,Rectangle(1): Rectangle(1) + Rectangle(3) - 1) = ...
+            MyImageVolume(Rectangle(2): Rectangle(2) + Rectangle(4)-1,Rectangle(1): Rectangle(1) + Rectangle(3) - 1);
+
+
+        end
+
+        function rgbImage =             convertImageVolumeIntoRgbImageInternal(obj, SourceImageVolume)
+
+            if isempty(SourceImageVolume)
+                 rgbImage = 0;
+
+            else
+
+                    ImageVolume_Source = obj.filterImageVolumeByActivePlanes(SourceImageVolume);
+
+                    myRgbImage =    PMRGBImage(...
+                                            ImageVolume_Source, ...
+                                            obj.getIndicesOfVisibleChannels, ...
+                                            obj.getIntensityLowOfVisibleChannels, ...
+                                            obj.getIntensityHighOfVisibleChannels, ...
+                                            obj.getColorStringOfVisibleChannels ...
+                                            );
+
+                    rgbImage =      myRgbImage.getImage;
+
+            end
+
+        end
+
+        function VisiblePlanesWithoutDriftCorrection = getListOfVisiblePlanesWithoutDriftCorrection(obj)
+
+            if obj.DriftCorrection.getDriftCorrectionActive
+                 VisiblePlanesWithoutDriftCorrection =      obj.removeDriftCorrectionFromPlaneList(obj.getPlanesThatAreVisibleForSegmentation);
+
+            else
+                VisiblePlanesWithoutDriftCorrection =       obj.getPlanesThatAreVisibleForSegmentation;
+
+            end
+
+
+        end
+
+        function PlanesWithoutDrift =   removeDriftCorrectionFromPlaneList(obj, PlanesWithDrift)
+            PlanesWithoutDrift =                            PlanesWithDrift - obj.getAplliedPlaneShiftsForActiveFrames;
+            PlanesWithoutDrift(PlanesWithoutDrift < 1) =      [];
+            PlanesWithoutDrift(PlanesWithoutDrift > obj.Navigation.getMaxPlane) = [];
+        end
+
+           
+
+     end
+    
     methods (Access = private) % GETTERS TRACKING
        
         function [SelectedTrackID, Frame] =             getWantedTrackIDFrameFor(obj, Code, Column, Row)
@@ -2827,11 +3711,11 @@ classdef PMMovieTracking < PMChannels
             switch Type
                 
                 case 'double'
-                    SelectedTrackID =      Input;
+                    SelectedTrackID =      Code;
                     Frame =         NaN;
 
                 case 'char'
-                    switch Input
+                    switch Code
                          case 'nextUnfinishedTrack'
                             [SelectedTrackID , Frame]  =  obj.toggleUnfinishedTracks('forward');
                             
@@ -2884,12 +3768,12 @@ classdef PMMovieTracking < PMChannels
         end
         
         function indices =                              getIndicesOfFinishedTracksFromList(obj, List)
-        indices = obj.Tracking.getIndicesOfFinishedTracksFromList(List); 
+        indices = obj.Tracking.get('IndicesOfFinishedTracksFromList', List); 
         end
 
         function SelectedTrackID =                      getIdOfTrackThatIsClosestToPoint(obj, Point)
 
-            TrackDataOfCurrentFrame =       obj.Tracking.getSegmentationOfFrame(obj.Navigation.getActiveFrames); 
+            TrackDataOfCurrentFrame =       obj.Tracking.get('SegmentationOfFrame', obj.Navigation.getActiveFrames); 
             OVERLAP =                       find(cellfun(@(x)  ismember(round(Point), round(x(:,1:3)), 'rows'), TrackDataOfCurrentFrame(:,6)));
 
             if length(OVERLAP) >= 1
@@ -2967,30 +3851,25 @@ classdef PMMovieTracking < PMChannels
                 % 1: cell array that contains gap range of each track;
                 % 2: numerical vector that contains track IDs of returned tracks;
                 % this version includes also "gaps" at the end of each track (unitl max frame);
-            [limits, ids] =     obj.Tracking.getLimitsOfFirstForwardGapOfAllTracksForLimitValue( obj.Navigation.getMaxFrame);
+            [limits, ids] =     obj.Tracking.get('LimitsOfFirstForwardGapOfAllTracksForLimitValue',  obj.Navigation.getMaxFrame);
         end
         
         function [limits, ids] =                    getLimitsOfSurroundedFirstForwardGapOfAllTracks(obj)
-             [limits, ids] =    obj.Tracking.getLimitsOfSurroundedFirstForwardGapOfAllTracks;
+             [limits, ids] =    obj.Tracking.get('LimitsOfSurroundedFirstForwardGapOfAllTracks');
         end
         
         function [Gaps, TrackIdsToToggle] =         getLimitsOfUnfinishedBackwardGaps(obj)
             % GETLIMITSOFUNFINISHEDBACKWARDGAPS
             % like GETLIMITSOFFIRSTFORWARDGAPOFALLTRACKS, except that "backward" gaps rather than "foward" gaps are returned;
-            [Gaps, TrackIdsToToggle] =            obj.getLimitsOfFirstBackwardGapOfAllTracks;
+            [Gaps, TrackIdsToToggle] =           obj.Tracking.get('LimitsOfFirstBackwardGapOfAllTracksForLimitValue',  obj.Navigation.getMaxFrame);
             Indices =                           obj.getIndicesOfFinishedTracksFromList(TrackIdsToToggle);
             TrackIdsToToggle(Indices, :) =      [];  
             Gaps(Indices, :) = [];
         end
 
-        function [limits, ids] =                    getLimitsOfFirstBackwardGapOfAllTracks(obj)
-            [limits, ids] =     obj.Tracking.getLimitsOfFirstBackwardGapOfAllTracksForLimitValue( obj.Navigation.getMaxFrame);
-
-        end
+ 
         
-        function limits =                           getLimitsOfFirstGapOfActiveTrack(obj)
-           limits =             obj.Tracking.getLimitsOfFirstGapOfActiveTrackForLimitValue(obj.Navigation.getMaxFrame); 
-        end
+      
          
     end
 
@@ -3066,56 +3945,7 @@ classdef PMMovieTracking < PMChannels
          
      end
      
-    methods (Access = private) % image processing for rgb-image presentation;
-        
-           function rgbImage = convertImageVolumeIntoRgbImageInternal(obj, SourceImageVolume)
-               
-                if isempty(SourceImageVolume)
-                     rgbImage = 0;
-
-                else
-
-                        ImageVolume_Source = obj.filterImageVolumeByActivePlanes(SourceImageVolume);
-                        
-                        myRgbImage =    PMRGBImage(...
-                                                ImageVolume_Source, ...
-                                                obj.getIndicesOfVisibleChannels, ...
-                                                obj.getIntensityLowOfVisibleChannels, ...
-                                                obj.getIntensityHighOfVisibleChannels, ...
-                                                obj.getColorStringOfVisibleChannels ...
-                                                );
-
-                        rgbImage =      myRgbImage.getImage;
-
-                end
-
-           end
-            
-           
-            
-            function VisiblePlanesWithoutDriftCorrection = getListOfVisiblePlanesWithoutDriftCorrection(obj)
-
-                if obj.DriftCorrection.getDriftCorrectionActive
-                     VisiblePlanesWithoutDriftCorrection =      obj.removeDriftCorrectionFromPlaneList(obj.getPlanesThatAreVisibleForSegmentation);
-                     
-                else
-                    VisiblePlanesWithoutDriftCorrection =       obj.getPlanesThatAreVisibleForSegmentation;
-                    
-                end
-
-
-            end
-            
-            function PlanesWithoutDrift = removeDriftCorrectionFromPlaneList(obj, PlanesWithDrift)
-                PlanesWithoutDrift =                            PlanesWithDrift - obj.getAplliedPlaneShiftsForActiveFrames;
-                PlanesWithoutDrift(PlanesWithoutDrift < 1) =      [];
-                PlanesWithoutDrift(PlanesWithoutDrift > obj.Navigation.getMaxPlane) = [];
-            end
-
-           
-
-    end
-    
+   
     methods (Access = private)
         
         function complete = checkCompletenessOfNavigation(obj)

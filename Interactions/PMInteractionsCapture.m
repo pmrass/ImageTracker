@@ -1,37 +1,43 @@
 classdef PMInteractionsCapture
     %PMINTERACTIONSETTINGS helps PMInteractionsManager to perform the actual distance measurements between tracked cells and a target structure ;
-    %   an ActiveMovieController needs to be set as a datasource for performing these calculations;
+    %   a PMMovieTracking needs to be set as a datasource for performing these calculations;
     
-    properties (Access = private)
-        
-        ThresholdsForImageVolumes
-        SourceFramesForImageVolumes = 1
-        MinimumSizesOfTarget = 25
-        ChannelNumbersForTarget = 1
-        FilterTypeForTargetChannel = 'Median'
-        
-        ShowThresholdedImage = true % is this doing anything?
-        
-        ActiveMovieController
+    
+    properties (Access = private) % properties for 
+        ShowThresholdedImage = false % this determins whether the thresholded image is visible or not;;    
+        MyMovieTracking
            
     end
     
-    properties (Access = private)
-        MaximumDistanceToTarget = 1000
+    properties (Access = private) % properties that determine thresholding of target area;
+        ThresholdsForImageVolumes
+        SourceFramesForImageVolumes =       1
+        MinimumSizesOfTarget =              25
+        ChannelNumbersForTarget =           1
+        FilterTypeForTargetChannel =        'Median'
         
-        XYLimitForNeighborArea = 13
-        ZLimitForNeighborArea =  0
-        MaxPlane = 1000
+    end
+    
+    properties (Access = private) % properties that determine interaction analysis;
+        MaximumDistanceToTarget =       1000
+        XYLimitForNeighborArea =        13
+        ZLimitForNeighborArea =         0
+        MaxPlane =                      1000
+        
+    end
+    
+    properties (Access = private)
+        ExportFolder
         
     end
     
     properties (Access = private)
        
-        ExportFolder
-        
     end
     
-    methods % initialization 
+    
+    methods % INITIALIZATION 
+
          function obj = PMInteractionsCapture(varargin)
             %PMINTERACTIONSETTINGS Construct an instance of this class
             %   takes 0 arguments
@@ -46,9 +52,9 @@ classdef PMInteractionsCapture
                
          end
         
-        function obj = set.ActiveMovieController(obj, Value)
-             assert(isa(Value, 'PMMovieController'), 'Wrong input.')
-            obj.ActiveMovieController = Value;
+        function obj = set.MyMovieTracking(obj, Value)
+             assert(isa(Value, 'PMMovieTracking'), 'Wrong input.')
+            obj.MyMovieTracking = Value;
         end
         
         function obj = set.ThresholdsForImageVolumes(obj, Value)
@@ -113,7 +119,7 @@ classdef PMInteractionsCapture
         
         function Text = getSummary(obj)
                
-              obj =                            obj.updateChannelSettingsInMovieController;
+            obj =            obj.setChannelSettingsInMovieTracking;
             
             Text = {sprintf('\n*** The main method of this PMInteractionsCapture object is "getInteractionsMap".\n')};
             Text = [Text; sprintf('It returns a "map" with all target distances for each tracked cell at each instant.\n')];
@@ -132,39 +138,37 @@ classdef PMInteractionsCapture
         
           function text = getSummaryForCreatingTargetImageVolume(obj)
 
-          text = { sprintf('This PMInteractionsCapture object creates the image-volume for the target in the following way:\n')};
-          text = [text; sprintf('It uses its movie-controller method "getActiveImageVolumeForChannel" to retrieve the image-volume for frame "%i". and channel "%i".\n', obj.SourceFramesForImageVolumes, obj.ChannelNumbersForTarget)];
-          text = [text; sprintf('This image was filtered with method "%s" by the movie controller.', obj.getReconstructionType)];
-          text = [text; sprintf('This image is used to create a PM5DImageVolume object\n')];
-          text = [text; sprintf('This PM5DImageVolume is then processed with two additional steps:\n')];
-          text = [text; sprintf('Step 1: Thresholding with the following cutoffs for the different planes:\n')];
-          text = [ text; arrayfun(@(x) sprintf('%6.2f ', x), obj.ThresholdsForImageVolumes, 'UniformOutput', false)];
-          text = [text; sprintf('\nStep 2: Removal of all objects with a size of less than"%i".\n', obj.MinimumSizesOfTarget)];
+              text = { sprintf('This PMInteractionsCapture object creates the image-volume for the target in the following way:\n')};
+              text = [text; sprintf('It uses its movie-controller method "getActiveImageVolumeForChannel" to retrieve the image-volume for frame "%i". and channel "%i".\n', obj.SourceFramesForImageVolumes, obj.ChannelNumbersForTarget)];
+              text = [text; sprintf('This image was filtered with method "%s" by the movie controller.', obj.getReconstructionType)];
+              text = [text; sprintf('This image is used to create a PM5DImageVolume object\n')];
+              text = [text; sprintf('This PM5DImageVolume is then processed with two additional steps:\n')];
+              text = [text; sprintf('Step 1: Thresholding with the following cutoffs for the different planes:\n')];
+              text = [ text; arrayfun(@(x) sprintf('%6.2f ', x), obj.ThresholdsForImageVolumes, 'UniformOutput', false)];
+              text = [text; sprintf('\nStep 2: Removal of all objects with a size of less than"%i".\n', obj.MinimumSizesOfTarget)];
 
-        end
+          end
 
         
     end
     
      methods % SETTERS complex
        
-          function obj = setMovieController(obj, Value)
+        function obj = setMovieTracking(obj, Value)
             % SETMOVIECONTROLLER sets object with content of input
             % takes 1 argument
-            % 1: scalar of PMMovieController
+            % 1: scalar of PMMovieTracking
             % it is required that the movie-controller already contains a PMInteractionsCapture object, which will be used for setting;
             % in addition default thresholds will be set;
             % also active channel and reconstruction type (e.g. filters) of movie in controller will be updated;
             
-            assert(isa(Value, 'PMMovieController') && isscalar(Value), 'Wrong input.')
+            assert(isa(Value, 'PMMovieTracking') && isscalar(Value), 'Wrong input.')
              
-            obj.ActiveMovieController =     Value;
-            obj =                            obj.updateChannelSettingsInMovieController;
+            obj.MyMovieTracking =     Value;
+            obj =                     obj.setChannelSettingsInMovieTracking;
            
           end
-        
-       
-         
+
         function obj = setWith(obj, Value)
             % SETWITH setter;
             % takes 1 argument:
@@ -172,10 +176,10 @@ classdef PMInteractionsCapture
             switch class(Value)
                 
                 case 'PMMovieTracking'
-                    obj = obj.setMovieController(Value);
+                    obj = obj.setMovieTracking(Value);
                    
                 case 'PMInteractionsManager'   
-                    obj = obj.set(Value.getModel.getContent{:}); % this seems also strange; check if this is necessary;
+                    obj = obj.set(Value.getModel.getContent{:}); 
 
                 otherwise
                     error('Wrong input')
@@ -188,9 +192,15 @@ classdef PMInteractionsCapture
      
      methods % SETTERS simple
          
-       
-        
-          function obj = set(obj, varargin)
+        function obj = set(obj, varargin)
+            %SET sets thresholds and limits;
+            % takes 6 arguments:
+            % 1: image-volume thresholds
+            % 2: source frames
+            % 3: minimum target sizes
+            % 4: target channel numbers
+            % 5: maximum distance to target
+            % 6: show thresholded image
             
                 NumberOfArguments = length(varargin);
 
@@ -209,7 +219,6 @@ classdef PMInteractionsCapture
                 end
              
           end
-        
         
         function obj = setThresholdsForImageVolumeOfTarget(obj, Value)
             obj.ThresholdsForImageVolumes = Value;
@@ -247,265 +256,273 @@ classdef PMInteractionsCapture
          
      end
     
-    methods % complex getters
-       
-        function Map = getInteractionsMap(obj)  
-            % GETINTERACTIONSMAP
-            MyInteractionsObject =     obj.getInteractionsObject;
-            
-             if ~isempty(obj.ExportFolder)
-                 obj.exportSummaryOfMapIntoFile;               
-             end
- 
-            Map =                       MyInteractionsObject.getInteractionsMap;
-            
-        end
-        
-         function myInteractions = getInteractionsObject(obj)
-             % GETINTERACTIONSOBJECT returns a PMInteractions object;
-            
-            obj.ActiveMovieController =        obj.ActiveMovieController.setFrame(obj.SourceFramesForImageVolumes);
-  
-            myInteractions =                    PMInteractions(...
-                                                obj.getMetricFluShape, ...
-                                                obj.getPixelFluShape,...
-                                                obj.getMetricTrackingAnalysis, ...
-                                                obj.getPixelTrackingAnalysis, ...
-                                                obj.getMetricDriftCorrection, ...
-                                                obj.XYLimitForNeighborArea, ...
-                                                obj.ZLimitForNeighborArea...
-                                                );
-                                            
-            myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
-            myInteractions =                    myInteractions.setMovieName(obj.ActiveMovieController.getLoadedMovie.getNickName);
-            
-         end
-        
-         function Movie = getMovie(obj)
-                Movie = obj.ActiveMovieController.getLoadedMovie;
-         end
-          
-    end
+     
+     methods % GETTERS
     
-      methods % GETTERS
-        
-          function mini = getMiniObject(obj)
-              mini = obj;
-              mini.ActiveMovieController = PMMovieController;
-          end
-          
-        function Image = getImageVolume(obj) 
+        function Image =                getImageVolume(obj) 
             % getImageVolume
            Volume =     obj.getImageVolumeObjectOfTarget;
            Image =      Volume.getImageVolume;
 
         end 
-            
-            
-        function ExportFileNames = getFileNamesForExportImages(obj)
-                  exportFolderName = [obj.ExportFolder, '/Movie_', obj.ActiveMovieController.getNickName ];
+   
+        function ExportFileNames =      getFileNamesForExportImages(obj)
+                  exportFolderName = [obj.ExportFolder, '/Movie_', obj.MyMovieTracking.getNickName ];
                ExportFileNames = cellfun(@(x) [exportFolderName, '/TargetVolume_Plane_', num2str(index), '_', PMTime().getCurrentTimeString, '.jpg'], (1 : size(TargetVolume, 3))');
         
             
         end
         
-        function Value = getThresholdsForImageVolumes(obj)
-            Value = obj.ThresholdsForImageVolumes;
-        end
-        
-        function Value = getSourceFramesForImageVolumes(obj)
-            Value = obj.SourceFramesForImageVolumes;
-        end
-
-        function Value = getMinimumSizesOfTarget(obj)
-            Value = obj.MinimumSizesOfTarget;
-        end
-
-        function Value = getChannelNumbersForTarget(obj)
-            Value = obj.ChannelNumbersForTarget;
-        end
-
-        function Value = getMaximumDistanceToTarget(obj)
-            Value = obj.MaximumDistanceToTarget;
-        end
-
-        function Value = getShowThresholdedImage(obj)
-            Value = obj.ShowThresholdedImage;
-            if isempty(Value)
-                Value = true;
-            end
-        end
-        
-      end
-
-    methods (Access = private) % EXPORT
-        
-        function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs)
-        MyInteractionsObject =      obj.getInteractionsObject;
-        MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
+        function mini =                 getMiniObject(obj)
+              mini = obj;
+              mini.MyMovieTracking = PMMovieTracking;
+         end
+             
      end
+    
+        methods  % GETTERS: used for updating PMInteractionsView;
 
-        function obj = exportSummaryOfMapIntoFile(obj)
-        % EXPORTSUMMARYOFMAPINTOFILE
-        % the object is always creating the "target image map" from scratch;
-        % this is just done so that user can visually verify how the thresholded image is created;
-        % the information created here is not "read back" from this file;
+            function controller =       getMovieTracking(obj)
+                controller = obj.MyMovieTracking;
+            end
+
+            function Value =            getThresholdsForImageVolumes(obj)
+                Value = obj.ThresholdsForImageVolumes;
+            end
+
+            function Value =            getSourceFramesForImageVolumes(obj)
+                Value = obj.SourceFramesForImageVolumes;
+            end
+
+            function Value =            getChannelNumbersForTarget(obj)
+                Value = obj.ChannelNumbersForTarget;
+            end
+
+            function Value =            getMinimumSizesOfTarget(obj)
+                Value = obj.MinimumSizesOfTarget;
+            end
+
+            function Value =            getMaximumDistanceToTarget(obj)
+                Value = obj.MaximumDistanceToTarget;
+            end
+
+            function Value =            getShowThresholdedImage(obj)
+                Value = obj.ShowThresholdedImage;
+                if isempty(Value)
+                    Value = true;
+                end
+            end
+
+        end
 
 
-        exportFolderName = [obj.ExportFolder, '/Movie_', obj.ActiveMovieController.getNickName ];
-        if exist(exportFolderName) ~=7
-            mkdir(exportFolderName)
+        methods % ACTION getters
+       
+            function Map =                  getInteractionsMap(obj)  
+                % GETINTERACTIONSMAP
+                MyInteractionsObject =     obj.getInteractionsObject;
+
+                 if ~isempty(obj.ExportFolder)
+                     obj.exportSummaryOfMapIntoFile;               
+                 end
+
+                Map =                       MyInteractionsObject.getInteractionsMap;
+
+            end
+
+            function myInteractions =       getInteractionsObject(obj, varargin)
+                 % GETINTERACTIONSOBJECT returns a PMInteractions object;
+
+                  obj.MyMovieTracking =                       obj.MyMovieTracking.setFrameTo(obj.SourceFramesForImageVolumes);
+
+                  
+                 switch length(varargin)
+                     
+                     case 0
+                         
+                         
+                            MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
+                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+
+                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
+                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+
+
+                     case 1
+                         
+                     switch varargin{1}
+                         
+                         case 'SuppressMetric'
+                             MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
+                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+
+                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
+                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+
+                             
+                         otherwise
+                             error('Wrong input.')
+                             
+                             
+                         
+                         
+                     end
+                     
+                     otherwise
+                         
+                         error('Wrong input.')
+                     
+                     
+                     
+                 end
+                 
+               
+                myInteractions =                    PMInteractions(...
+                                                        obj.getMetricFluShape, ...
+                                                        obj.getPixelFluShape,...
+                                                        MyTrackingAnalysis_Metric, ...
+                                                        MyTrackingAnalysis_Pixel, ...
+                                                        obj.getMetricDriftCorrection, ...
+                                                        obj.XYLimitForNeighborArea, ...
+                                                        obj.ZLimitForNeighborArea...
+                                                    );
+
+                myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
+                myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
+
+             end
+
+        end
+        
+        methods % EXPORT:
+
+            function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
+                
+                
+                MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
+                MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
+            end
+
         end
 
     
-        PMFile(exportFolderName, ['PMInteractionsCaptureSummary_', PMTime().getCurrentTimeString,  '.txt']).writeCellString(obj.getSummary);
-        TargetVolume = obj.getImageVolumeObjectOfTarget.getImageVolume;
+    
 
-        ExportFileNames = obj.getFileNamesForExportImages;
 
-        TargetVolume(TargetVolume >= 1) = 255;
-        for index = 1 : size(TargetVolume, 3)
-            imwrite(TargetVolume(: , :, index), ExportFileNames{index})
+    methods (Access = private) % EXPORT
+        
+        function obj = exportSummaryOfMapIntoFile(obj)
+            % EXPORTSUMMARYOFMAPINTOFILE
+            % the object is always creating the "target image map" from scratch;
+            % this is just done so that user can visually verify how the thresholded image is created;
+            % the information created here is not "read back" from this file;
+
+
+            exportFolderName = [obj.ExportFolder, '/Movie_', obj.MyMovieTracking.getNickName ];
+            if exist(exportFolderName) ~=7
+                mkdir(exportFolderName)
+            end
+
+
+            PMFile(exportFolderName, ['PMInteractionsCaptureSummary_', PMTime().getCurrentTimeString,  '.txt']).writeCellString(obj.getSummary);
+            TargetVolume = obj.getImageVolumeObjectOfTarget.getImageVolume;
+
+            ExportFileNames = obj.getFileNamesForExportImages;
+
+            TargetVolume(TargetVolume >= 1) = 255;
+            for index = 1 : size(TargetVolume, 3)
+                imwrite(TargetVolume(: , :, index), ExportFileNames{index})
+
+            end
 
         end
 
     end
 
-    end
+    methods (Access = private) % GETTERS: DRIFT-CORRECTION:
 
-    methods (Access = private) % create PMInteractions object from object properties;
+        function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
+             MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
+            MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.MyMovieTracking.getSpaceCalibration);
 
-    function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
-         MyDriftCorrection =                 obj.ActiveMovieController.getLoadedMovie.getDriftCorrection;
-        MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.ActiveMovieController.getLoadedMovie.getSpaceCalibration);
-
-    end
+        end
 
 
     end
 
-    methods (Access = private) % shapes of "targets"
+    methods (Access = private) % GETTERS TARGET SHAPES:
 
-        function myFluShape_Metric = getMetricFluShape(obj)
+        function myFluShape_Metric =            getMetricFluShape(obj)
             myFluShape_Pixels =       obj.getPixelFluShape;
-            myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.ActiveMovieController.getLoadedMovie.getSpaceCalibration);
-
+            myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
-
-        function myFluShape_Pixels = getPixelFluShape(obj)
-            myFluShape_Pixels =    PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
-        end
-
-        function fluObj_Final = getImageVolumeObjectOfTarget(obj)
-          % make sure that the filter type is specified correctly:
-          % this will influence how exactly the 
+        
+        function myFluShape_Pixels =            getPixelFluShape(obj)
+            myFluShape_Pixels =         PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
+       end
+        
+        function fluObj_Final =                 getImageVolumeObjectOfTarget(obj)
+            % make sure that the filter type is specified correctly:
+            % this will influence how exactly the 
             fluObj=                         PM5DImageVolume(obj.getImageVolumeOfTarget);
             fluObj_thresholded =            fluObj.threshold(obj.ThresholdsForImageVolumes);
             fluObj_Final =                  fluObj_thresholded.removeSmallObjects(obj.MinimumSizesOfTarget);
-
         end
 
-        function  FluVolumeOfCurrentFrame = getImageVolumeOfTarget(obj)
-            activeVolume =                  obj.ActiveMovieController.getActiveImageVolume; 
-            FluVolumeOfCurrentFrame =       obj.ActiveMovieController.filterImageVolumeForChannel(activeVolume, obj.ChannelNumbersForTarget);
-
+        function  FluVolumeOfCurrentFrame =     getImageVolumeOfTarget(obj)
+            activeVolume =                  obj.MyMovieTracking.getActiveImageVolume; 
+            FluVolumeOfCurrentFrame =       obj.MyMovieTracking.filterImageVolumeForChannel(activeVolume, obj.ChannelNumbersForTarget);
         end
         
-        
+        function obj =                          setChannelSettingsInMovieTracking(obj)
+                assert(~isempty(obj.MyMovieTracking), 'Need to set movie-controller before proceeding.')
+                obj.MyMovieTracking =                 obj.MyMovieTracking.setActiveChannel(obj.ChannelNumbersForTarget);
+                obj.MyMovieTracking =                 obj.MyMovieTracking.setReconstructionType(obj.FilterTypeForTargetChannel);
 
-        function obj = updateChannelSettingsInMovieController(obj)
-            assert(~isempty(obj.ActiveMovieController), 'Need to set movie-controller before proceeding.')
-            
-            MyLoadedMovie =                 obj.ActiveMovieController.getLoadedMovie;
-            MyLoadedMovie =                 MyLoadedMovie.setActiveChannel(obj.ChannelNumbersForTarget);
-            MyLoadedMovie =                 MyLoadedMovie.setReconstructionType(obj.FilterTypeForTargetChannel);
-            obj.ActiveMovieController =     obj.ActiveMovieController.setLoadedMovie(MyLoadedMovie, 'DoNotEmtpyOut');
 
         end
-
-      
-
-
-
-
 
     end
 
     methods (Access = private) % tracking analysis of searchers:
 
-      function reconstructionType = getReconstructionType(obj)
-          if isempty(obj.ActiveMovieController)
-              reconstructionType = 'Reconstruction type not known because active movie-controller not set.';
-          else
-               reconstructionType =  obj.ActiveMovieController.getLoadedMovie.getReconstructionTypesOfChannels{obj.ChannelNumbersForTarget} ;
-          end
+        function reconstructionType = getReconstructionType(obj)
+          
+            if isempty(obj.MyMovieTracking)
+                reconstructionType = 'Reconstruction type not known because active movie-controller not set.';
 
+            else
+
+                  MyLoadedMovie = obj.MyMovieTracking;
+                  if isempty(MyLoadedMovie)
+                        reconstructionType =    'Reconstruction type not known because no movie loaded.';
+                  else
+                        reconstructionType =    obj.MyMovieTracking.getReconstructionTypesOfChannels{obj.ChannelNumbersForTarget} ;
+                  end
+
+            end
+          
       end
-
-     function MyTrackingAnalysis_Metric = getMetricTrackingAnalysis(obj)
-            MyTrackingAnalysis_Metric  =        obj.ActiveMovieController.getLoadedMovie.getTrackingAnalysis;
-            MyTrackingAnalysis_Metric =          MyTrackingAnalysis_Metric.setTimeUnits('minutes');
-            MyTrackingAnalysis_Metric =          MyTrackingAnalysis_Metric.setSpaceUnits('µm');
-            MyTrackingAnalysis_Metric =          MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
-
-    end
-
-    function MyTrackingAnalysis_Pixel = getPixelTrackingAnalysis(obj)
-            MyTrackingAnalysis_Pixel =          obj.ActiveMovieController.getLoadedMovie.getTrackingAnalysis;
-            MyTrackingAnalysis_Pixel =          MyTrackingAnalysis_Pixel.setTimeUnits('frames');
-            MyTrackingAnalysis_Pixel =          MyTrackingAnalysis_Pixel.setSpaceUnits('pixels');
-            MyTrackingAnalysis_Pixel =          MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
-
-    end
 
     end
 
     methods (Access = private) % getters
-    % I don't really want most of this;
-    % leave it here for some time and if it is not needed this can be removed;
-    function values = getContent(obj)
-        values{1} = obj.ThresholdsForImageVolumes;
-        values{2} = obj.SourceFramesForImageVolumes;
-        values{3} = obj.MinimumSizesOfTarget;
-        values{4} = obj.ChannelNumbersForTarget;
-        values{5} = obj.MaximumDistanceToTarget;
-        values{6} = obj.ShowThresholdedImage;
 
-     end
-
-
-
-
-
-        function controller = getMovieController(obj)
-            controller = obj.ActiveMovieController;
+        function values = getContent(obj)
+            % GETCONTENT returns main properties of object as cell vector;
+            values{1} = obj.ThresholdsForImageVolumes;
+            values{2} = obj.SourceFramesForImageVolumes;
+            values{3} = obj.MinimumSizesOfTarget;
+            values{4} = obj.ChannelNumbersForTarget;
+            values{5} = obj.MaximumDistanceToTarget;
+            values{6} = obj.ShowThresholdedImage;
 
         end
 
-
-
-    %% getInteractionsObject: this is the foundation for all subsequent steps
-    function [myInteractions] = getInteractionsObjectOld(obj)
-        % seems I had this method before and then not used it;
-        % this probably can go; remove after checken it is not needed;
-        obj.ActiveMovieController =        obj.ActiveMovieController.setFrame(obj.SourceFramesForImageVolumes);
-
-        %% get target shapes:
-        myFluShape_Pixels =                 obj.getPixelFluShape;
-        MyDriftCorrection_Metric =          obj.ActiveMovieController.getLoadedMovie.getDriftCorrection.convertToMetricBySpaceCalibration(obj.ActiveMovieController.getLoadedMovie.getSpaceCalibration);
-
-        myInteractions =                    PMInteractions(obj.getMetricFluShape, myFluShape_Pixels,...
-                                            obj.getMetricTrackingAnalysis, obj.getPixelTrackingAnalysis, ...
-                                            obj.MaximumDistanceToTarget, MyDriftCorrection_Metric);
-
-
-        myInteractions =                    myInteractions.initialize;
-        myInteractions =                    myInteractions.setMovieName(obj.ActiveMovieController.getLoadedMovie.getNickName);
-
     end
 
-
-    end
 
     
 end

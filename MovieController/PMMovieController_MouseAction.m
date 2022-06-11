@@ -1,6 +1,6 @@
 classdef PMMovieController_MouseAction
-    %PMMOVIECONTROLLER_MOUSEACTION Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMMOVIECONTROLLER_MOUSEACTION Executes PMMovieController action based on user input;
+    %   specifically responds to mouse button press and release, and to mouse-movement;
     
     properties (Access= private)
         PressedKey
@@ -11,9 +11,12 @@ classdef PMMovieController_MouseAction
     
     methods
         
-        function obj = PMMovieController_MouseAction(varargin)
+        function obj =                  PMMovieController_MouseAction(varargin)
             %PMMOVIECONTROLLER_MOUSEACTION Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 3 arguments:
+            % 1: PMMovieController
+            % 2: pressed key
+            % 3: modifier
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 3
@@ -24,14 +27,16 @@ classdef PMMovieController_MouseAction
                     error('Wrong input.')
                 
             end
-            obj.MovieController =           obj.MovieController.setMouseEndPosition;
+         
           
         end
         
-        function myMovieController = mouseButtonPressed(obj)
+        function myMovieController =    mouseButtonPressed(obj)
+            % MOUSEBUTTONPRESSED mediates response to mouse button press;
+            % returns PMMovieController object;
 
                if obj.MovieController.verifyActiveMovieStatus
-                   obj.MovieController =    obj.MovieController.setCurrentDownPositions;
+                 
                    obj =                    obj.setMouseAction;
 
                    if strcmp(obj.MovieController.interpretMouseMovement, 'Out of bounds')
@@ -49,42 +54,33 @@ classdef PMMovieController_MouseAction
 
         end
         
-        function obj = userSelectedText(obj)
+        function obj =                  userSelectedText(obj)
+            % USERSELECTEDTEXT prints set mouse action
             fprintf('User selected %s.\n', obj.MovieController.getMouseAction)
             
             
         end
            
-       
-           %% mouseMoved:
-           function myMovieController =    mouseMoved(obj)
-                if obj.MovieController.verifyActiveMovieStatus
-                     obj = obj.perforActionDuringMouseDrag;
-                end
-                myMovieController = obj.MovieController;
-           end
-           
-           
-           
-            
-           function myMovieController = mouseButtonReleased(obj)
-               try 
-                obj =                       obj.performActionUponKeyRelease;
-                   catch E
-                   throw(E) 
-               end
-                
-                obj.MovieController =       obj.MovieController.setMouseAction('No action');  
-                obj.MovieController =       obj.MovieController.blackOutStartMousePosition;
-                myMovieController =         obj.MovieController;
+        function myMovieController =    mouseMoved(obj)
+            % MOUSEMOVED mediates response to mouse movement;
+            if obj.MovieController.verifyActiveMovieStatus
+                 obj = obj.perforActionDuringMouseDrag;
+            end
+            myMovieController = obj.MovieController;
+        end
 
-           end
-            
-          
-  
+        function myMovieController =    mouseButtonReleased(obj)
+             % mouseButtonReleased mediates response to mouse button release;
+           obj =                       obj.performActionUponKeyRelease;
+
+            obj.MovieController =       obj.MovieController.setMouseAction('No action');  
+          %  obj.MovieController =       obj.MovieController.blackOutStartMousePosition;
+            myMovieController =         obj.MovieController;
+
+        end
+
     end
-    
-    
+        
      methods (Access = private)
         
          %% setMouseAction:
@@ -92,17 +88,21 @@ classdef PMMovieController_MouseAction
                
                obj = obj.setDefaultMouseAction;
                
-                switch obj.MovieController.getViews.getEditingType
-                    case 'No editing'
-                        
-                    case 'Manual drift correction'
-                        obj = obj.setMouseActionForDriftCorrection;
-                    case 'Tracking'
-                        obj = obj.setMouseActionForTracking;
-                    otherwise
-                        error('Eding type not supported.')
-                                                         
-                end
+               if ~isempty(obj.MovieController.getViews)
+               
+                    switch obj.MovieController.getViews.getEditingType
+                        case 'No editing'
+
+                        case 'Manual drift correction'
+                            obj = obj.setMouseActionForDriftCorrection;
+                        case 'Tracking'
+                            obj = obj.setMouseActionForTracking;
+                        otherwise
+                            error('Eding type not supported.')
+
+                    end
+
+               end
            end
            
            function obj = setDefaultMouseAction(obj)
@@ -155,7 +155,7 @@ classdef PMMovieController_MouseAction
            end
      
      
-        %% perforActionDuringMouseDrag:
+       
         function obj = perforActionDuringMouseDrag(obj)
  
             switch obj.MovieController.getMouseAction
@@ -167,6 +167,9 @@ classdef PMMovieController_MouseAction
                               case 'Movement'
                                 obj.MovieController =           obj.MovieController.setViews('CroppingGate', 'changePositionByMouseDrag');  
                               case {'Invalid', 'Out of bounds'}
+                                  
+                               
+                                  
                                   obj.MovieController =         obj.MovieController.setDefaultCroppingGate;
 
                          end
@@ -211,11 +214,7 @@ classdef PMMovieController_MouseAction
 
                 switch obj.MovieController.interpretMouseMovement
                     case 'Stay'
-                        try 
-                            obj = obj.performActionUponKeyReleaseWhenImmotile;
-                               catch E
-                           throw(E) 
-                        end
+                        obj = obj.performActionUponKeyReleaseWhenImmotile;
                     case 'Movement'
                         obj = obj.performActionUponKeyReleaseWhenMoving;
                 end
@@ -227,28 +226,24 @@ classdef PMMovieController_MouseAction
 
             switch obj.MovieController.getMouseAction
                 case 'AutoTrackCurrentCell'
-                    obj.MovieController =   obj.MovieController.autoTrackCurrentCell; 
+                    obj.MovieController =       obj.MovieController.autoTrackCurrentCell; 
                     
                 case 'SetSelectedTrackByMousePosition'
-                    obj.MovieController = obj.MovieController.performTrackingMethod('setSelectedTracks', 'byMousePosition');
+                    obj.MovieController =       obj.MovieController.performTrackingMethod('setSelectedTracks', 'byMousePosition');
                     
                 case 'AddSelectedTrackByMousePosition'
-                  obj.MovieController = obj.MovieController.performTrackingMethod('addSelectedTracks', 'byMousePosition');
+                  obj.MovieController =         obj.MovieController.performTrackingMethod('addSelectedTracks', 'byMousePosition');
                     
                 case 'MoveViewOrChangeTrack'
-                    obj.MovieController = obj.MovieController.setActiveTrackTo('byMousePositition');
+                    obj.MovieController =       obj.MovieController.setActiveTrackTo('byMousePositition');
 
                 case 'Add clicked mask to new track'
                     fprintf('Mouse action: create new track and add mask by click position.\n')
-                    obj.MovieController =   obj.MovieController.performTrackingMethod('addButtonClickMaskToNewTrack');
+                    obj.MovieController =       obj.MovieController.performTrackingMethod('addButtonClickMaskToNewTrack');
 
                 case 'Add clicked mask to active track'
                     fprintf('Mouse action: add mask to current track by click position.\n')
-                    try 
-                        obj.MovieController =     obj.MovieController.performTrackingMethod('updateActiveMaskByButtonClick');
-                    catch E
-                       throw(E) 
-                    end
+                       obj.MovieController =   obj.MovieController.performTrackingMethod('updateActiveMaskByButtonClick');
                         
                 case 'Subtract pixels'
                     obj.MovieController =   obj.MovieController.performTrackingMethod('removeHighlightedPixelsFromActiveMask');

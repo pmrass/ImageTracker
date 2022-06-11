@@ -1,6 +1,6 @@
 classdef PMImagingProjectViewer
     %PMIMAGINGPROJECTVIEWER for viewing and editing movie library (PMMovieLibrary) and associated movies;
-    %   Detailed explanation goes here
+    %   allows creation and updating of view, works together with PMMovieLibraryManager;
     
     properties (Access = private)
         
@@ -53,10 +53,9 @@ classdef PMImagingProjectViewer
         
           function obj =           PMImagingProjectViewer(varargin)
                 %PROJECTWINDOW_CREATEWINDOW Summary of this function goes here
-                %   no arguments: new views are generated automatically;
+                %   takes 0 arguments;
                 switch length(varargin)
                     case 0
-                          obj = obj.initializeViews;
                           
 
                     otherwise
@@ -86,15 +85,18 @@ classdef PMImagingProjectViewer
 
                 case 8
 
-                    obj.Figure.WindowKeyPressFcn =                          varargin{1};
-                    obj.Figure.WindowButtonDownFcn =                         varargin{2};
-                    obj.Figure.WindowButtonUpFcn =                           varargin{3};
-                    obj.Figure.WindowButtonMotionFcn =                       varargin{4};
+                    if ~isempty( obj.Figure) && isvalid( obj.Figure)
+                        obj.Figure.WindowKeyPressFcn =                          varargin{1};
+                        obj.Figure.WindowButtonDownFcn =                         varargin{2};
+                        obj.Figure.WindowButtonUpFcn =                           varargin{3};
+                        obj.Figure.WindowButtonMotionFcn =                       varargin{4};
 
-                    obj.ProjectViews.FilterForKeywords.Callback =            varargin{5};
-                    obj.ProjectViews.RealFilterForKeywords.Callback =        varargin{6};
-                    obj.ProjectViews.SortMovies.Callback =                   varargin{7};
-                    obj.ProjectViews.ListOfMoviesInProject.Callback =        varargin{8};
+                        obj.ProjectViews.FilterForKeywords.Callback =            varargin{5};
+                        obj.ProjectViews.RealFilterForKeywords.Callback =        varargin{6};
+                        obj.ProjectViews.SortMovies.Callback =                   varargin{7};
+                        obj.ProjectViews.ListOfMoviesInProject.Callback =        varargin{8};
+                    
+                    end
 
                 otherwise
                     error('Wrong input.')
@@ -108,6 +110,17 @@ classdef PMImagingProjectViewer
 
     methods % set menus
         
+        function set = MenusAlreadySet(obj)
+            
+            if isempty(obj.FileMenu)
+                set = false;
+            else
+                set = ~isempty(obj.FileMenu.Main) && isvalid(obj.FileMenu.Main);
+            end
+           
+               
+        end
+        
         function obj = setMenu(obj, varargin)
             % SETMENU this creates and specifies a new menu;
             % 4 or 5 arguments:
@@ -117,6 +130,8 @@ classdef PMImagingProjectViewer
             % 4: list of callbacks for each "sub-menu"
             % 5: list of separators ("on", "off", for each "sub-menu")
 
+            
+            
             switch length(varargin)
 
                 case 4
@@ -175,31 +190,40 @@ classdef PMImagingProjectViewer
         function obj = updateWith(obj, varargin)
                 % UPDATEWITH update views with input:
                 % 1 argument: PMMovieLibrary:
-                % methods leads to update of nickname view, movie-filter, keyword-filter, image-source list, info-lview;
-                NumberOfArguments= length(varargin);
-                switch NumberOfArguments
-                    case 1
-                        Type = class(varargin{1});
-                        switch Type
-                            case 'PMMovieLibrary'
+                % methods leads to update of nickname view, movie-filter, keyword-filter, image-source list, info-view;
+                
+                if ~isempty(obj.Figure) && isvalid(obj.Figure)
+                    
+                    
+                    
+                    NumberOfArguments= length(varargin);
+                    switch NumberOfArguments
+                        case 1
+                            Type = class(varargin{1});
+                            switch Type
+                                case 'PMMovieLibrary'
 
-                                MovieLibrary = varargin{1};
-                                assert(isscalar(MovieLibrary), 'Wrong input.');
+                                    MovieLibrary = varargin{1};
+                                    assert(isscalar(MovieLibrary), 'Wrong input.');
 
-                                obj =    obj.setNickNameView(MovieLibrary.getSelectedNickname);
-                                obj =    obj.setImageSourceTypeFilterView(MovieLibrary.getFilterSelectionIndex);
-                                obj =    obj.setKeywordFilterView(MovieLibrary.getKeyWordList);
-                                
-                                obj =    obj.setImageSourceListView(MovieLibrary.getListWithFilteredNicknames);
-                                obj =    obj.setInfoView(MovieLibrary.getProjectInfoText);
+                                    obj =    obj.setNickNameView(MovieLibrary.getSelectedNickname);
+                                    obj =    obj.setImageSourceTypeFilterView(MovieLibrary.getFilterSelectionIndex);
+                                    obj =    obj.setKeywordFilterView(MovieLibrary.getKeyWordList);
 
-                            otherwise
-                                error('Wrong input.')
+                                    obj =    obj.setImageSourceListView(MovieLibrary.getListWithFilteredNicknames);
+                                    obj =    obj.setInfoView(MovieLibrary.getProjectInfoText);
 
-                        end
-                    otherwise
-                        error('Wrong input.')
+                                otherwise
+                                    error('Wrong input.')
 
+                            end
+                        otherwise
+                            error('Wrong input.')
+
+                    end
+
+                else
+                    
                 end
             
           end
@@ -207,12 +231,14 @@ classdef PMImagingProjectViewer
         function obj = show(obj)
             % SHOW shows figure:
             % either puts figure in foreground (if it exists) or creates new figure from scracth;
-            FigureWasThere = isvalid(obj.Figure);
-
+            
+            FigureWasThere = ~isempty(obj.Figure) && isvalid(obj.Figure);
             if FigureWasThere
                 figure(obj.Figure);
+                
             else
-                obj = obj.initializeViews; 
+                obj = obj.initializeViews;
+
             end
 
         end
@@ -225,12 +251,14 @@ classdef PMImagingProjectViewer
         end
         
         function obj = setInfoView(obj, String)
+            
+            if ~isempty(obj.InfoView) && isvalid(obj.InfoView.List)
              obj.InfoView.List.String =       String;
              obj.InfoView.List.Value =        min([length(obj.InfoView.List.String) obj.InfoView.List.Value]);
              if obj.InfoView.List.Value == 0
                 obj.InfoView.List.Value = 1; 
              end
-             
+            end
            
            
              
@@ -238,7 +266,18 @@ classdef PMImagingProjectViewer
 
     end
     
-    methods % getters positioning
+    methods % SETTERS POSITIONING
+        
+        function obj = setPositions(obj)
+              
+            obj.InfoView.List.Units = 'normalized';
+            obj.InfoView.List.Position =      [0.25 0.01 0.73 0.15];
+        end
+        
+        
+    end
+    
+    methods % GETTERS positioning
         
         function row = getStartRowTracking(obj)
            row  = obj.StartRowTracking; 
@@ -283,33 +322,35 @@ classdef PMImagingProjectViewer
     
     methods % getters
         
-         function list = getSelectedNicknames(obj)
+        function list = getSelectedNicknames(obj)
            % GETSELECTEDNICKNAMES:
            % returns list of all selected (highlighted) nicknames in movie-list;
            list =             obj.ProjectViews.ListOfMoviesInProject.String(obj.ProjectViews.ListOfMoviesInProject.Value);  
          end
-        
-        
+                
         function figure = getFigure(obj)
-           figure = obj.Figure; 
+           figure = obj.Figure;
+
         end
         
         function views = getProjectViews(obj)
             views = obj.ProjectViews;
+
         end
         
         function views = getTrackingViews(obj)
-           views = obj.TrackingViews; 
+           views = obj.TrackingViews;
+
         end
-        
-      
-        
+
         function row = getStartRowNavigation(obj)
-            row = obj.StartRowNavigation;    
+            row = obj.StartRowNavigation;   
+
         end
         
         function type = getMousClickType(obj)
             type = obj.Figure.SelectionType;
+
         end
         
        
@@ -318,24 +359,11 @@ classdef PMImagingProjectViewer
 
     methods % setters project views:
        
-          
-       
-        
         function obj =  setCurrentCharacter(obj, Value)
                 obj.Figure.CurrentCharacter =                  Value;
         end
                 
-          function obj = adjustViews(obj, Value)
-              % ADJUSTVIEWS: adjust positioning of subviews:
-              % takes 1 argument: numerical vector of 4;
-              % resets position of info-view
-              
-              assert(isvector(Value) && length(Value) == 4, 'Wrong input.')
-
-                obj.InfoView.List.Position =      Value;
-            
-        end
-        
+      
     end
   
     methods (Access = private) % initialize
@@ -359,7 +387,7 @@ classdef PMImagingProjectViewer
                 obj =                        obj.CreateProjectViews;
                 obj =                        obj.createInfoView;
                 
-                 obj = obj.setKeywordFilterView('');
+                obj =                      obj.setKeywordFilterView('');
             
         end
         
@@ -489,6 +517,10 @@ classdef PMImagingProjectViewer
                 ListBox.Max =                       2;
                 
                 obj.InfoView.List =             ListBox;   
+               obj = obj.setPositions;
+                
+                
+              
               
          end
         

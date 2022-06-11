@@ -1,6 +1,5 @@
 classdef PMInteractionsView
     %PMINTERACTIONSVIEW view settings for interaction measurement;
-    %   PlaneThresholds
     
     properties (Access = private)
         MainFigure
@@ -36,7 +35,7 @@ classdef PMInteractionsView
         
           function obj = PMInteractionsView(varargin)
             %PMINTERACTIONSVIEW Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 0 arguments;
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
@@ -53,7 +52,6 @@ classdef PMInteractionsView
     
     methods % GETTERS
         
-        
         function ok = testViewsAreSetup(obj)
             ok = ~isempty(obj.PlaneThresholds);
         end
@@ -64,29 +62,32 @@ classdef PMInteractionsView
             
         end
         
-        %% accessors
-        function value = getPlaneThresholds(obj)
+    end
+    
+    methods % GETTERS: USER ENTRIES: can be used to reset model by entered user-selections;
+       
+        function value =        getPlaneThresholds(obj)
             assert(~isempty(obj.PlaneThresholds), 'Plane thresholds not yet set. This object still needs to be set.')
             value = obj.PlaneThresholds.Data;
         end
 
-        function value = getReferenceTimeFrame(obj)
+        function value =        getReferenceTimeFrame(obj)
             value = str2double(obj.ReferenceTimeFrame.Value);
         end
 
-        function value = getChannel(obj)
+        function value =        getChannel(obj)
             value = str2double(obj.Channel.Value);
         end
 
-        function value = getMinimumSize(obj)
+        function value =        getMinimumSize(obj)
             value = obj.MinimumSize.Value;
         end
 
-        function value = getMaximumDistanceToTarget(obj)
+        function value =        getMaximumDistanceToTarget(obj)
             value = obj.MaximumDistanceToTarget.Value;
         end
 
-        function value = getShowThresholdedImage(obj)
+        function value =        getShowThresholdedImage(obj)
             if isempty(obj.ShowThresholdedImage)
                 value = false;
             else
@@ -94,15 +95,13 @@ classdef PMInteractionsView
             end
             
         end
-        
-        
-        
+       
     end
     
     methods % SETTERS
       
-        function obj = setCallbacks(obj, varargin)
-            if isvalid(obj.MainFigure)
+        function obj =          setCallbacks(obj, varargin)
+            if ~isempty(obj.MainFigure) && isvalid(obj.MainFigure)
                 NumberOfArguments = length(varargin);
                 switch NumberOfArguments
                     case 2
@@ -122,11 +121,18 @@ classdef PMInteractionsView
             end 
         end
         
-        function obj = setWith(obj, Value)
+        function obj =          setWith(obj, Value)
+            % SETWITH 
+            % takes 1 argument:
+            % 1: PMInteractionsCapture
             Type = class(Value);
             switch Type
 
                 case 'PMInteractionsCapture'
+                    
+                    assert(isscalar(Value), 'Wrong input.')
+                    
+                    obj = obj.setDimensionsByMovieTracking(Value.getMovieTracking);
 
                     obj.PlaneThresholds.Data =              Value.getThresholdsForImageVolumes;
 
@@ -141,8 +147,8 @@ classdef PMInteractionsView
                         ChannelValue = '1';
                     end
                     obj.Channel.Value   =                   ChannelValue;
+                    
                     obj.MinimumSize.Value =                 Value.getMinimumSizesOfTarget;
-
                     obj.MaximumDistanceToTarget.Value =     Value.getMaximumDistanceToTarget;
                     obj.ShowThresholdedImage.Value =        Value.getShowThresholdedImage;
 
@@ -152,33 +158,37 @@ classdef PMInteractionsView
             end
         
         end
-        
-        function obj = makeVisibible(obj)
-            if isempty(obj.MainFigure)
-                obj = obj.initialize;
-            elseif ~isvalid(obj.MainFigure)
+       
+        function obj =          makeVisibible(obj)
+            if isempty(obj.MainFigure) || ~isvalid(obj.MainFigure)
                 obj = obj.initialize;
             end
         end
-        
-        function obj = setMovieDependentParameters(obj, Movie)
-            obj.PlaneThresholds.Data =          (linspace(10, 10, Movie.getMaxPlane))';
-            obj.Channel.Items =                 arrayfun(@(x)  num2str(x), 1 : Movie.getMaxChannel, 'UniformOutput', false);
-            obj.ReferenceTimeFrame.Items =      arrayfun(@(x)  num2str(x), 1 : Movie.getMaxFrame, 'UniformOutput', false);
-        end
-        
-        function Selection = getUserSelection(obj)
+
+        function Selection =    getUserSelection(obj)
             Selection = obj.Options.Value;
         end
         
     end
     
-    
-    
-    
-    methods (Access = private)
+    methods (Access = private) % SETTERS
+       
+          function obj =          setDimensionsByMovieTracking(obj, MovieTracking)
+              % SETDIMENSIONSBYMOVIETRACKING
+              % takes 1 argument: PMMovieTracking
+              % sets list in plane, channel and reference time-frame, so that appropriate options are visible;
+              assert(isscalar(MovieTracking) && isa(MovieTracking, 'PMMovieTracking'), 'Wrong input.')
+                obj.PlaneThresholds.Data =          (linspace(10, 10, MovieTracking.getMaxPlane))';
+                obj.Channel.Items =                 arrayfun(@(x)  num2str(x), 1 : MovieTracking.getMaxChannel, 'UniformOutput', false);
+                obj.ReferenceTimeFrame.Items =      arrayfun(@(x)  num2str(x), 1 : MovieTracking.getMaxFrame, 'UniformOutput', false);
+          end
+          
         
-        function obj = initialize(obj)
+    end
+    
+    methods (Access = private) % INITIALIZE VIEWS
+        
+        function obj =      initialize(obj)
             
             obj = obj.setMainFigure;
 
@@ -236,26 +246,26 @@ classdef PMInteractionsView
 
         end
         
-        function obj = setMainFigure(obj)
+        function obj =      setMainFigure(obj)
                 fig =                     uifigure;
                 fig.Position =            [obj.getLeft 0 obj.getWidth obj.getHeight];
                 obj.MainFigure =          fig;
 
         end
         
-        function width = getWidth(~)
+        function width =    getWidth(~)
              ScreenSize =              get(0,'screensize');
              width =                   ScreenSize(3) * 0.45;   
         end
         
-        function height = getHeight(~)
+        function height =   getHeight(~)
                 ScreenSize =              get(0,'screensize');
                 height =                  ScreenSize(4) * 0.8;
         end
         
-        function left = getLeft(~)
+        function left =     getLeft(~)
               ScreenSize =              get(0,'screensize');
-                left =                    ScreenSize(3)  * 0.5;
+                left =                  ScreenSize(3)  * 0.5;
               
         end
         

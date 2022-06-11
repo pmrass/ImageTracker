@@ -24,6 +24,7 @@ classdef PMMovieController_Keypress
             % takes 2 arguments:
             % 1: pressed key
             % 2: modifier
+            % returns PMMovieController object
             obj.PressedKey =     PressedKey;
             if ischar(CurrentModifier)
                CurrentModifier = {CurrentModifier}; 
@@ -209,11 +210,7 @@ classdef PMMovieController_Keypress
                 case {'m', 'M'}
                     switch obj.Modifiers
                         case 'shift'
-                            try
-                                obj.MovieController =  obj.MovieController.performTrackingMethod('mergeSelectedTracks');
-                            catch ME
-                                throw(ME)
-                            end
+                            obj.MovieController =  obj.MovieController.performTrackingMethod('mergeSelectedTracks');
                         case 'ShiftAndCommand'
                                  obj.MovieController =  obj.MovieController.mergeTracksByProximity;  
                     end
@@ -221,11 +218,7 @@ classdef PMMovieController_Keypress
                 case {'p', 'P'}
                      switch obj.Modifiers
                         case 'ShiftAndCommand'
-                            try 
-                                 obj.MovieController =  obj.MovieController.performTrackingMethod('fillGapsOfActiveTrack');  
-                            catch ME
-                                throw(ME)
-                            end
+                            obj.MovieController =  obj.MovieController.performTrackingMethod('fillGapsOfActiveTrack');  
                      end
                     
                     
@@ -261,11 +254,7 @@ classdef PMMovieController_Keypress
                    case {'t', 'T'}
                      switch obj.Modifiers
                         case 'ShiftAndCommand'
-                            try 
-                                 obj.MovieController =  obj.MovieController.truncateActiveTrackToFit;  
-                            catch ME
-                                throw(ME)
-                            end
+                           obj.MovieController =  obj.MovieController.truncateActiveTrackToFit;  
                      end
                          
                          
@@ -278,12 +267,7 @@ classdef PMMovieController_Keypress
                     case {'v', 'V'} 
                          switch obj.Modifiers 
                              case 'Nil'
-                                  try 
-                                    obj.MovieController =              obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack', 'backwardInLastGap');
-                                     catch E
-                                       throw(E)
-                                    end
-
+                                obj.MovieController =              obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack', 'backwardInLastGap');
                              case 'command'
                                  obj.MovieController =    obj.MovieController.setActiveTrackTo('backWardGapInNextUnfinishedTrack');
                                  

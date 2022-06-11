@@ -43,16 +43,25 @@ classdef PMMovieLibrary
              % 1: string with complete path of stored PMMovieLibrary;
             
                 NumberOfArguments = length(varargin);
-
                 switch NumberOfArguments
 
                     case 0
 
                     case 1
                         obj.FileName =      varargin{1};
-                        obj =               obj.load;
-                        obj =               obj.testIntactnessOfLibrary;
-                        obj =               obj.loadAllMoviesFromFile;
+                        
+                        [a,~,~]= fileparts(varargin{1});
+                        
+                         obj.PathForImageAnalysis =  a;
+                            obj.PathOfMovieFolder =    a;
+                            obj.PathForExport=         a;
+                        
+                        if  exist(obj.FileName) == 2
+                            obj =               obj.load;
+                            obj =               obj.testIntactnessOfLibrary;
+                            obj =               obj.loadAllMoviesFromFile;
+                        end
+                        
                 
                     case 2
                         assert(ischar(varargin{2}), 'Wrong input.')
@@ -109,17 +118,40 @@ classdef PMMovieLibrary
         end
 
         function obj = set.FileName(obj, LibraryFileName)
-              assert(~isempty(LibraryFileName) && ischar(LibraryFileName) && exist(LibraryFileName) == 2, 'Invalid filename. Please enter a valid file-path as argument of this intializer.')
+              assert(~isempty(LibraryFileName) && ischar(LibraryFileName) , 'Invalid filename. Please enter a valid file-path as argument of this intializer.')
           
             obj.FileName = LibraryFileName;
         end
         
         function obj = set.SelectedNickname(obj, Value)
+            
             if isempty(Value)
                 
             else
                 assert((ischar(Value)  ), 'Invalid nickname entered, potentially not unique. Try other nickname.')
-                assert(obj.getNumberOfNickNameMatchesForString(Value) == 1, 'Nickname can only be set when it matches a unique entry in list.')
+                
+                NumberOfMatches = obj.getNumberOfNickNameMatchesForString(Value);
+                
+                if NumberOfMatches == 1
+                   
+                elseif NumberOfMatches == 0
+                    obj.showAllNicknames;
+                    error('Suggested nickname %s was not accepted because it did not match a single entry in the library.\n', Value)
+                    
+                elseif NumberOfMatches > 1
+                    obj.showAllNicknames;
+                    error('Suggested nickname %s was not accepted because it matched multiple entries in the library.\n', Value)
+                    
+                else
+                     obj.showAllNicknames;
+                     error('Suggested nickname %s was not accepted for unknown reason.\n', Value)
+                     
+                end
+                    
+                    
+               
+                
+               
             end
            
             obj.SelectedNickname = Value;
@@ -187,12 +219,9 @@ classdef PMMovieLibrary
             for index = 1 : length(ListWithNickNames)
                 fprintf('\nLoading movie %s. (%i of %i)\n', ListWithNickNames{index}, index, length(ListWithNickNames));
                 obj =                   obj.setNewNickname(ListWithNickNames{index});
-                myMovieTracking =       obj.getActiveMovieTrackingFromFile(varargin);
+                myMovieTracking =       obj.getActiveMovieTrackingFromFile(varargin{:});
                 obj =                   obj.setLibraryWithActiveMovie(myMovieTracking);
             end 
-            
-            
-            
             
         end
         
@@ -296,6 +325,11 @@ classdef PMMovieLibrary
                                                 ActiveMovieController.getLoadedMovie, ...
                                                 MyLoadedImageVolumes...
                                                 );
+                                            
+            obj =      obj.sortByNickName;
+                                            
+                                            
+                                            
 
         end
         
@@ -306,7 +340,7 @@ classdef PMMovieLibrary
         end
 
         function obj =      removeAlEntriesExceptForNicknames(obj, NickNames)
-              
+               
                 NewFileName =               [obj.FileName(1 : end - 4), '_', PMTime().getCurrentTimeString, '_Complete.mat'];
                 obj =                       obj.saveMovieLibraryWithName(NewFileName);
 
@@ -338,7 +372,7 @@ classdef PMMovieLibrary
             switch length(varargin)
 
                 case 0
-                    MyVersion = '';
+                    MyVersion = 'LoadMasks';
                 case 1
                     MyVersion = varargin{1};
                 otherwise
@@ -350,9 +384,6 @@ classdef PMMovieLibrary
             myMovieTracking=        obj.getActiveMovieTracking(MyVersion);
             assert((isa(myMovieTracking, 'PMMovieTracking')) && isscalar(myMovieTracking), 'Wrong input.')
             obj =                   obj.setLibraryWithActiveMovie(myMovieTracking);
-
-            
-   
 
         end
         
@@ -440,7 +471,9 @@ classdef PMMovieLibrary
         function myMovieController =    getActiveMovieController(obj, varargin)
             % GETACTIVEMOVIECONTROLLER get active PMMovieTracking;
             % takes 0 or 1 arguments:
-            % return movie controller for selected nickanme (also sets loaded image-volumes, export-folder and interaction folder;
+            % return movie controller for selected nickanme
+            % the movie-controller is set from scratch and comes with movie-specific properties;
+            % also sets loaded movie, image-volumes, export-folder and interaction folder;
 
             assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')  
             switch length(varargin)
@@ -451,11 +484,18 @@ classdef PMMovieLibrary
                     error('Not supported anymore.')
 
                 otherwise
-                error('Wrong input.')
+                    error('Wrong input.')
 
             end
 
-            myMovieController =     myMovieController.setLoadedImageVolumes(obj.getLoadedImageDataOfActiveMovie); 
+            Input =                     obj.getLoadedImageDataOfActiveMovie;
+            if isempty(Input)
+                
+            else
+                 myMovieController =     myMovieController.setLoadedImageVolumes(Input); 
+            end
+
+            myMovieController =     myMovieController.updateWith(obj);
             myMovieController =     myMovieController.setExportFolder(obj.getExportFolder);
             myMovieController =     myMovieController.setInteractionsFolder(obj.getInteractionFolder);
 
@@ -472,9 +512,9 @@ classdef PMMovieLibrary
             switch length(varargin)
                
                 case 0
-                    MyVersion = '';
+                    MyVersion =     '';
                 case 1
-                    MyVersion = varargin{1};
+                    MyVersion =     varargin{1};
                 otherwise
                     error('Wrong input.')
                 
@@ -610,8 +650,10 @@ classdef PMMovieLibrary
              if isempty(obj.PathForImageAnalysis)
                  error('Path for image analysis not specified.')
                  mainFolder = '';
+                 
              else
                  mainFolder = obj.PathForImageAnalysis;  
+                 
              end
                 
          end
@@ -690,16 +732,17 @@ classdef PMMovieLibrary
          end
 
         function value =                        checkWheterNickNameAlreadyExists(obj, Value)
-        % CHECKWHETERNICKNAMEALREADYEXISTS determines whether interrogated nickname is currently in library;
-        % returns logical scalar
-        assert(ischar(Value), 'Wrong input.')
-        SelectedRow =                    obj.getRowForNickName(Value);
-        if sum(SelectedRow) >= 1
-        value = true;
-        else
-        value = false;
+            % CHECKWHETERNICKNAMEALREADYEXISTS determines whether interrogated nickname is currently in library;
+            % returns logical scalar
+            assert(ischar(Value), 'Wrong input.')
+            SelectedRow =                    obj.getRowForNickName(Value);
+            if sum(SelectedRow) >= 1
+                value = true;
+            else
+                value = false;
 
-        end
+            end
+        
         end
 
         function check =                        testForPreciselyOneNickNameMatchForString(obj, String)
@@ -716,9 +759,9 @@ classdef PMMovieLibrary
             assert(ischar(String), 'Wrong argument type.')
             NickNames = obj.getAllNicknames;
             if isempty(NickNames)
-            numberOfMatches = 0;
+                numberOfMatches = 0;
             else
-            numberOfMatches =   sum(strcmp(String, NickNames));
+                numberOfMatches =   sum(strcmp(String, NickNames));
             end
         end
 
@@ -1024,14 +1067,23 @@ classdef PMMovieLibrary
             end
             
             fprintf('Testing connection of entire movie list...')
-             CouldConnect =         arrayfun(@(x) ...
+            
+            if isempty(obj.getListOfUnLoadedMovieTrackingObjects)
+                CouldConnect = true;
+            else
+                 CouldConnect =         arrayfun(@(x) ...
                                                 x.canConnectToSourceFile(MyVersion), ...
                                                 obj.getListOfUnLoadedMovieTrackingObjects...
                                                 );
+                                            
+                                             obj.showAllNicknames;
+                    obj.showAllUnConnectedNicknames(CouldConnect);
 
-            obj.showAllNicknames;
-            obj.showAllUnConnectedNicknames(CouldConnect);
+                
+            end
+            
 
+           
 
           end
         
@@ -1226,7 +1278,6 @@ classdef PMMovieLibrary
         function [SelectedRow] =   getRowForNickName(obj, NickNameString)
             assert(ischar(NickNameString), 'Wrong input.')
             SelectedRow =                 strcmp(obj.getAllNicknames, NickNameString);
-            assert(sum(SelectedRow) == 1, 'Non unique nickname')
         end
 
         
@@ -1406,33 +1457,33 @@ classdef PMMovieLibrary
         function Filter = getFilterListForActiveMovieType(obj)
             
                 switch obj.FilterSelectionString
-                case 'Show all movies'
-                    Filter =        obj.getIndicesOfMovies;
+                    case 'Show all movies'
+                        Filter =        obj.getIndicesOfMovies;
 
-                case 'Show all Z-stacks'
-                    Filter =       obj.getIndicesOfZStacks;
+                    case 'Show all Z-stacks'
+                        Filter =       obj.getIndicesOfZStacks;
 
-                case 'Show all snapshots'
-                    Filter =       obj.getIndicesOfSnapshots;
+                    case 'Show all snapshots'
+                        Filter =       obj.getIndicesOfSnapshots;
 
-                case 'Show all tracked movies'
-                    FilterMovies =            obj.getIndicesOfMovies;
-                    FilterTracking =         obj.getIndicesOfTrackedObjects;
-                    Filter =         min([FilterMovies FilterTracking], [], 2); 
+                    case 'Show all tracked movies'
+                        %FilterMovies =            obj.getIndicesOfMovies;
+                        FilterTracking =         obj.getIndicesOfTrackedObjects;
+                        Filter =         min([ FilterTracking], [], 2); 
 
-                case 'Show all untracked movies'
-                    FilterMovies =         obj.getIndicesOfMovies;
-                    FilterTracking =      cellfun(@(x) ~x.testForExistenceOfTracking, obj.getListhWithMovieObjects);
-                    Filter =      min([FilterMovies FilterTracking], [], 2); 
+                    case 'Show all untracked movies'
+                       % FilterMovies =         obj.getIndicesOfMovies;
+                        FilterTracking =      cellfun(@(x) ~x.testForExistenceOfTracking, obj.getListhWithMovieObjects);
+                        Filter =      min([ FilterTracking], [], 2); 
 
-                case 'Show all movies with drift correction'   
-                    Filter =         cellfun(@(x) x.testForExistenceOfDriftCorrection, obj.getListhWithMovieObjects);
+                    case 'Show all movies with drift correction'   
+                        Filter =         cellfun(@(x) x.testForExistenceOfDriftCorrection, obj.getListhWithMovieObjects);
 
-                case 'Show entire content'
-                    Filter =      cellfun(@(x) true, obj.getListhWithMovieObjects);             
+                    case 'Show entire content'
+                        Filter =      cellfun(@(x) true, obj.getListhWithMovieObjects);             
 
-                case 'Show all unmapped movies'
-                    Filter =      cellfun(@(x) ~x.isMapped, obj.getListhWithMovieObjects);
+                    case 'Show all unmapped movies'
+                        Filter =      cellfun(@(x) ~x.isMapped, obj.getListhWithMovieObjects);
 
 
                 end

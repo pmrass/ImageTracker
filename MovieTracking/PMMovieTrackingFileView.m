@@ -60,8 +60,7 @@ classdef PMMovieTrackingFileView
             switch length(varargin)
                
                 case 0
-                    obj =       obj.setMainFigure;
-                    obj =       obj.setPanels;
+                  
                     
                 otherwise
                     error('Wrong input.')
@@ -140,7 +139,7 @@ classdef PMMovieTrackingFileView
        
     end
     
-    methods (Access = private)
+    methods 
         
         function obj = setMainFigure(obj)
             

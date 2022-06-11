@@ -1,6 +1,7 @@
 classdef PMNavigation 
-    %PMNAVIGATION Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMNAVIGATION For navigation in 6 dimensional space
+    %  row, column, plane, frame, channel
+   
     
     properties 
         MaximumRow
@@ -21,7 +22,12 @@ classdef PMNavigation
     methods
         function obj = PMNavigation(varargin)
             %PMNAVIGATION Construct an instance of this class
-            %   Detailed explanation goes here
+            %   takes 0 or 5 arguments:
+            % 1: maximum row
+            % 2: maximum columnn
+            % 3: maximum plane
+            % 4: maximum frame
+            % 5: maximum channel
             NumberOfInputArguments =    length(varargin);
             switch NumberOfInputArguments
                 case 0
@@ -37,17 +43,7 @@ classdef PMNavigation
             end
         end
         
-        function obj = setMaximumRow(obj, Value)
-             obj.MaximumRow =  Value;
-        end
-        
-        function obj = setMaximumColumn(obj, Value)
-            obj.MaximumColumn =  Value;
-        end
-        
-        function obj = setMaximumPlane(obj, Value)
-            obj.MaximumPlane =  Value;
-        end
+ 
 
         function obj = set.MaximumRow(obj,Value)
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input format.')
@@ -87,11 +83,7 @@ classdef PMNavigation
                 disp('PMNavigation.set.ActiveColumns: Value out of range, no action taken.')
             end
         end
-        
-        function obj = setActiveFrames(obj, Value)
-             obj.ActiveFrames =  Value;
-        end
-        
+    
      
         
         function obj = set.ActiveFrames(obj,Value)
@@ -103,16 +95,7 @@ classdef PMNavigation
             end
         end
         
-        function obj = setActivePlanes(obj, Value)
-            if Value >= 1% && Value <= obj.getMaxPlane
-                obj.ActivePlanes =  Value;
-            elseif isnan(Value)
-                
-            else
-                error('PMNavigation.set.ActiveColumns: Value out of range, no action taken.')
-            end
-            
-        end
+  
         
         function obj = set.ActivePlanes(obj,Value)
             assert(isnumeric(Value) && isvector(Value), 'Wrong input format.')
@@ -127,7 +110,65 @@ classdef PMNavigation
             obj.ActiveChannels =  Value;
         end
         
-        function maxFrame = getMaxFrame(obj)
+     
+  
+    end
+    
+    methods % SETTERS
+            
+        function obj = setActiveFrames(obj, Value)
+             obj.ActiveFrames =  Value;
+        end
+        
+        function obj = setActivePlanes(obj, Value)
+            if Value >= 1% && Value <= obj.getMaxPlane
+            obj.ActivePlanes =  Value;
+            elseif isnan(Value)
+
+            else
+            error('PMNavigation.set.ActiveColumns: Value out of range, no action taken.')
+            end
+
+        end
+        
+       
+        function obj = setMaximumRow(obj, Value)
+             obj.MaximumRow =  Value;
+        end
+        
+        function obj = setMaximumColumn(obj, Value)
+            obj.MaximumColumn =  Value;
+        end
+        
+        function obj = setMaximumPlane(obj, Value)
+            obj.MaximumPlane =  Value;
+        end
+        
+    end
+    
+    methods % GETTERS CURRENT POSITION
+       
+         function frame = getActiveFrames(obj)
+           frame = obj.ActiveFrames; 
+        end
+        
+        function frame = getActivePlanes(obj)
+           frame = obj.ActivePlanes; 
+        end
+        
+        function summary = getDimensionSummary(obj)
+            summary{1,1} = sprintf('%i rows', obj.getMaxRow);
+            summary{2,1} = sprintf('%i columns', obj.getMaxColumn);
+            summary{3,1} = sprintf('%i planes', obj.getMaxPlane);
+            summary{4,1} = sprintf('%i frames', obj.getMaxFrame);
+            summary{5,1} = sprintf('%i channels', obj.getMaxChannel);
+        end
+        
+    end
+    
+    methods  %GETTERS MAX
+       
+         function maxFrame = getMaxFrame(obj)
            maxFrame =   obj.MaximumFrame;
         end
         
@@ -147,22 +188,8 @@ classdef PMNavigation
            maxFrame =   obj.MaximumChannel;
         end
         
-        function frame = getActiveFrames(obj)
-           frame = obj.ActiveFrames; 
-        end
+ 
         
-        function frame = getActivePlanes(obj)
-           frame = obj.ActivePlanes; 
-        end
-        
-        function summary = getDimensionSummary(obj)
-            summary{1,1} = sprintf('%i rows', obj.getMaxRow);
-            summary{2,1} = sprintf('%i columns', obj.getMaxColumn);
-            summary{3,1} = sprintf('%i planes', obj.getMaxPlane);
-            summary{4,1} = sprintf('%i frames', obj.getMaxFrame);
-            summary{5,1} = sprintf('%i channels', obj.getMaxChannel);
-        end
-  
     end
 end
 

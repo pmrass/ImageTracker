@@ -2,7 +2,7 @@ classdef PMChannels
     %PMCHANNELS Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
+    properties (Access = private)
        ActiveChannel = 1
        Channels
         
@@ -80,23 +80,28 @@ classdef PMChannels
         
     end
     
-    methods % setters
+    methods % SETTERS
         
          function obj = setActiveChannel(obj, Value)
              % SETACTIVECHANNEL set which channel is active
              % takes 1 argument:
              % 1: numerical integer in range from 1 to number of channels;
-            assert( Value <= length(obj.Channels && Value >= 1 && mod(Value, 1) == 0), 'Wrong type')
+            assert( Value <= length(obj.Channels) && Value >= 1 && mod(Value, 1) == 0, 'Wrong type')
             obj.ActiveChannel = Value;
+         end
+         
+         function obj = setChannels(obj, Value)
+             
+            obj.Channels = Value; 
          end
         
         
         
     end
     
-    methods % setters by active channel
+    methods % SETTERS FOR ACTIVE CHANNEL
         
-           function obj = setVisible(obj, Value)
+        function obj = setVisible(obj, Value)
             obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setVisible(Value);
         end
         
@@ -122,7 +127,7 @@ classdef PMChannels
  
     end
     
-    methods % getters
+    methods % GETTERS
         
         function index = getActiveChannelIndex(obj)
             index = obj.ActiveChannel;
@@ -149,7 +154,7 @@ classdef PMChannels
         
     end
     
-    methods % gettters for visible channels: this is called by PMMovieTracking when processing image volume for display;
+    methods % GETTERS for visible channels: this is called by PMMovieTracking when processing image volume for display;
         
         function intensities = getIntensityLowOfVisibleChannels(obj)
             intensities = arrayfun(@(x) x.getIntensityLow, obj.Channels(obj.getIndicesOfVisibleChannels));
@@ -184,7 +189,11 @@ classdef PMChannels
         
     end
     
-    methods
+    methods % GETTERS FOR ACTIVE CHANNEL
+        
+        function Value = getChannels(obj)
+           Value = obj.Channels; 
+        end
         
         function description = getDescriptionOfActiveChannel(obj)
             activeChannel = obj.Channels(obj.getActiveChannelIndex);
@@ -232,7 +241,9 @@ classdef PMChannels
         end
         
         function obj = setVisibleForAllChannels(obj, Value)
-            obj.Channels = arrayfun(@(x) x.setVisible(Value), obj.Channels);
+             assert(islogical(Value) && isvector(Value) && length(Value) == obj.getMaxChannel, 'Wrong input')
+             
+            obj.Channels = arrayfun(@(x, y) y.setVisible(x), Value(:), obj.Channels);
         end
  
     end
