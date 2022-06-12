@@ -171,7 +171,7 @@ classdef PMInteractionsView
         
     end
     
-    methods (Access = private) % SETTERS
+    methods % SETTERS
        
           function obj =          setDimensionsByMovieTracking(obj, MovieTracking)
               % SETDIMENSIONSBYMOVIETRACKING
