@@ -1,10 +1,10 @@
-classdef PMAutoTrackingView
+classdef PMAutoTrackingView < PMFigure
     %PMAUTOTRACKINGVIEW view for viewing and editing PMAutoTracking settings;
     %   change settings such as maximum tracking distances etc.
     
     properties (Access = private)
         
-        MainFigure
+        
         
         MaximumAcceptedDistanceForAutoTracking
         FirstPassDeletionFrameNumber
@@ -30,8 +30,7 @@ classdef PMAutoTrackingView
                 switch InputArguments
                 
                 case 0
-                    obj = obj.setMainFigure;
-                    obj = obj.setPanels;
+                  
                 otherwise
                         error('Wrong input.') 
                 end
@@ -43,8 +42,11 @@ classdef PMAutoTrackingView
     methods % SETTERS
     
         function obj = show(obj)
-            assert(~isempty(obj.MainFigure), 'Can only show when figure exists.')
-            figure(obj.MainFigure)
+             obj =        obj.showFigure;
+            if obj.figureIsBlank
+                obj =       obj.updateHandles;
+                obj =       obj.setFigureIsBlank(false);
+            end
         end
         
         function obj = setCallbacks(obj, varargin)
@@ -72,37 +74,41 @@ classdef PMAutoTrackingView
             % SET set states of view properties
             % takes 1 argument:
             % 1: scalar of PMAutoTracking
-            
-            switch length(varargin)
+            if obj.figureIsActive
+                
+                switch length(varargin)
                
-                case 1
-                    
-                    Model = varargin{1};
-                    assert(isscalar(Model), 'Wrong input.')
+                    case 1
 
-                    switch class(Model)
+                        Model = varargin{1};
+                        assert(isscalar(Model), 'Wrong input.')
 
-                        case 'PMAutoTracking'
-                            
-                            obj.MaximumAcceptedDistanceForAutoTracking.Value =           num2str(Model.getMaximumAcceptedDistanceForAutoTracking);
-                            obj.FirstPassDeletionFrameNumber.Value =                     num2str(Model.getFirstPassDeletionFrameNumber);
-                            obj.AutoTrackingConnectionGaps.Value =                       num2str(Model.getAutoTrackingConnectionGaps);
+                        switch class(Model)
 
-                            obj.DistanceLimitXYForTrackMerging.Value =                   num2str(Model.getDistanceLimitXYForTrackMerging);
-                            obj.DistanceLimitZForTrackingMerging.Value =                 num2str(Model.getDistanceLimitZForTrackingMerging);
-                            obj.ShowDetailedMergeInformation.Value =                     Model.getShowDetailedMergeInformation;
+                            case 'PMAutoTracking'
 
-                        
-                        otherwise
-                            error('Wrong input.')
-                        
-                        
-                    end
-                    
-                otherwise
-                    error('Wrong input.')
- 
+                                obj.MaximumAcceptedDistanceForAutoTracking.Value =           num2str(Model.getMaximumAcceptedDistanceForAutoTracking);
+                                obj.FirstPassDeletionFrameNumber.Value =                     num2str(Model.getFirstPassDeletionFrameNumber);
+                                obj.AutoTrackingConnectionGaps.Value =                       num2str(Model.getAutoTrackingConnectionGaps);
+
+                                obj.DistanceLimitXYForTrackMerging.Value =                   num2str(Model.getDistanceLimitXYForTrackMerging);
+                                obj.DistanceLimitZForTrackingMerging.Value =                 num2str(Model.getDistanceLimitZForTrackingMerging);
+                                obj.ShowDetailedMergeInformation.Value =                     Model.getShowDetailedMergeInformation;
+
+
+                            otherwise
+                                error('Wrong input.')
+
+
+                        end
+
+                    otherwise
+                        error('Wrong input.')
+
+                end
+            
             end
+            
               
         end
         
@@ -114,10 +120,7 @@ classdef PMAutoTrackingView
                  Procedure = obj.ProcedureSelection.Value;
         end
         
-        function FigureHandle = getFigureHandle(obj)
-              FigureHandle = obj.MainFigure;
-        end
-        
+     
          function value = getMaximumAcceptedDistanceForAutoTracking(obj)
             value = str2double(obj.MaximumAcceptedDistanceForAutoTracking.Value);
         end
@@ -148,14 +151,7 @@ classdef PMAutoTrackingView
     
     methods (Access = private)
         
-        function obj = setMainFigure(obj)            
-            fig =                                                       uifigure;
-            ScreenSize =                                                get(0, 'screensize');
-            Left =                                                      ScreenSize(3)*0.6;
-            fig.Position =                                              [Left 0 obj.getWidth obj.getHeight];
-            obj.MainFigure =                                            fig;
-         
-        end
+       
         
         function Width = getWidth(obj)
             ScreenSize =                                                get(0, 'screensize');
@@ -167,56 +163,63 @@ classdef PMAutoTrackingView
             Height =         ScreenSize(4)*0.8;
         end
         
-        function obj =  setPanels(obj)
+        function obj =  updateHandles(obj)
             
+              
+            ScreenSize =                                                get(0, 'screensize');
+            Left =                                                      ScreenSize(3)*0.6;
+            Position =                                              [Left 0 obj.getWidth obj.getHeight];
+        
             
-            MaximumAcceptedDistanceForAutoTrackingTitle =           uilabel(obj.MainFigure);
+             obj =       obj.setPosition(Position);            
+         
+            MaximumAcceptedDistanceForAutoTrackingTitle =           uilabel(obj.getFigureHandle);
             MaximumAcceptedDistanceForAutoTrackingTitle.Position =                [obj.getWidth*0.05 obj.getHeight - 30  obj.getWidth*0.7 20 ];
             MaximumAcceptedDistanceForAutoTrackingTitle.Text =                  'Maximum distance for auto-tracking:';
 
 
-            obj.MaximumAcceptedDistanceForAutoTracking =            uieditfield(obj.MainFigure);
+            obj.MaximumAcceptedDistanceForAutoTracking =            uieditfield(obj.getFigureHandle);
             obj.MaximumAcceptedDistanceForAutoTracking.Position =   [obj.getWidth*0.79 obj.getHeight - 30  obj.getWidth*0.2 20 ];
 
 
-             FirstPassDeletionFrameNumberTitle =                     uilabel(obj.MainFigure);
+             FirstPassDeletionFrameNumberTitle =                     uilabel(obj.getFigureHandle);
              FirstPassDeletionFrameNumberTitle.Position =            [obj.getWidth*0.05 obj.getHeight - 90  obj.getWidth*0.7 20 ];
              FirstPassDeletionFrameNumberTitle.Text =                'Delete all tracks with x or less frames:';
              
-             obj.FirstPassDeletionFrameNumber =                        uieditfield(obj.MainFigure);
+             obj.FirstPassDeletionFrameNumber =                        uieditfield(obj.getFigureHandle);
              obj.FirstPassDeletionFrameNumber.Position =                          [obj.getWidth*0.79 obj.getHeight - 90  obj.getWidth*0.2 20 ];
            
               
-            AutoTrackingConnectionGapsTitle =                         uilabel(obj.MainFigure);
+            AutoTrackingConnectionGapsTitle =                         uilabel(obj.getFigureHandle);
             AutoTrackingConnectionGapsTitle.Text =                              'Gap frame numbers for connnecting tracks:';
             AutoTrackingConnectionGapsTitle.Position =                            [obj.getWidth*0.05 obj.getHeight - 150  obj.getWidth*0.7 20 ];
             
-            obj.AutoTrackingConnectionGaps =                          uieditfield(obj.MainFigure);
+            obj.AutoTrackingConnectionGaps =                          uieditfield(obj.getFigureHandle);
             obj.AutoTrackingConnectionGaps.Position =                            [obj.getWidth*0.79 obj.getHeight - 150  obj.getWidth*0.2 20 ];
             
-            DistanceLimitXYForTrackMergingTitle =                     uilabel(obj.MainFigure);
+            DistanceLimitXYForTrackMergingTitle =                     uilabel(obj.getFigureHandle);
             DistanceLimitXYForTrackMergingTitle.Position =                        [obj.getWidth*0.05 obj.getHeight - 180  obj.getWidth*0.7 20 ];
             DistanceLimitXYForTrackMergingTitle.Text =                          'Maximum XY-distance for track merging:';
           
-            obj.DistanceLimitXYForTrackMerging =                        uieditfield(obj.MainFigure);
+            obj.DistanceLimitXYForTrackMerging =                        uieditfield(obj.getFigureHandle);
             obj.DistanceLimitXYForTrackMerging.Position =                        [obj.getWidth*0.79 obj.getHeight - 180  obj.getWidth*0.2 20 ];
              
-            DistanceLimitZForTrackingMergingTitle =                   uilabel(obj.MainFigure);
+            DistanceLimitZForTrackingMergingTitle =                   uilabel(obj.getFigureHandle);
             DistanceLimitZForTrackingMergingTitle.Position =                      [obj.getWidth*0.05 obj.getHeight - 210  obj.getWidth*0.7 20 ];
             DistanceLimitZForTrackingMergingTitle.Text =                        'Maximum Z-distance for track merging:';
            
-            obj.DistanceLimitZForTrackingMerging =                      uieditfield(obj.MainFigure);
+            obj.DistanceLimitZForTrackingMerging =                      uieditfield(obj.getFigureHandle);
             obj.DistanceLimitZForTrackingMerging.Position =                      [obj.getWidth*0.79 obj.getHeight - 210  obj.getWidth*0.2 20 ];
             
-            ShowDetailedMergeInformationTitle =                       uilabel(obj.MainFigure);
+            ShowDetailedMergeInformationTitle =                       uilabel(obj.getFigureHandle);
             ShowDetailedMergeInformationTitle.Position =                          [obj.getWidth*0.05 obj.getHeight - 230  obj.getWidth*0.7 20 ];
             ShowDetailedMergeInformationTitle.Text =                            'Show detailed log during track merging:';
 
 
-            obj.ShowDetailedMergeInformation =                          uicheckbox(obj.MainFigure);
+            obj.ShowDetailedMergeInformation =                          uicheckbox(obj.getFigureHandle);
             obj.ShowDetailedMergeInformation.Position =                          [obj.getWidth*0.79 obj.getHeight - 240  obj.getWidth*0.2 20 ];
 
-            obj.ProcedureSelection =                                    uidropdown(obj.MainFigure);
+            obj.ProcedureSelection =                                    uidropdown(obj.getFigureHandle);
             obj.ProcedureSelection.Position =                                    [obj.getWidth*0.5 50  obj.getWidth*0.4 20 ];
             obj.ProcedureSelection.Items =                                      {'Tracking by minimizing object distances',...
                                                                                 'Delete tracks',...
@@ -225,7 +228,7 @@ classdef PMAutoTrackingView
             obj.ProcedureSelection.Value =         'Tracking by minimizing object distances';
             
             
-            obj.StartButton =                      uibutton(obj.MainFigure);
+            obj.StartButton =                      uibutton(obj.getFigureHandle);
             obj.StartButton.Position =             [obj.getWidth*0.5 20  obj.getWidth*0.4 20 ];
             obj.StartButton.Text =                 'Start';
         

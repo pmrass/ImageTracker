@@ -238,7 +238,7 @@ classdef PMInteractionsView
 
             obj.Options =                               uidropdown(obj.MainFigure);
             obj.Options.Position =                      [obj.getWidth * obj.RightColumnPosition obj.getHeight - 350  obj.getWidth * obj.LeftColumWidth 20 ];
-            obj.Options.Items =                         { 'Write raw analysis to file', 'Write interaction map into file'};
+            obj.Options.Items =                         { 'Write raw analysis to file', 'Write interaction map into file', 'Export detailed information of active track'};
 
             obj.Action =                                uibutton(obj.MainFigure);
             obj.Action.Text =                           'Action';

@@ -69,11 +69,14 @@ classdef PMMovieLibraryManager < handle
             obj.Viewer =                PMImagingProjectViewer;
             
             switch length(varargin)
-                case 0
+                
                     
-                case 1
+                case {0, 1}
                     MyMovieLibrary =       obj.getMovieLibraryForInput( varargin{:});
                     obj =                  obj.setMovieLibrary(MyMovieLibrary);
+                    
+                otherwise
+                    error('Wrong input.')
                   
                 
             end
@@ -81,13 +84,13 @@ classdef PMMovieLibraryManager < handle
            
             obj.MovieTrackingFileView =             PMMovieTrackingFileView;
 
-            obj.TrackingNavigationView =        PMTrackingNavigationView;
-            
-            obj.AutoTrackingView =              PMAutoTrackingView;
-            obj.AutoCellRecognitionView =       PMAutoCellRecognitionView;
-            obj.SegementationCaptureView =      PMSegmentationCaptureView;
+            obj.TrackingNavigationView =            PMTrackingNavigationView;
 
-            obj.InteractionsView =          PMInteractionsView;
+            obj.AutoTrackingView =                  PMAutoTrackingView;
+            obj.AutoCellRecognitionView =           PMAutoCellRecognitionView;
+            obj.SegementationCaptureView =          PMSegmentationCaptureView;
+
+            obj.InteractionsView =                  PMInteractionsView;
 
            
             
@@ -402,8 +405,10 @@ classdef PMMovieLibraryManager < handle
     methods (Access = private) % AUTOTRACKING
         
         function obj =      manageTrackingAutoTracking(obj,~,~) 
+            
+            MyAutoTracking =    obj.ActiveMovieController.getLoadedMovie.getTracking.getAutoTracking;
             obj.TrackingAutoTrackingController =         obj.TrackingAutoTrackingController.resetModelWith(...
-                                                        obj.ActiveMovieController.getLoadedMovie.getTracking.getAutoTracking, ...
+                                                        MyAutoTracking, ...
                                                         'ForceDisplay'...
                                                         );
           obj =             obj.setAutoTrackingView(obj.TrackingAutoTrackingController.getView);
@@ -515,6 +520,8 @@ classdef PMMovieLibraryManager < handle
         function obj =              exportDetailedInteractionInfoOfActiveTrack(obj, varargin)
             % EXPORTDETAILEDINTERACTIONINFOOFACTIVETRACK export detailed interaction of active track;
             MyInteractionsManager  =        obj.getInteractionsManager;
+           
+         %   MyInteractionsManager.getModel.showTargetImage;
             MyInteractionsManager.exportDetailedInteractionInfoForTrackIDs(...
                 obj.ActiveMovieController.getLoadedMovie.getIdOfActiveTrack, ...
                 varargin{:});
@@ -1990,6 +1997,10 @@ classdef PMMovieLibraryManager < handle
                 case 'Write interaction map into file'
 
                     obj = obj.saveInteractionsMapForActiveMovie;
+                    
+                case 'Export detailed information of active track'
+                    
+                    obj = obj.exportDetailedInteractionInfoOfActiveTrack('SuppressMetric');
 
                 otherwise
                     error('Wrong input.')

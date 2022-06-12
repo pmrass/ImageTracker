@@ -180,12 +180,12 @@ classdef PMInteractionsManager
     
     methods % GETTERS: VIEW:
        
-        function ok = testViewsAreSetup(obj)
+        function ok =           testViewsAreSetup(obj)
             ok = obj.View.testViewsAreSetup;
             
         end
         
-        function view = getView(obj)
+        function view =         getView(obj)
             view = obj.View;
             
         end

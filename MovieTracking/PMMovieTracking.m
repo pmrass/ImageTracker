@@ -887,37 +887,7 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    
-    
-    
  
-    
-    
-    
-    
-    
-    methods % GETTERS TRACKING ANALYSIS
-           
-         function TrackingAnalysis =                 getMetricTrackingAnalysis(obj)
-            TrackingAnalysis =      obj.getTrackingAnalysis;
-            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
-            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
-
-        end
-
-        function MyTrackingAnalysis_Pixel =             getPixelTrackingAnalysis(obj)
-
-            MyTrackingAnalysis_Pixel =                  obj.getTrackingAnalysis;
-            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setTimeUnits('frames');
-            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setSpaceUnits('pixels');
-
-
-        end
-
-           
-           
-    end
-
     methods % AUTO-DETECTION
         
         function obj = removeFromActiveMaskPixelList(obj, UserSelectedY, UserSelectedX)
@@ -2620,16 +2590,29 @@ classdef PMMovieTracking < PMChannels
     end
     
     methods % GETTERS TRACKING ANALYSIS 
+ 
+        function TrackingAnalysis =                 getMetricTrackingAnalysis(obj)
+            TrackingAnalysis =      obj.getTrackingAnalysis;
+            TrackingAnalysis =      TrackingAnalysis.setSpaceUnits('µm');
+            TrackingAnalysis =      TrackingAnalysis.setTimeUnits('minutes');
 
-    function TrackingAnalysis =     getTrackingAnalysis(obj)
-        % GETTRACKINGANALYSIS
-        TrackingAnalysis =  PMTrackingAnalysis(...
-                                    obj.Tracking.get('Model'), ...
-                                    obj.DriftCorrection, ...
-                                    obj.SpaceCalibration, ...
-                                    obj.TimeCalibration...
-                                    );
-    end
+        end
+
+        function MyTrackingAnalysis_Pixel =          getPixelTrackingAnalysis(obj)
+            MyTrackingAnalysis_Pixel =                  obj.getTrackingAnalysis;
+            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setTimeUnits('frames');
+            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setSpaceUnits('pixels');
+        end
+
+        function TrackingAnalysis =                  getTrackingAnalysis(obj)
+            % GETTRACKINGANALYSIS
+            TrackingAnalysis =  PMTrackingAnalysis(...
+                                        obj.Tracking.get('Model'), ...
+                                        obj.DriftCorrection, ...
+                                        obj.SpaceCalibration, ...
+                                        obj.TimeCalibration...
+                                        );
+        end
 
 
     end
@@ -3586,7 +3569,7 @@ classdef PMMovieTracking < PMChannels
 
             MyInteractionsCapture =         obj.getInteractionsCapture;
             MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
-            ThresholdedImage =              MyInteractionsCapture.getImageVolume ;
+            ThresholdedImage =              MyInteractionsCapture.getImageVolume;
             filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
             image =                         max(filtered, [], 3);
 

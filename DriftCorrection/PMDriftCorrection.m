@@ -72,27 +72,77 @@ classdef PMDriftCorrection
        end
         
     end
+    
+    methods % SETTERS: BASIC:
+       
+        function obj =      setDriftCorrectionActive(obj, Value)
+            assert((islogical(Value) || isnumeric(Value)) && isscalar(Value), 'Wrong input type')
+            obj.DriftCorrectionIsOn = Value;
 
-    methods % SETTERS
+        end
+        
+        function obj =      setNavigation(obj, Value)
+            obj.Navigation = Value;
+        end
+    
+    end
+    
+    methods % SETTERS: INITIALIZE:
+       
+        function obj =      eraseDriftCorrection(obj)
+            error('Use setBlankDriftCorrection')
+            obj =      obj.autoPopulateDefaultManualValues;
+            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
+        end
 
-        function obj =      update(obj) % it would be good to always use this internally when necessary so that it doesn't have to be called from the outside:;
+        function obj =      setBlankDriftCorrection(obj)
+            obj =      obj.autoPopulateDefaultManualValues;
+            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
+        end
+        
+    end
+
+    methods % SETTERS: MANUAL DRIFTCORRECTION
+        
+        function obj =      updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
+
+             ListWithFrames = frame(:);
+
+             for frame = ListWithFrames'
+                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
+                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
+                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
+             end
+
+        end
+
+        
+        
+    end
+    
+    
+    
+    methods % SETTERS: APPLY MANUAL DRIFT CORRECTION
+
+        function obj =      update(obj) 
             obj =    obj.updateManualDriftCorrection;
             if ~ obj.testForExistenceOfDetailedDriftCorrection
                 obj =           obj.createDetailedDriftAnalysisFromManualAnalysis;
             end
         end
 
-        function obj =      setDriftCorrectionActive(obj, Value)
-            assert((islogical(Value) || isnumeric(Value)) && isscalar(Value), 'Wrong input type')
-            obj.DriftCorrectionIsOn = Value;
-
+        function obj =      setByManualDriftCorrection(obj)
+            obj =        obj.updateManualDriftCorrection;
+            obj =        obj.createDetailedDriftAnalysisFromManualAnalysis; 
         end
 
-        function obj =      setNavigation(obj, Value)
-            obj.Navigation = Value;
-        end
+      
 
-        function obj =      convertToMetricBySpaceCalibration(obj, SpaceCalibration)
+    end
+    
+    methods % SETTERS: CONVERSION
+       
+         function obj =      convertToMetricBySpaceCalibration(obj, SpaceCalibration)
             % CONVERTTOMETRICBYSPACECALIBRATION uses Calibration input to convert current pixel values into µm;
 
             obj.ListWithBestAlignmentPositions(:, 4:5) =    SpaceCalibration.convertXPixelsIntoUm(obj.ListWithBestAlignmentPositions(:, 4:5));
@@ -105,34 +155,7 @@ classdef PMDriftCorrection
 
         end
 
-        function obj =    updateManualDriftCorrectionByValues(obj,xEnd, yEnd,  planeWithoutDrift, frame)
-
-             ListWithFrames = frame(:);
-
-             for frame = ListWithFrames'
-                obj.ManualDriftCorrectionValues(frame,2) = xEnd;
-                obj.ManualDriftCorrectionValues(frame,3) = yEnd;
-                obj.ManualDriftCorrectionValues(frame,4) = planeWithoutDrift;
-             end
-
-        end
-
-        function obj =      setByManualDriftCorrection(obj)
-            obj =        obj.updateManualDriftCorrection;
-            obj =        obj.createDetailedDriftAnalysisFromManualAnalysis; 
-        end
-
-        function obj =      eraseDriftCorrection(obj)
-            error('Use setBlankDriftCorrection')
-            obj =      obj.autoPopulateDefaultManualValues;
-            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
-        end
-
-        function obj =      setBlankDriftCorrection(obj)
-            obj =      obj.autoPopulateDefaultManualValues;
-            obj =      obj.createDetailedDriftAnalysisFromManualAnalysis;
-        end
-
+        
     end
 
     

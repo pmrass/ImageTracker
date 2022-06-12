@@ -379,15 +379,7 @@ classdef PMInteractionsCapture
                  end
                  
                
-                myInteractions =                    PMInteractions(...
-                                                        obj.getMetricFluShape, ...
-                                                        obj.getPixelFluShape,...
-                                                        MyTrackingAnalysis_Metric, ...
-                                                        MyTrackingAnalysis_Pixel, ...
-                                                        obj.getMetricDriftCorrection, ...
-                                                        obj.XYLimitForNeighborArea, ...
-                                                        obj.ZLimitForNeighborArea...
-                                                    );
+
 
                 myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
                 myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
@@ -399,7 +391,6 @@ classdef PMInteractionsCapture
         methods % EXPORT:
 
             function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
-                
                 
                 MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
                 MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
@@ -440,15 +431,31 @@ classdef PMInteractionsCapture
         end
 
     end
+    
+    methods (Access = private) % GET SEARCHER TRACKING ANALYSIS:
+        
+        function MyTrackingAnalysis_Metric = getMetricSearcherTrackingAnalysis(obj)
+                    MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
+                    MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+        end
+        
+          function MyTrackingAnalysis_Metric = getPixelSearcherTrackingAnalysis(obj)
+                    MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
+                    MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+        end
+        
+    end
 
     methods (Access = private) % GETTERS: DRIFT-CORRECTION:
 
-        function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
+        function MyDriftCorrection_Metric =     getMetricDriftCorrection(obj)
             MyDriftCorrection =                 obj.getPixelDriftCorrection;
             MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
-        function MyDriftCorrection = getPixelDriftCorrection(obj)
+        function MyDriftCorrection =            getPixelDriftCorrection(obj)
             MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
         end
 
@@ -457,12 +464,12 @@ classdef PMInteractionsCapture
 
     methods (Access = private) % GETTERS TARGET SHAPES:
 
-        function myFluShape_Metric =            getMetricFluShape(obj)
-            myFluShape_Pixels =       obj.getPixelFluShape;
+        function myFluShape_Metric =            getMetricTargetShape(obj)
+            myFluShape_Pixels =       obj.getPixelTargetShape;
             myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
-        function myFluShape_Pixels =            getPixelFluShape(obj)
+        function myFluShape_Pixels =            getPixelTargetShape(obj)
             myFluShape_Pixels =                 PMShape(obj.getImageVolumeObjectOfTarget.getSpaceCoordinates);
        end
         

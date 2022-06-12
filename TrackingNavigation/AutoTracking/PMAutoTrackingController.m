@@ -26,23 +26,17 @@ classdef PMAutoTrackingController
              %% also update view under certain conditions
              if isempty(varargin)
                 ForceView =  false;
-            else
+             else
                 ForceView = strcmp(varargin{1}, 'ForceDisplay');
              end
 
-             switch obj.getHelperViewAction(ForceView)
-                 
-                 case 'Create figure'
-                    obj =           obj.resetView;
-                    obj =           obj.updateView;  
-                    obj.View =      obj.View.show;
-                    
-                 case 'Update figure'
-                    obj =          obj.updateView;  
-                    
-                 case 'No action'
-                     
+             if  ForceView
+                  obj.View = obj.View.show;
              end
+             
+             obj.View = obj.View.set(obj.Model);
+             
+             
 
         end
         
@@ -95,14 +89,8 @@ classdef PMAutoTrackingController
     
     methods (Access = private)
         
-        function obj =              updateView(obj)
-             obj.View = obj.View.set(obj.Model);
-        end
-       
-        function obj =              resetView(obj)
-            obj.View = PMAutoTrackingView;
-            
-        end
+        
+      
         
         function Action =           getHelperViewAction(obj, ForceView)
 

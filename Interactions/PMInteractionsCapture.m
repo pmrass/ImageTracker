@@ -279,133 +279,140 @@ classdef PMInteractionsCapture
          end
              
      end
-    
-        methods  % GETTERS: used for updating PMInteractionsView;
 
-            function controller =       getMovieTracking(obj)
-                controller = obj.MyMovieTracking;
-            end
+    methods  % GETTERS: used for updating PMInteractionsView;
 
-            function Value =            getThresholdsForImageVolumes(obj)
-                Value = obj.ThresholdsForImageVolumes;
-            end
+        function controller =       getMovieTracking(obj)
+            controller = obj.MyMovieTracking;
+        end
 
-            function Value =            getSourceFramesForImageVolumes(obj)
-                Value = obj.SourceFramesForImageVolumes;
-            end
+        function Value =            getThresholdsForImageVolumes(obj)
+            Value = obj.ThresholdsForImageVolumes;
+        end
 
-            function Value =            getChannelNumbersForTarget(obj)
-                Value = obj.ChannelNumbersForTarget;
-            end
+        function Value =            getSourceFramesForImageVolumes(obj)
+            Value = obj.SourceFramesForImageVolumes;
+        end
 
-            function Value =            getMinimumSizesOfTarget(obj)
-                Value = obj.MinimumSizesOfTarget;
-            end
+        function Value =            getChannelNumbersForTarget(obj)
+            Value = obj.ChannelNumbersForTarget;
+        end
 
-            function Value =            getMaximumDistanceToTarget(obj)
-                Value = obj.MaximumDistanceToTarget;
-            end
+        function Value =            getMinimumSizesOfTarget(obj)
+            Value = obj.MinimumSizesOfTarget;
+        end
 
-            function Value =            getShowThresholdedImage(obj)
-                Value = obj.ShowThresholdedImage;
-                if isempty(Value)
-                    Value = true;
-                end
+        function Value =            getMaximumDistanceToTarget(obj)
+            Value = obj.MaximumDistanceToTarget;
+        end
+
+        function Value =            getShowThresholdedImage(obj)
+            Value = obj.ShowThresholdedImage;
+            if isempty(Value)
+                Value = true;
             end
+        end
+
+    end
+
+
+    methods % ACTION getters
+
+        function Map =                  getInteractionsMap(obj)  
+            % GETINTERACTIONSMAP
+            MyInteractionsObject =     obj.getInteractionsObject;
+
+             if ~isempty(obj.ExportFolder)
+                 obj.exportSummaryOfMapIntoFile;               
+             end
+
+            Map =                       MyInteractionsObject.getInteractionsMap;
 
         end
 
+        function myInteractions =       getInteractionsObject(obj, varargin)
+             % GETINTERACTIONSOBJECT returns a PMInteractions object;
 
-        methods % ACTION getters
-       
-            function Map =                  getInteractionsMap(obj)  
-                % GETINTERACTIONSMAP
-                MyInteractionsObject =     obj.getInteractionsObject;
-
-                 if ~isempty(obj.ExportFolder)
-                     obj.exportSummaryOfMapIntoFile;               
-                 end
-
-                Map =                       MyInteractionsObject.getInteractionsMap;
-
-            end
-
-            function myInteractions =       getInteractionsObject(obj, varargin)
-                 % GETINTERACTIONSOBJECT returns a PMInteractions object;
-
-                  obj.MyMovieTracking =                       obj.MyMovieTracking.setFrameTo(obj.SourceFramesForImageVolumes);
-
-                  
-                 switch length(varargin)
-                     
-                     case 0
-                         
-                         
-                            MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
-                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+              obj.MyMovieTracking =                       obj.MyMovieTracking.setFrameTo(obj.SourceFramesForImageVolumes);
 
 
-                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+             switch length(varargin)
+
+                 case 0
 
 
-                     case 1
-                         
-                     switch varargin{1}
-                         
-                         case 'SuppressMetric'
-                             MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+                            myInteractions =                    PMInteractions(...
+                                        obj.getMetricTargetShape, ...
+                                        obj.getPixelTargetShape,...
+                                        obj.getMetricSearcherTrackingAnalysis, ...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getMetricDriftCorrection, ...
+                                        obj.XYLimitForNeighborArea, ...
+                                        obj.ZLimitForNeighborArea...
+                                    );
 
 
-                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+                 case 1
 
-                             
-                         otherwise
-                             error('Wrong input.')
-                             
-                             
-                         
-                         
-                     end
-                     
+                 switch varargin{1}
+
+                     case 'SuppressMetric'
+
+                           myInteractions =                    PMInteractions(...
+                                        obj.getPixelTargetShape, ...
+                                        obj.getPixelTargetShape,...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getPixelDriftCorrection, ...
+                                        obj.XYLimitForNeighborArea, ...
+                                        obj.ZLimitForNeighborArea...
+                                    );
+
+
                      otherwise
-                         
                          error('Wrong input.')
-                     
-                     
-                     
-                 end
-                 
-               
-                myInteractions =                    PMInteractions(...
-                                                        obj.getMetricTargetShape, ...
-                                                        obj.getPixelTargetShape,...
-                                                        MyTrackingAnalysis_Metric, ...
-                                                        MyTrackingAnalysis_Pixel, ...
-                                                        obj.getMetricDriftCorrection, ...
-                                                        obj.XYLimitForNeighborArea, ...
-                                                        obj.ZLimitForNeighborArea...
-                                                    );
 
-                myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
-                myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
+
+
+
+                 end
+
+                 otherwise
+
+                     error('Wrong input.')
+
+
 
              end
 
+
+
+
+            myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
+            myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
+
+        end
+
+        function obj =                  showTargetImage(obj)
+           
+            MyTargetShape = obj.getPixelTargetShape;
+            MyImage = MyTargetShape.getRawImageVolume('MaximumProjection');
+            figure
+            imagesc(MyImage)
+            
         end
         
-        methods % EXPORT:
+    end
 
-            function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
-                
-                
-                MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
-                MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
-            end
+    methods % EXPORT:
 
+        function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
+
+            MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
+            MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
         end
+
+    end
 
     
     
@@ -440,15 +447,31 @@ classdef PMInteractionsCapture
         end
 
     end
+    
+    methods (Access = private) % GET SEARCHER TRACKING ANALYSIS:
+        
+        function MyTrackingAnalysis_Metric = getMetricSearcherTrackingAnalysis(obj)
+                    MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
+                    MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+        end
+        
+          function MyTrackingAnalysis_Metric = getPixelSearcherTrackingAnalysis(obj)
+                    MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
+                    MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+
+        end
+        
+    end
 
     methods (Access = private) % GETTERS: DRIFT-CORRECTION:
 
-        function MyDriftCorrection_Metric = getMetricDriftCorrection(obj)
+        function MyDriftCorrection_Metric =     getMetricDriftCorrection(obj)
             MyDriftCorrection =                 obj.getPixelDriftCorrection;
             MyDriftCorrection_Metric =          MyDriftCorrection.convertToMetricBySpaceCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
-        function MyDriftCorrection = getPixelDriftCorrection(obj)
+        function MyDriftCorrection =            getPixelDriftCorrection(obj)
             MyDriftCorrection =                 obj.MyMovieTracking.getDriftCorrection;
         end
 
@@ -458,8 +481,8 @@ classdef PMInteractionsCapture
     methods (Access = private) % GETTERS TARGET SHAPES:
 
         function myFluShape_Metric =            getMetricTargetShape(obj)
-            myFluShape_Pixels =       obj.getPixelTargetShape;
-            myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
+            myFluShape_Pixels =                 obj.getPixelTargetShape;
+            myFluShape_Metric =                 myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
         function myFluShape_Pixels =            getPixelTargetShape(obj)

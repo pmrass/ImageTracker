@@ -315,7 +315,14 @@ classdef PMInteractions
            
                 
                 NumberOfNeighborTargetCoordinates =         size(ListOfCoordinatesInVolume, 1); 
-                Max =                                       (length(0: obj.myFluShape_Metric.getPixelSize : obj.XYLimitForNeighborArea * 2 ))^2;
+                
+                if isempty(obj.myFluShape_Metric.getPixelSize)
+                    MyPixelSize = 1;
+                else
+                    MyPixelSize = obj.myFluShape_Metric.getPixelSize;
+                    
+                end
+                Max =                                       (length(0:  MyPixelSize : obj.XYLimitForNeighborArea * 2 ))^2;
                 
                 FractionPositive =          NumberOfNeighborTargetCoordinates / Max;
           end
@@ -346,7 +353,6 @@ classdef PMInteractions
 
             obj.ViewStructure.FigureHandle = figure;
 
-      
             obj.ViewStructure.ImageAxes = subplot(1, 1, 1);
             obj.ViewStructure.ImageAxes.Position = [0.1300 0.1100 0.7750 0.7];
             obj.ViewStructure.ImageAxes.YDir = 'reverse';
@@ -360,9 +366,6 @@ classdef PMInteractions
 
             obj.ViewStructure.LineForNeighborRectangle =         line;  
        
-            
-            
-
             obj.ViewStructure.MainAxes = axes;
             obj.ViewStructure.MainAxes.Visible = 'off';
             obj.ViewStructure.MainAxes.Position = [0 0 1 1];
@@ -381,7 +384,7 @@ classdef PMInteractions
             obj.ViewStructure.textFrameNumber.HorizontalAlignment = 'left';
             obj.ViewStructure.textFrameNumber.Position = [0.5 0.95 0 ];
             
-              obj.ViewStructure.textTrackFullness = text();
+            obj.ViewStructure.textTrackFullness = text();
             obj.ViewStructure.textTrackFullness.String = 'Full = ';
             obj.ViewStructure.textTrackFullness.FontSize = 18;
             obj.ViewStructure.textTrackFullness.Color = 'k';
@@ -442,9 +445,9 @@ classdef PMInteractions
              rows =                             arrayfun(@(x) TargetCoordinateListInRange(:, 3) == x, UniquePlanes, 'UniformOutput', false);
             CoordinatesPerPlane =               cellfun(@(x) TargetCoordinateListInRange(x, :), rows, 'UniformOutput', false);
             Images =                            cellfun(@(x) PMShape(x).getMaximumProjection,    CoordinatesPerPlane, 'UniformOutput', false);
-            Images{1}(500, 500 , 1) =              0;
-            Images{2}(500, 500, 1) =              0;
-            Images{3}(500, 500, 1) =              0;
+           
+            Images{2}(size(Images{1}, 1), size(Images{1}, 2), 1) =              0;
+            Images{3}(size(Images{1}, 1), size(Images{1}, 2), 1) =              0;
             
             FluPixelImage =                       uint8(0);
             FluPixelImage(size(Images{1}, 1), size(Images{1}, 2),3) = 0;
@@ -464,6 +467,10 @@ classdef PMInteractions
      
             obj.ViewStructure.ImageAxes.XLim = [XStart, XEnd];
             obj.ViewStructure.ImageAxes.YLim = [YStart, YEnd];
+            
+        end
+        
+        function start = getStartPosition(obj)
             
         end
         
