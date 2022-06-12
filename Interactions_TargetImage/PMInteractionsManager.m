@@ -196,7 +196,7 @@ classdef PMInteractionsManager
         
     end
     
-    methods % interaction measurement action
+    methods % ACTION
        
         function Map =          getInteractionsMap(obj)
             Map =       obj.Model.getInteractionsMap;

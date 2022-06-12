@@ -38,7 +38,7 @@ classdef PMInteractionsCapture
     
     methods % INITIALIZATION 
 
-         function obj = PMInteractionsCapture(varargin)
+        function obj =      PMInteractionsCapture(varargin)
             %PMINTERACTIONSETTINGS Construct an instance of this class
             %   takes 0 arguments
             NumberOfArguments = length(varargin);
@@ -52,72 +52,71 @@ classdef PMInteractionsCapture
                
          end
         
-        function obj = set.MyMovieTracking(obj, Value)
+        function obj =      set.MyMovieTracking(obj, Value)
              assert(isa(Value, 'PMMovieTracking'), 'Wrong input.')
             obj.MyMovieTracking = Value;
         end
         
-        function obj = set.ThresholdsForImageVolumes(obj, Value)
+        function obj =      set.ThresholdsForImageVolumes(obj, Value)
             assert(isnumeric(Value) && isvector(Value) , 'Wrong input.')
             obj.ThresholdsForImageVolumes = Value; 
         end
 
-        function obj = set.SourceFramesForImageVolumes(obj, Value)
+        function obj =      set.SourceFramesForImageVolumes(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) , 'Wrong input.')
             obj.SourceFramesForImageVolumes = Value; 
         end
 
-         function obj = set.MinimumSizesOfTarget(obj, Value)
+        function obj =      set.MinimumSizesOfTarget(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) , 'Wrong input.')
             obj.MinimumSizesOfTarget = Value; 
          end
 
-        function obj = set.ChannelNumbersForTarget(obj, Value)
+        function obj =      set.ChannelNumbersForTarget(obj, Value)
             assert(isnumeric(Value) && isscalar(Value) , 'Wrong input.')
             obj.ChannelNumbersForTarget = Value; 
         end
         
-        function obj = set.FilterTypeForTargetChannel(obj, Value)
+        function obj =      set.FilterTypeForTargetChannel(obj, Value)
             assert(ischar(Value), 'Wrong input.')
            obj.FilterTypeForTargetChannel = Value; 
         end
 
-        function obj = set.MaximumDistanceToTarget(obj, Value)
+        function obj =      set.MaximumDistanceToTarget(obj, Value)
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
             obj.MaximumDistanceToTarget = Value; 
         end
 
-        function obj =set.ShowThresholdedImage(obj, Value)
+        function obj =      set.ShowThresholdedImage(obj, Value)
             assert(islogical(Value) && isscalar(Value), 'Wrong input.')
             obj.ShowThresholdedImage = Value;
         end
         
-        function obj = set.ExportFolder(obj, Value)
+        function obj =      set.ExportFolder(obj, Value)
            assert(ischar(Value), 'Wrong input.')
            obj.ExportFolder = Value;
             
         end
         
-        function obj = set.XYLimitForNeighborArea(obj, Value)
+        function obj =      set.XYLimitForNeighborArea(obj, Value)
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
            obj.XYLimitForNeighborArea = Value; 
         end
         
-        function obj = set.ZLimitForNeighborArea(obj, Value)
+        function obj =      set.ZLimitForNeighborArea(obj, Value)
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
            obj.ZLimitForNeighborArea = Value; 
         end
         
     end
     
-    methods % summmary
+    methods % SUMMARY
         
-        function obj = showSummary(obj)
+        function obj =      showSummary(obj)
             cellfun(@(x) fprintf('%s', x), obj.getSummary);
         end
         
-        
-        function Text = getSummary(obj)
+        function Text =     getSummary(obj)
                
             obj =            obj.setChannelSettingsInMovieTracking;
             
@@ -136,7 +135,7 @@ classdef PMInteractionsCapture
              
         end
         
-          function text = getSummaryForCreatingTargetImageVolume(obj)
+        function text =     getSummaryForCreatingTargetImageVolume(obj)
 
               text = { sprintf('This PMInteractionsCapture object creates the image-volume for the target in the following way:\n')};
               text = [text; sprintf('It uses its movie-controller method "getActiveImageVolumeForChannel" to retrieve the image-volume for frame "%i". and channel "%i".\n', obj.SourceFramesForImageVolumes, obj.ChannelNumbersForTarget)];
@@ -154,7 +153,7 @@ classdef PMInteractionsCapture
     
      methods % SETTERS complex
        
-        function obj = setMovieTracking(obj, Value)
+        function obj =      setMovieTracking(obj, Value)
             % SETMOVIECONTROLLER sets object with content of input
             % takes 1 argument
             % 1: scalar of PMMovieTracking
@@ -169,9 +168,9 @@ classdef PMInteractionsCapture
            
           end
 
-        function obj = setWith(obj, Value)
+        function obj =      setWith(obj, Value)
             % SETWITH setter;
-            % takes 1 argument:
+            % takes 1 argument: PMMovieTracking object or PMInteractionsManager;
             
             switch class(Value)
                 
@@ -184,15 +183,10 @@ classdef PMInteractionsCapture
                 otherwise
                     error('Wrong input')
             end
-             
-            
+                  
         end
         
-     end
-     
-     methods % SETTERS simple
-         
-        function obj = set(obj, varargin)
+        function obj =      set(obj, varargin)
             %SET sets thresholds and limits;
             % takes 6 arguments:
             % 1: image-volume thresholds
@@ -219,41 +213,46 @@ classdef PMInteractionsCapture
                 end
              
           end
+          
         
-        function obj = setThresholdsForImageVolumeOfTarget(obj, Value)
+     end
+     
+     methods % SETTERS simple
+         
+      
+        function obj =      setThresholdsForImageVolumeOfTarget(obj, Value)
             obj.ThresholdsForImageVolumes = Value;
         end
         
-        function obj = setSourceFrameForImageVolumeOfTarget(obj, Value)
+        function obj =      setSourceFrameForImageVolumeOfTarget(obj, Value)
             obj.SourceFramesForImageVolumes = Value;
         end
         
-        function obj = setMinimumSizeOfTarget(obj, Value)
+        function obj =      setMinimumSizeOfTarget(obj, Value)
             obj.MinimumSizesOfTarget = Value;
         end
         
-        function obj = setChannelNumberForTarget(obj, Value)
+        function obj =      setChannelNumberForTarget(obj, Value)
             obj.ChannelNumbersForTarget = Value;
         end
         
-        function obj = setMaximumDistanceToTarget(obj, Value)
+        function obj =      setMaximumDistanceToTarget(obj, Value)
            obj.MaximumDistanceToTarget = Value; 
         end
         
-        function obj = setExportFolder(obj, Value)
+        function obj =      setExportFolder(obj, Value)
            obj.ExportFolder = Value; 
         end
 
-        function obj = setXYLimitForNeighborArea(obj, Value)
+        function obj =      setXYLimitForNeighborArea(obj, Value)
            obj.XYLimitForNeighborArea = Value; 
         end
         
-         function obj = setZLimitForNeighborArea(obj, Value)
+        function obj =      setZLimitForNeighborArea(obj, Value)
            obj.ZLimitForNeighborArea = Value; 
         end
           
-       
-         
+     
      end
     
      
@@ -279,124 +278,140 @@ classdef PMInteractionsCapture
          end
              
      end
-    
-        methods  % GETTERS: used for updating PMInteractionsView;
 
-            function controller =       getMovieTracking(obj)
-                controller = obj.MyMovieTracking;
-            end
+    methods  % GETTERS: used for updating PMInteractionsView;
 
-            function Value =            getThresholdsForImageVolumes(obj)
-                Value = obj.ThresholdsForImageVolumes;
-            end
+        function controller =       getMovieTracking(obj)
+            controller = obj.MyMovieTracking;
+        end
 
-            function Value =            getSourceFramesForImageVolumes(obj)
-                Value = obj.SourceFramesForImageVolumes;
-            end
+        function Value =            getThresholdsForImageVolumes(obj)
+            Value = obj.ThresholdsForImageVolumes;
+        end
 
-            function Value =            getChannelNumbersForTarget(obj)
-                Value = obj.ChannelNumbersForTarget;
-            end
+        function Value =            getSourceFramesForImageVolumes(obj)
+            Value = obj.SourceFramesForImageVolumes;
+        end
 
-            function Value =            getMinimumSizesOfTarget(obj)
-                Value = obj.MinimumSizesOfTarget;
-            end
+        function Value =            getChannelNumbersForTarget(obj)
+            Value = obj.ChannelNumbersForTarget;
+        end
 
-            function Value =            getMaximumDistanceToTarget(obj)
-                Value = obj.MaximumDistanceToTarget;
-            end
+        function Value =            getMinimumSizesOfTarget(obj)
+            Value = obj.MinimumSizesOfTarget;
+        end
 
-            function Value =            getShowThresholdedImage(obj)
-                Value = obj.ShowThresholdedImage;
-                if isempty(Value)
-                    Value = true;
-                end
+        function Value =            getMaximumDistanceToTarget(obj)
+            Value = obj.MaximumDistanceToTarget;
+        end
+
+        function Value =            getShowThresholdedImage(obj)
+            Value = obj.ShowThresholdedImage;
+            if isempty(Value)
+                Value = true;
             end
+        end
+
+    end
+
+
+    methods % ACTION getters
+
+        function Map =                  getInteractionsMap(obj)  
+            % GETINTERACTIONSMAP
+            MyInteractionsObject =     obj.getInteractionsObject;
+
+             if ~isempty(obj.ExportFolder)
+                 obj.exportSummaryOfMapIntoFile;               
+             end
+
+            Map =                       MyInteractionsObject.getInteractionsMap;
 
         end
 
+        function myInteractions =       getInteractionsObject(obj, varargin)
+             % GETINTERACTIONSOBJECT returns a PMInteractions object;
 
-        methods % ACTION getters
-       
-            function Map =                  getInteractionsMap(obj)  
-                % GETINTERACTIONSMAP
-                MyInteractionsObject =     obj.getInteractionsObject;
-
-                 if ~isempty(obj.ExportFolder)
-                     obj.exportSummaryOfMapIntoFile;               
-                 end
-
-                Map =                       MyInteractionsObject.getInteractionsMap;
-
-            end
-
-            function myInteractions =       getInteractionsObject(obj, varargin)
-                 % GETINTERACTIONSOBJECT returns a PMInteractions object;
-
-                  obj.MyMovieTracking =                       obj.MyMovieTracking.setFrameTo(obj.SourceFramesForImageVolumes);
-
-                  
-                 switch length(varargin)
-                     
-                     case 0
-                         
-                         
-                            MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
-                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+              obj.MyMovieTracking =                       obj.MyMovieTracking.setFrameTo(obj.SourceFramesForImageVolumes);
 
 
-                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+             switch length(varargin)
+
+                 case 0
 
 
-                     case 1
-                         
-                     switch varargin{1}
-                         
-                         case 'SuppressMetric'
-                             MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
+                            myInteractions =                    PMInteractions(...
+                                        obj.getMetricTargetShape, ...
+                                        obj.getPixelTargetShape,...
+                                        obj.getMetricSearcherTrackingAnalysis, ...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getMetricDriftCorrection, ...
+                                        obj.XYLimitForNeighborArea, ...
+                                        obj.ZLimitForNeighborArea...
+                                    );
 
 
-                            MyTrackingAnalysis_Pixel =                  obj.MyMovieTracking.getPixelTrackingAnalysis;
-                            MyTrackingAnalysis_Pixel =                  MyTrackingAnalysis_Pixel.setApplyDriftCorrection(false);
+                 case 1
 
-                             
-                         otherwise
-                             error('Wrong input.')
-                             
-                             
-                         
-                         
-                     end
-                     
+                 switch varargin{1}
+
+                     case 'SuppressMetric'
+
+                           myInteractions =                    PMInteractions(...
+                                        obj.getPixelTargetShape, ...
+                                        obj.getPixelTargetShape,...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getPixelSearcherTrackingAnalysis, ...
+                                        obj.getPixelDriftCorrection, ...
+                                        obj.XYLimitForNeighborArea, ...
+                                        obj.ZLimitForNeighborArea...
+                                    );
+
+
                      otherwise
-                         
                          error('Wrong input.')
-                     
-                     
-                     
+
+
+
+
                  end
-                 
-               
+
+                 otherwise
+
+                     error('Wrong input.')
 
 
-                myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
-                myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
 
              end
 
+
+
+
+            myInteractions =                    myInteractions.setExportFolder(obj.ExportFolder);
+            myInteractions =                    myInteractions.setMovieName(obj.MyMovieTracking.getNickName);
+
+        end
+
+        function obj =                  showTargetImage(obj)
+           
+            MyTargetShape = obj.getPixelTargetShape;
+            MyImage = MyTargetShape.getRawImageVolume('MaximumProjection');
+            figure
+            imagesc(MyImage)
+            
         end
         
-        methods % EXPORT:
+    end
 
-            function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
-                
-                MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
-                MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
-            end
+    methods % EXPORT:
 
+        function obj = exportDetailedInteractionInfoForTrackIDs(obj, TrackIDs, varargin)
+
+            MyInteractionsObject =      obj.getInteractionsObject(varargin{:});
+            MyInteractionsObject.exportDetailedInteractionInfoForTrackIDs(TrackIDs);
         end
+
+    end
 
     
     
@@ -434,13 +449,13 @@ classdef PMInteractionsCapture
     
     methods (Access = private) % GET SEARCHER TRACKING ANALYSIS:
         
-        function MyTrackingAnalysis_Metric = getMetricSearcherTrackingAnalysis(obj)
+        function MyTrackingAnalysis_Metric =    getMetricSearcherTrackingAnalysis(obj)
                     MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getMetricTrackingAnalysis;
                     MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
 
         end
         
-          function MyTrackingAnalysis_Metric = getPixelSearcherTrackingAnalysis(obj)
+          function MyTrackingAnalysis_Metric =  getPixelSearcherTrackingAnalysis(obj)
                     MyTrackingAnalysis_Metric  =                obj.MyMovieTracking.getPixelTrackingAnalysis;
                     MyTrackingAnalysis_Metric =                 MyTrackingAnalysis_Metric.setApplyDriftCorrection(false);
 
@@ -465,8 +480,8 @@ classdef PMInteractionsCapture
     methods (Access = private) % GETTERS TARGET SHAPES:
 
         function myFluShape_Metric =            getMetricTargetShape(obj)
-            myFluShape_Pixels =       obj.getPixelTargetShape;
-            myFluShape_Metric =       myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
+            myFluShape_Pixels =                 obj.getPixelTargetShape;
+            myFluShape_Metric =                 myFluShape_Pixels.convertPixelToUmWithCalibration(obj.MyMovieTracking.getSpaceCalibration);
         end
         
         function myFluShape_Pixels =            getPixelTargetShape(obj)

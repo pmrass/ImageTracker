@@ -64,22 +64,18 @@ classdef PMInteraction
     
     methods % SUMMARY 
         
-        function obj = showSummary(obj)
+        function obj =          showSummary(obj)
              cellfun(@(x) fprintf('%s\n', x),   obj.getSummary);
 
         end
         
-        
-        function summary = getSummary(obj)
+        function summary =      getSummary(obj)
             summary = {sprintf('This PMInteraction object measures the shortest distance between a searcher and its target.')};
             summary = [summary; sprintf('For 3D the distance measurement is straighforward.')];
             summary = [summary; sprintf('For 2D measurements, first the "matching plane" of the target is selected (e.g. plane 2 when centroid searcher is 2.1) and then the shortest distance is measured.')];
             
         end
-        
-        
-        
-        
+            
     end
     
     methods % SETTERS
@@ -91,21 +87,21 @@ classdef PMInteraction
         
     end
     
-    methods % GETTERS:
+    methods % GETTERS: BASIC
         
-        function positions = getCoordinatesOfSearcher(obj)
+        function positions =        getCoordinatesOfSearcher(obj)
             positions = obj.SearcherPositions;
         end
         
-        function positions = getClosestTargetPosition(obj)
+        function positions =        getClosestTargetPosition(obj)
             positions = obj.ClosestTargetPositions;
         end
         
-        function positions = getClosestTargetPosition_2D(obj)
+        function positions =        getClosestTargetPosition_2D(obj)
             positions = obj.ClosestTargetPositions_TwoD;
         end
 
-        function imageOut = getImageOf2DTarget(obj)
+        function imageOut =         getImageOf2DTarget(obj)
             image =         obj.getTargetCoordinatesInPlaneCloseToSearcher;
             targetShape =   PMShape(image(:, 2 : 4));
             imageOut =      targetShape.getImageVolume('MaximumProjection');
@@ -113,9 +109,9 @@ classdef PMInteraction
         
     end
     
-    methods
+    methods % GETTERS: MAIN
         
-        function [closestDistances, closestTargetPosition] = getDistanceToClosestTarget(obj, varargin)
+        function [distance, position] =     getDistanceToClosestTarget(obj, varargin)
             %GETDISTANCETOCLOSESTTARGET gets shortest distance between searcher and target;
             % takes 0, or 1 arguments
             % 1: character string: '3D', or '2D'; default: '3D'
@@ -123,14 +119,14 @@ classdef PMInteraction
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
-                    [closestDistances, closestTargetPosition] = obj.getClosestDistancesToTarget_ThreeD;
+                    [distance, position] = obj.getClosestDistancesToTarget_ThreeD;
                 case 1
                     assert(ischar(varargin{1}), 'Wrong input.')
                     switch varargin{1}
                         case '3D'
-                            [closestDistances, closestTargetPosition] = obj.getClosestDistancesToTarget_ThreeD;
+                            [distance, position] = obj.getClosestDistancesToTarget_ThreeD;
                         case '2D'
-                            [closestDistances, closestTargetPosition] = obj.getClosestDistancesToTarget_TwoD;
+                            [distance, position] = obj.getClosestDistancesToTarget_TwoD;
                     end
                     
                 otherwise
@@ -139,10 +135,8 @@ classdef PMInteraction
             end
   
         end
-        
-    
 
-        function netMovement =  getNetMovementTowardsTarget(obj)
+        function netMovement =              getNetMovementTowardsTarget(obj)
             %GETNETMOVEMENTTOWARDSTARGET takes first and last position of searcher and calculates movement towards or away from target;
             % positive value: searcher moves away from target;
             
@@ -156,8 +150,6 @@ classdef PMInteraction
             end 
         end
 
-      
-          
 
     end
     
@@ -254,9 +246,6 @@ classdef PMInteraction
             obj.PlaneClosestToCellCenter =  MyTargetZs(closestIndex);
         end
 
-        
-        
-        
     end
     
     methods (Access = private) % GETTERS: needed?
