@@ -9,6 +9,7 @@ classdef PMInteractionsMenu
     end
     
     methods
+        
         function obj = PMInteractionsMenu(varargin)
             %PMINTERACTIONSMENU Construct an instance of this class
             %   Detailed explanation goes here
@@ -44,18 +45,13 @@ classdef PMInteractionsMenu
         
         function obj = setMenu(obj)
             
-            
                 obj.Main=                                            uimenu(obj.MainFigure);
                 obj.Main.Label=                                      'Interactions';
 
-                obj.ShowInteractionsView=                                            uimenu(obj.Main);
-                obj.ShowInteractionsView.Label=                                      'Set interaction parameters';
+                obj.ShowInteractionsView=                            uimenu(obj.Main);
+                obj.ShowInteractionsView.Label=                      'Set interaction parameters';
                
         end
-        
-        
-            
-            
         
     end
 end
