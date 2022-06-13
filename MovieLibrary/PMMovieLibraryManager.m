@@ -297,9 +297,9 @@ classdef PMMovieLibraryManager < handle
          function obj =         deleteAllEntriesOfLibrary(obj)
                %DELETEALLENTRIESOFLIBRARY delete all entries in library also delete connected files;
               AllNickNames = obj.MovieLibrary.getAllNicknames;
-                    for index = 1:length(AllNickNames)
-                        obj = obj.removeEntryWithNickName(AllNickNames{index});
-                    end
+            for index = 1:length(AllNickNames)
+                obj = obj.removeEntryWithNickName(AllNickNames{index});
+            end
             
          end
         
@@ -1125,12 +1125,9 @@ classdef PMMovieLibraryManager < handle
         end
         
         function obj =      toggleProjectInfo(obj,~,~)
-            obj =                               obj.setInfoTextView;
-            
+            obj =                               obj.setInfoTextView;   
         end
        
-        
-
         function obj = updateMovieSummaryFromFiles(obj,~,~)
             obj.MovieLibrary = obj.MovieLibrary.setAllMovies;
         end
