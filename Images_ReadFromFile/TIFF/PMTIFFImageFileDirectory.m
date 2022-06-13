@@ -78,7 +78,7 @@ classdef PMTIFFImageFileDirectory
 
         function Compression =      getCompressionType(obj)
 
-         switch obj.getContentForCode(259)
+            switch obj.getContentForCode(259)
 
                 case 1
                     Compression = 'NoCompression';

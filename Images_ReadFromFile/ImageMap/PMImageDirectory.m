@@ -149,13 +149,13 @@ classdef PMImageDirectory
                      
                  case 'LZW'
                          for CurrentStripIndex = 1 : obj.getNumberOfStrips
-                        fprintf('Decompress strip %i of %i.\n', CurrentStripIndex, obj.getNumberOfStrips)
-                        myParser =              PMCompression_LZW(StripData{CurrentStripIndex, 1});
-                        myParser =              myParser.lzw2norm;
-                        StripData{CurrentStripIndex, 1} =      myParser.getUncompressed16Bit;
+                            fprintf('Decompress strip %i of %i.\n', CurrentStripIndex, obj.getNumberOfStrips)
+                            myParser =              PMCompression_LZW(StripData{CurrentStripIndex, 1});
+                            myParser =              myParser.lzw2norm;
+                            StripData{CurrentStripIndex, 1} =      myParser.getUncompressed16Bit;
 
-                   end
-                  
+                         end
+
                      
                  otherwise
                      error('Compression not supported.')

@@ -3033,6 +3033,14 @@ classdef PMMovieTracking < PMChannels
             obj.MinStopDurationForStopSegment = MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment  ;
 
             obj.ImageMapPerFile =               MovieTrackingInfo.ImageMapPerFile        ;
+            
+            
+            obj.ImageMapPerFile =               cellfun(@(x) ...
+                                                        PMImageMap().getCompletedImageMap(x), ...
+                                                        obj.ImageMapPerFile, ...
+                                                        'UniformOutput', false...
+                                                        );
+            
             obj.TimeCalibration =               MovieTrackingInfo.TimeCalibration         ;
             obj.SpaceCalibration =              MovieTrackingInfo.SpaceCalibration        ;
             obj.Navigation =                    MovieTrackingInfo.Navigation   ;  

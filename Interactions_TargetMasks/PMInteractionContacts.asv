@@ -5,7 +5,6 @@ classdef PMInteractionContacts
     % instead both search and targets are defined as "masks" (which are retrieved from PMMovieTracking);
     
     properties (Access = private)
-        
         MovieTrackingSearchers
         MovieTrackingTargets
         
@@ -18,7 +17,6 @@ classdef PMInteractionContacts
     end
     
     methods
-        
         function obj = PMInteractionContacts(varargin)
             %PMINTERACTINCONTACTS Construct an instance of this class
             %   takes 2 arguments:
@@ -32,7 +30,10 @@ classdef PMInteractionContacts
                 case 2
                     obj.MovieTrackingSearchers = varargin{1};
                     obj.MovieTrackingTargets = varargin{2};
- 
+                    
+                    
+          
+                    
                 otherwise
                     error('Wrong input.')
                 
@@ -45,37 +46,41 @@ classdef PMInteractionContacts
     
     methods % GETTERS contact number
         
+     
            function ListWithContactNumbers = getNumberOfContactsForAllTargets(obj)
             %GETNUMBEROFCONTACTSFORALLTARGETS returns a list of the contacts;
             % vector, each row for each "target", number of searchers that are within defined proximity;
-                    TargetSegmentations =        obj.MovieTrackingSearchers.getSortedTrackingData;
+                    TargetTracking =        obj.MovieTrackingSearchers.getSortedTrackingData;
                     
-                    SearcherSegmentations =      obj.MovieTrackingTargets.getSortedTrackingData;
+                    SearcherTracking =      obj.MovieTrackingTargets.getSortedTrackingData;
                    
                      
-                    ListWithContactNumbers = nan(size(TargetSegmentations,1 ), 1);
+                    ListWithContactNumbers = nan(size(TargetTracking,1 ), 1);
                     
-                    for TargetIndex = 1 : size(TargetSegmentations,1 )
+                    for TargetIndex = 1 : size(TargetTracking,1 )
                         
-                        CurrentTargetSegmentation =             TargetSegmentations(TargetIndex, :);
+                        CurrentTargetSegmentation =         TargetTracking(TargetIndex, :);
                         
-                        MyMask =                                PMMask(CurrentTargetSegmentation);
+                        MyMask =    PMMask(CurrentTargetSegmentation);
                         
-                        PrefilteredSearcherSegmentations =      obj.preFilterSearchersByTargetDistance(...
-                                                                        SearcherSegmentations, ...
-                                                                        MyMask.getX, ...
-                                                                        MyMask.getY ...
-                                                                        );
-
-                        NumberOfContacts =                      obj.getNumberOfContactsBetweenTargetAndSearcherList(...
-                                                                    MyMask.getMaskPixels,...
-                                                                    PrefilteredSearcherSegmentations...
+                        ListOfSelectedSearchers =           obj.preFilterSearchersByTargetDistance(...
+                                                                SearcherTracking, ...
+                                                                MyMask.getX, ...
+                                                                MyMask.getY ...
+                                                                );
+                        
+                       
+                      
+                        NumberOfContacts =                  obj.getNumberOfContactsBetweenTargetAndSearcherList(...
+                                                                MyMask.getMaskPixels,...
+                                                                ListOfSelectedSearchers...
                                                                 );
                   
                         ListWithContactNumbers(TargetIndex, 1) =           NumberOfContacts;
                         
                     end
            end
+        
         
     end
     
@@ -94,7 +99,7 @@ classdef PMInteractionContacts
               % Each row in the matrix contains the row and column coordinates of a boundary pixel. 
               % q is the number of boundary pixels for the corresponding region.
                
-               SearcherSegmentations =       obj.MovieTrackingSearchers.getSortedTrackingData;
+               SearcherTracking =       obj.MovieTrackingSearchers.getSortedTrackingData;
                obj.SegmentLength =      SegmentLength;
                
                ListWithContactNumbers = cell(length(BoundaryList), 1);
@@ -108,20 +113,20 @@ classdef PMInteractionContacts
                     
                     for index = 1 : length(SegmentLimits) - 1
                         
-                        TargetPixels =                                  CurrentBoundary(SegmentLimits(index) : SegmentLimits(index + 1), :); 
-                        TargetXPosition =                               round(mean(TargetPixels(:, 2)));
-                        TargetYPosition =                               round(mean(TargetPixels(:, 1)));
+                        TargetPixels =                      CurrentBoundary(SegmentLimits(index) : SegmentLimits(index + 1), :); 
+                        TargetXPosition =                   round(mean(TargetPixels(:, 2)));
+                        TargetYPosition =                   round(mean(TargetPixels(:, 1)));
 
-                        PrefilteredSearcherSegmentations =              obj.preFilterSearchersByTargetDistance(SearcherSegmentations, TargetXPosition, TargetYPosition);
+                        ListOfSelectedSearchers =                       obj.preFilterSearchersByTargetDistance(SearcherTracking, TargetXPosition, TargetYPosition);
 
-                        NumberOfContacts =                              obj.getNumberOfContactsBetweenTargetAndSearcherList(TargetPixels, PrefilteredSearcherSegmentations);
+                        NumberOfContacts =                              obj.getNumberOfContactsBetweenTargetAndSearcherList(TargetPixels, ListOfSelectedSearchers);
 
-                        ListWithContactNumbersChild(index, 1) =         NumberOfContacts;
+                        ListWithContactNumbersChild(index, 1) =           NumberOfContacts;
 
                     end
                     
                     
-                    ListWithContactNumbers{targetIndex, 1} =            ListWithContactNumbersChild;
+                    ListWithContactNumbers{targetIndex, 1} = ListWithContactNumbersChild;
                     
                     
                 end
@@ -130,6 +135,7 @@ classdef PMInteractionContacts
                 
             
         end
+        
         
     end
     

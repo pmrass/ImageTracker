@@ -7,8 +7,6 @@ classdef PMImageMap
     
     properties (Access = private)
        
-        NumberOfColumns = 17
-        
         ColumnTitles = { ...,
         'ListWithStripOffsets', ... % 1
         'ListWithStripByteCounts', ... % 2
@@ -166,13 +164,8 @@ classdef PMImageMap
         function ImageMap = getCompletedImageMap(obj, ImageMap)
             % GETCOMPLETEDIMAGEMAP adds missing columns to image map;
             % adds default PlanarConfigurationColumn and CompressionType;
-            assert(size(ImageMap, 1) >= 2, 'Wrong format.')
              switch size(ImageMap, 2)
                  case 15
-                     ImageMap(1, 1 : obj.NumberOfColumns) =                 obj.ColumnTitles;
-                     ImageMap(2 : end, obj.PlanarConfigurationColumn) =     {NaN};
-                     ImageMap(2 : end, obj.CompressionColumn) =     {'NoCompression'};
-                     
                      
                  case 17
                      

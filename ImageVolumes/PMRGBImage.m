@@ -39,7 +39,7 @@ classdef PMRGBImage
          end
         
          function obj = set.SourceImageVolume(obj, Value)
-            assert(isnumeric(Value) && ndims(Value) <= 4 && ndims(Value) >= 2, 'Wrong input.')
+            assert(isnumeric(Value) && ndims(Value) <= 5 && ndims(Value) >= 2, 'Wrong input.')
             obj.SourceImageVolume = Value;
          end
          
