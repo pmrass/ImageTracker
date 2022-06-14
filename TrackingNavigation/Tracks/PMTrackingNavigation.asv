@@ -639,7 +639,7 @@ classdef PMTrackingNavigation
             % GETSELECTEDMASKSATFRAMEPLANEDRIFT returns coordinates of masks for input;
             % takes 3 arguments
             % 1: wanted frame number
-            % 2: wanted plane numbers: this is only for filtering pixels; they are always without drift, therefore this value must be without drift;
+            % 2: wanted plane numbers
             % 3: PMDriftCorrection object
             selectedSegmentation =          obj.getSegmentationWithAppliedDriftForFrame(Frame, Drift);
             selectedSegmentation =          obj.filterSegementationListForSelectedTracks(selectedSegmentation, obj.SelectedTrackIDs);
@@ -2585,19 +2585,20 @@ classdef PMTrackingNavigation
 
         end
 
-        function SegmentationList =             getSegmentationWithAppliedDriftForFrame(obj, Frame, DriftCorrection)
+        function segmentation =             getSegmentationWithAppliedDriftForFrame(obj, Frame, DriftCorrection)
 
-             if DriftCorrection.getDriftCorrectionActive
-                 SegmentationCellWithNoDrift =                  obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
-                 [~, SegmentationList] =        obj.getTrackingCellForTimeForFrames(Frame);
+         if DriftCorrection.getDriftCorrectionActive
+             noDrift =                  obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
+
+             [~, segmentation] =        obj.getTrackingCellForTimeForFrames(Frame);
 
 
-                 SegmentationList(:, obj.PixelColumn) =       SegmentationCellWithNoDrift(:, obj.PixelColumn);
+             segmentation(:, obj.PixelColumn) =       noDrift(:, obj.PixelColumn);
 
-             else
-                 SegmentationList =      obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
+         else
+             segmentation =      obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
 
-             end
+         end
 
         end
         
@@ -2896,13 +2897,13 @@ classdef PMTrackingNavigation
                             coordinateList = obj.getListWithAllCoordinates;
 
                     case {1, 2}
-                       
+
                         ClasseTypes =   cellfun(@(x) class(x), varargin, 'UniformOutput', false);
                         if sum(strcmp(ClasseTypes, 'PMDriftCorrection')) == 1
                             DriftCorrection = varargin{strcmp(ClasseTypes, 'PMDriftCorrection')};
                            switch DriftCorrection.getDriftCorrectionActive
                                 case true
-                                   
+                                    error('Something seems wrong here. Fix and remov
                                     coordinateList = obj.getListWithAllDriftCorrectedCoordinates;
                                 otherwise
                                     coordinateList = obj.getListWithAllCoordinates;

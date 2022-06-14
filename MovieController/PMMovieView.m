@@ -226,11 +226,11 @@ classdef PMMovieView
             switch Type
                 case 'PMMovieTracking'
 
-                   Coordinates = Value.getActiveCoordinatesOfManualDriftCorrection;
+                   Coordinates = Value.getActiveManualDriftCorrectionWithAppliedDriftCorrection;
 
                     obj.ManualDriftCorrectionLine.XData =    Coordinates(1);
                     obj.ManualDriftCorrectionLine.YData =    Coordinates(2);
-                    if ismember(Value.getActivePlanes,   Coordinates(3) )
+                    if ismember(Value.getActivePlanesWithAppliedDriftCorrection,   Coordinates(3) )
                         obj.ManualDriftCorrectionLine.LineWidth =           3;
                     else
                         obj.ManualDriftCorrectionLine.LineWidth =          1;
@@ -721,16 +721,16 @@ classdef PMMovieView
         
         function xLimits =  getXLimitsOfImage(~, Value)
              assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
-            [~, columnsInImage, ~] =        Value.getImageDimensions;
+            [~, columnsInImage, ~] =        Value.getImageDimensionsWithAppliedDriftCorrection;
             CurrentColumnShift=             Value.getAplliedColumnShiftsForActiveFrames;
-            xLimits =                       [1+  CurrentColumnShift, columnsInImage + CurrentColumnShift];
+            xLimits =                       [1+  CurrentColumnShift, columnsInImage ];
         end
 
         function yLimits =  getYLimitsOfImage(~, Value)
             assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
-            [rowsInImage, ~, ~] =       Value.getImageDimensions;
+            [rowsInImage, ~, ~] =       Value.getImageDimensionsWithAppliedDriftCorrection;
             CurrentRowShift =           Value.getAplliedRowShiftsForActiveFrames;
-            yLimits =                   [1+  CurrentRowShift, rowsInImage + CurrentRowShift];
+            yLimits =                   [1+  CurrentRowShift, rowsInImage];
         end
         
         

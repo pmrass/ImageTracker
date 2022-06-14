@@ -401,10 +401,10 @@ classdef PMSegmentationCapture
         end
 
         function obj =      setActiveCoordinateBy(obj, Y, X, Z)
-        obj.ActiveYCoordinate =       Y;
-        obj.ActiveXCoordinate =       X;
-        obj.ActiveZCoordinate =               Z;
-        fprintf('Active coordinate reset to %i (x) %i (y) and %i (z).\n', obj.ActiveXCoordinate,  obj.ActiveYCoordinate, obj.ActiveZCoordinate)
+            obj.ActiveYCoordinate =                 Y;
+            obj.ActiveXCoordinate =                 X;
+            obj.ActiveZCoordinate =                 Z;
+            fprintf('Active coordinate reset to %i (x) %i (y) and %i (z).\n', obj.ActiveXCoordinate,  obj.ActiveYCoordinate, obj.ActiveZCoordinate)
         end
 
         function obj =      resetMask(obj)

@@ -517,13 +517,13 @@ classdef PMMovieController < handle
         
         function obj =          goOnePlaneDown(obj)
             % GOONEPLANEDOWN set active plane one higher
-           obj  = obj.resetPlane(obj.LoadedMovie.getActivePlanes + 1);
+           obj  = obj.resetPlane(obj.LoadedMovie.getActivePlanesWithAppliedDriftCorrection + 1);
 
         end
         
         function obj =          goOnePlaneUp(obj)
              % GOONEPLANEUP set active plane one lower
-            obj  = obj.resetPlane(obj.LoadedMovie.getActivePlanes - 1);
+            obj  = obj.resetPlane(obj.LoadedMovie.getActivePlanesWithAppliedDriftCorrection - 1);
 
         end
         
@@ -532,6 +532,7 @@ classdef PMMovieController < handle
              % takes 1 argument:
              % 1: numerical scalar
               if newPlane >= 1 
+                  
                    [~, ~, MaximumPlane]=  obj.LoadedMovie.getImageDimensionsWithAppliedDriftCorrection;
                   if newPlane <= MaximumPlane
                         obj.LoadedMovie =       obj.LoadedMovie.setSelectedPlaneTo(newPlane);
@@ -1749,7 +1750,7 @@ classdef PMMovieController < handle
             myRectangle =               PMRectangle(obj.getRectangleFromMouseDrag);
             Coordinates_2D =            myRectangle.get2DCoordinatesConfinedByRectangle;
 
-            [ ~, ~,  planeWithoutDrift, ~ ] =    obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+            [ ~, ~,  planeWithoutDrift, ~ ] =    obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
             zListToAdd =                (linspace(planeWithoutDrift, planeWithoutDrift, length(Coordinates_2D(:, 1))))';
 
             SpaceCoordinates =          [Coordinates_2D, zListToAdd];
@@ -1757,8 +1758,8 @@ classdef PMMovieController < handle
         end
 
         function [Rectangle] =                 getRectangleFromMouseDrag(obj)
-            [ startrow, startcolumn,  ~, ~ ] =   obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
-            [ endrow, endcolumn,  ~, ~ ] =       obj.LoadedMovie.getCoordinatesForPosition(obj.MouseUpColumn, obj.MouseUpRow);
+            [ startrow, startcolumn,  ~, ~ ] =   obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
+            [ endrow, endcolumn,  ~, ~ ] =       obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseUpColumn, obj.MouseUpRow);
             Rectangle =                         [startcolumn, startrow, endcolumn - startcolumn, endrow - startrow];
         end
 
@@ -1832,11 +1833,11 @@ classdef PMMovieController < handle
 
             switch Value
                 case 'currentFrameByButtonPress'
-                   [rowFinal, columnFinal, planeFinal, frame] =     obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+                   [rowFinal, columnFinal, planeFinal, frame] =     obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
                    obj =               obj.setManualDriftCorrectionByTimeSpaceCoordinates(frame, columnFinal, rowFinal,  planeFinal );
 
                 case 'currentAndConsecutiveFramesByButtonPress'
-                       [rowFinal, columnFinal, planeFinal, frame] =     obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+                       [rowFinal, columnFinal, planeFinal, frame] =     obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
                        Frames = frame : obj.LoadedMovie.getMaxFrame;
                        
                    obj =               obj.setManualDriftCorrectionByTimeSpaceCoordinates(Frames, columnFinal, rowFinal,  planeFinal );
@@ -1954,18 +1955,12 @@ classdef PMMovieController < handle
                        warning('No active track selected. No action taken.\n')
                   else
                       
-                        [rowPos, columnPos, planePos, ~] =   obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+                        [rowPos, columnPos, planePos, ~] =   obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
 
                         if ~isnan(rowPos)
-
-                            obj =                           obj.highlightMousePositionInImage;
-                            
-                              
-                            obj.LoadedMovie =               obj.LoadedMovie.addMaskByClickedCoordiante([rowPos, columnPos, planePos]);
-                                                
+                            obj =                           obj.highlightMousePositionInImage; 
+                            obj.LoadedMovie =               obj.LoadedMovie.addMaskByClickedCoordiante([rowPos, columnPos, planePos]);              
                             obj =                           obj.updateAllViewsThatDependOnActiveTrack;
-
-                         
 
                         end
 
@@ -1978,7 +1973,7 @@ classdef PMMovieController < handle
           
         function obj =      highlightMousePositionInImage(obj)
 
-            [rowPos, columnPos, ~, ~] =   obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+            [rowPos, columnPos, ~, ~] =   obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
             OldImage =                              obj.Views.getMovieImage.CData;
             OldImage(rowPos, columnPos,:) =         255;
             obj.Views =                             obj.Views.setMovieImagePixels(OldImage);
@@ -2017,7 +2012,7 @@ classdef PMMovieController < handle
         end
 
         function obj =      tracking_setLoadedMovie(obj)
-            [ ~, ~,  z, ~ ] =    obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+            [ ~, ~,  z, ~ ] =    obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
             [y, x] =             obj.findUserEnteredCoordinatesFromImage;
             obj.LoadedMovie =     obj.LoadedMovie.updateMaskOfActiveTrackByAdding(y, x, z);
             obj =                 obj.updateAllViewsThatDependOnActiveTrack;
@@ -2034,7 +2029,7 @@ classdef PMMovieController < handle
         end
 
         function obj =      tracking_usePressedCentroidAsMask(obj)
-            [rowFinal, columnFinal, planeFinal, ~] =   obj.LoadedMovie.getCoordinatesForPosition(obj.MouseDownColumn, obj.MouseDownRow);
+            [rowFinal, columnFinal, planeFinal, ~] =   obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
             if ~isnan(rowFinal)
                   mySegmentationObject =    PMSegmentationCapture(obj, [rowFinal, columnFinal, planeFinal]);
                   mySegmentationObject =    mySegmentationObject.setSegmentationType('MouseClick');
