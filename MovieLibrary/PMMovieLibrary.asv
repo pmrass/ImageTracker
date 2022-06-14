@@ -914,11 +914,6 @@ classdef PMMovieLibrary
 
         end
 
-        function FilterSelectionIndex =         getFilterSelectionIndex(obj)
-            % called by PMImagingProjectViewer/updateWith
-            FilterSelectionIndex = obj.FilterSelectionIndex; 
-        end
-         
     end
 
     methods % GETTERS LOADED IMAGE-DATA

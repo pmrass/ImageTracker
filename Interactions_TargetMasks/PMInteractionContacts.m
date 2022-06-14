@@ -27,11 +27,11 @@ classdef PMInteractionContacts
             switch length(varargin)
                 
                 case 1
-                    obj.MovieTrackingSearchers = varargin{1};
+                    obj.MovieTrackingSearchers =    varargin{1};
                     
                 case 2
-                    obj.MovieTrackingSearchers = varargin{1};
-                    obj.MovieTrackingTargets = varargin{2};
+                    obj.MovieTrackingSearchers =    varargin{1};
+                    obj.MovieTrackingTargets =      varargin{2};
  
                 otherwise
                     error('Wrong input.')
@@ -45,7 +45,7 @@ classdef PMInteractionContacts
     
     methods % GETTERS contact number
         
-           function ListWithContactNumbers = getNumberOfContactsForAllTargets(obj)
+           function ListWithContactNumbers =    getNumberOfContactsForAllTargets(obj)
             %GETNUMBEROFCONTACTSFORALLTARGETS returns a list of the contacts;
             % vector, each row for each "target", number of searchers that are within defined proximity;
                     TargetSegmentations =        obj.MovieTrackingSearchers.getSortedTrackingData;
@@ -81,7 +81,7 @@ classdef PMInteractionContacts
     
     methods % GETTERS: 
        
-           function ListWithContactNumbers = getNumberOfContactsForBoundaryList(obj, BoundaryList, SegmentLength)
+           function ListWithContactNumbers =    getNumberOfContactsForBoundaryList(obj, BoundaryList, SegmentLength)
                % GETNUMBEROFCONTACTSFORBOUNDARYLIST seems I used that at the begining;
                % seems this is the worse method of the two; consider deletion;
             

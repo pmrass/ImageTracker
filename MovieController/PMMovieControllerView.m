@@ -567,7 +567,7 @@ classdef PMMovieControllerView
                 case 'PMMovieTracking'
                     
                     MyFrames =                                  Value.getActiveFrames;
-                    PlanesThatArveVisibleForSegmentation =      Value.getPlanesThatAreVisibleForSegmentation;
+                    PlanesThatArveVisibleForSegmentation =      Value.getVisibleTrackingPlanesWithoutDriftCorrection;
                     MyDriftCorrection =                         Value.getDriftCorrection;
                     
                     Coordinates =  Value.getTracking.getSelectedCentroidsAtFramePlaneDrift(MyFrames, ...
@@ -593,7 +593,7 @@ classdef PMMovieControllerView
             Type = class(Value);
             switch Type
                 case 'PMMovieTracking'
-                    Coordinates =  Value.getTracking.getActiveCentroidAtFramePlaneDrift(Value.getActiveFrames, Value.getPlanesThatAreVisibleForSegmentation, Value.getDriftCorrection);
+                    Coordinates =  Value.getTracking.getActiveCentroidAtFramePlaneDrift(Value.getActiveFrames, Value.getVisibleTrackingPlanesWithoutDriftCorrection, Value.getDriftCorrection);
                    if isempty(Coordinates)
                        obj =               obj.setCoordinatesOfActiveTrack(zeros(0,1), zeros(0,1));
                    else
@@ -998,11 +998,10 @@ classdef PMMovieControllerView
 
         assert(~isempty(obj.getNavigation), 'Could not update Navigation panels because they do not exist.')
 
-        [~, ~, planes ] =                           MovieTracking.getImageDimensionsWithAppliedDriftCorrection;
-        obj.Navigation.CurrentPlane.String =        1 : planes;
-
-
-        obj.Navigation.CurrentPlane.Value =         MovieTracking.getActivePlanes;
+      
+        obj.Navigation.CurrentPlane.String =        1 : MovieTracking.getMaxPlaneWithAppliedDriftCorrection;
+        obj.Navigation.CurrentPlane.Value =         MovieTracking.getActivePlanesWithAppliedDriftCorrection;
+        
         obj.Navigation.CurrentTimePoint.Value =     MovieTracking.getActiveFrames;  
         obj.Navigation.ShowMaxVolume.Value =        MovieTracking.getCollapseAllPlanes ;
         obj.Navigation.ApplyDriftCorrection.Value = MovieTracking.getDriftCorrection.getDriftCorrectionActive;

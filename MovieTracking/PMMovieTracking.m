@@ -163,7 +163,12 @@ classdef PMMovieTracking < PMChannels
                            
                             obj.DriftCorrection =           PMDriftCorrection(InputStructure, NumericCode);
                             obj =                           obj.setFrameTo(InputStructure.ViewMovieSettings.CurrentFrame);
-                            obj =                           obj.setSelectedPlaneTo(min(InputStructure.ViewMovieSettings.TopPlane:InputStructure.ViewMovieSettings.TopPlane+InputStructure.ViewMovieSettings.PlaneThickness-1));
+                            
+                            InputPlane =                    min(InputStructure.ViewMovieSettings.TopPlane : ...
+                                                                    InputStructure.ViewMovieSettings.TopPlane + ...
+                                                                    InputStructure.ViewMovieSettings.PlaneThickness-1);
+                                                                
+                            obj =                           obj.setSelectedPlaneTo(InputPlane);
                             
                        
                             if isfield(InputStructure.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
@@ -893,10 +898,15 @@ classdef PMMovieTracking < PMChannels
         function obj = removeFromActiveMaskPixelList(obj, UserSelectedY, UserSelectedX)
             pixelListWithoutSelected =          obj.getPixelsFromActiveMaskAfterRemovalOf([UserSelectedY, UserSelectedX]);
             MySegmentationCapture =             obj.getDefaultSegmentationCapture;
-            MySegmentationCapture =             MySegmentationCapture.setImageVolume(obj.getActiveImage);
-            MySegmentationCapture =             obj.applyActiveStateToSegmentationCapture(MySegmentationCapture);
+            MySegmentationCapture =         MySegmentationCapture.setImageVolume(obj.getActiveImage);
+
+            MySegmentationCapture =        MySegmentationCapture.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
+            MySegmentationCapture =        MySegmentationCapture.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
+            MySegmentationCapture =        MySegmentationCapture.setBlackedOutPixelsByPreviousTrackedPixels;
+
+            MySegmentationCapture =        MySegmentationCapture.setActiveZCoordinate(obj.getActivePlanesWithoutDriftCorrection);
             MySegmentationCapture =             MySegmentationCapture.setSegmentationType('Manual');
-             MySegmentationCapture =            MySegmentationCapture.setMaskCoordinateList(pixelListWithoutSelected);
+            MySegmentationCapture =            MySegmentationCapture.setMaskCoordinateList(pixelListWithoutSelected);
             obj =                               obj.resetActivePixelListWith(MySegmentationCapture);
             
         end
@@ -982,11 +992,9 @@ classdef PMMovieTracking < PMChannels
         
         
         function mySegmentationObject = applyActiveStateToSegmentationCapture(obj, mySegmentationObject)
-            
-                mySegmentationObject =        mySegmentationObject.setActiveZCoordinate(obj.getActivePlanes);
-                mySegmentationObject =        mySegmentationObject.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
-                mySegmentationObject =        mySegmentationObject.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
-                mySegmentationObject =      mySegmentationObject.setBlackedOutPixelsByPreviousTrackedPixels;
+            error('Not supported anymore.')
+         
+             
 
             
         end
@@ -1398,17 +1406,19 @@ classdef PMMovieTracking < PMChannels
         
         function obj =       setFocusOnActiveMask(obj)
             % SETFOCUSONACTIVETRACK focuses XY-axis and plane on center of active track;
-            obj =           obj.setSelectedPlaneTo(obj.getPlaneOfActiveTrack); % direct change of model:
+            obj =           obj.setSelectedPlaneTo(obj.getPlaneOfActiveTrackWithAppliedDriftCorrection); % direct change of model:
             obj =           obj.moveCroppingGateToActiveMask;
         end
 
         function obj =            setSelectedPlaneTo(obj, selectedPlanes)
             % SETSELECTEDPLANETO set selected plane of navigation;
             % takes 1 argument:
-            % 1: selected planes
+            % 1: selected planes: takes plane with applied drift correction, sets plane without drift:
+            
+              [~, ~, selectedPlanesWithoutDrift] =         obj.removeAppliedDriftCorrection(0, 0, selectedPlanes);
             if isnan(selectedPlanes)
             else
-                 obj.Navigation =        obj.Navigation.setActivePlanes(selectedPlanes);
+                 obj.Navigation =        obj.Navigation.setActivePlanes(selectedPlanesWithoutDrift);
             end
         end
         
@@ -1423,9 +1433,9 @@ classdef PMMovieTracking < PMChannels
            % 1: 'Movie', 'ZStack', 'Snapshot', or 'Unspecified'
            if obj.Navigation.getMaxFrame > 1
                DataType =               'Movie';               
-           elseif obj.Navigation.getMaxPlane > 1
+           elseif obj.getMaxPlaneWithoutDriftCorrection > 1
                DataType =               'ZStack';
-           elseif obj.Navigation.getMaxPlane == 1
+           elseif obj.getMaxPlaneWithoutDriftCorrection == 1
                 DataType =               'Snapshot';
            else
                DataType =               'Unspecified datatype';
@@ -1449,10 +1459,9 @@ classdef PMMovieTracking < PMChannels
             Navigation =        obj.Navigation;
         end
          
-        function plane =                        getMaxPlane(obj)
-            % GETMAXPLANE returns number of planes of movie-sequence (does not include drift); 
-            plane =         obj.Navigation.getMaxPlane; 
-        end
+        
+        
+      
          
         function maxChannel =                   getMaxChannel(obj)
             % GETMAXCHANNEL returns number of channels of movie-sequence (does not include drift);
@@ -1470,7 +1479,7 @@ classdef PMMovieTracking < PMChannels
             % 1: max-plane
             % 2: max-row
             % 3: max-column
-            planes =        obj.Navigation.getMaxPlane;
+            planes =        obj.getMaxPlaneWithoutDriftCorrection;
             rows =          obj.Navigation.getMaxRow;
             columns =       obj.Navigation.getMaxColumn;
         end
@@ -1484,34 +1493,71 @@ classdef PMMovieTracking < PMChannels
             % all values add the currently applied drift correction to the values;
             rows =      obj.getMaxRowWithAppliedDriftCorrection;
             columns =   obj.getMaxColumnWithAppliedDriftCorrection;
-            planes =    obj.getMaxPlane;
+            planes =    obj.getMaxPlaneWithAppliedDriftCorrection;
         end
 
-        function frames =                       getActivePlanes(obj)
-            % GETACTIVEPLANES returns active planes (this seems to include drift: if so, inconsistent with max planes, this needs to be fixed);
-            frames = double(obj.Navigation.getActivePlanes);
-        end
         
+       
         function frames =                       getActiveFrames(obj)
             % GETACTIVEFRAMES returns active frames
             frames = obj.Navigation.getActiveFrames;
         end
 
-        function visiblePlanes =                getPlanesThatAreVisibleForSegmentation(obj)
+   
+    
+        
+    end
+    
+    methods % GETTERS NAVIGATION PLANES
+        
+        function plane =                        getMaxPlaneWithoutDriftCorrection(obj)
+             plane =         obj.Navigation.getMaxPlane; 
+        end
+        
+        
+        
+        function planes = getMaxPlaneWithAppliedDriftCorrection(obj)
+            planes =        obj.getMaxPlaneWithoutDriftCorrection + obj.getMaxAplliedPlaneShifts;
+        end  
+        
+          function plane =                        getMaxPlane(obj)
+            % GETMAXPLANE returns number of planes of movie-sequence (does not include drift); 
+            error('Not supported. Use getMaxPlaneWithoutDriftCorrection or getMaxPlaneWithAppliedDriftCorrection.')
+            plane =         obj.Navigation.getMaxPlane; 
+          end
+        
+         function frames =                       getActivePlanes(obj)
+           error('Not supported. Use getActivePlanesWithoutDriftCorrection or getActivePlanesWithAppliedDriftCorrection.')
+        end
+        
+        function planes =                       getActivePlanesWithAppliedDriftCorrection(obj)
+            % GETACTIVEPLANES returns active planes (this seems to include drift: if so, inconsistent with max planes, this needs to be fixed);
+           [~, ~, planes] =         obj.addAppliedDriftCorrection(0, 0, obj.getActivePlanesWithoutDriftCorrection);
+        end
+        
+        function frames =       getActivePlanesWithoutDriftCorrection(obj)
+
+            frames = double(obj.Navigation.getActivePlanes);
+             
+        end
+        
+            function visiblePlanes =                getVisibleTrackingPlanesWithoutDriftCorrection(obj)
             % GETPLANESTHATAREVISIBLEFORSEGMENTATION get planes for which segmentation should be shown;
             % plane number seems to include drift;
-            
+
             switch obj.CollapseAllTracking
                 case 1
-                   visiblePlanes =          1 : obj.Navigation.getMaxPlane;
+                   visiblePlanes =          1 : obj.getMaxPlaneWithoutDriftCorrection;
                 otherwise
-                    visiblePlanes =         obj.getActivePlanes;
+                    visiblePlanes =         obj.getActivePlanesWithoutDriftCorrection;
             end
-        end
-    
-        function planeOfActiveTrack =            getPlaneOfActiveTrack(obj)
+         end
+        
+        
+        function planeOfActiveTrack =            getPlaneOfActiveTrackWithAppliedDriftCorrection(obj)
             % GETPLANEOFACTIVETRACK returns plane of active mask (with active drift-correction);
-            [~, ~, planeOfActiveTrack ] =       obj.addDriftCorrection( 0, 0, obj.Tracking.performMethod('getPlaneOfActiveTrackForFrame', obj.getActiveFrames));
+            PlaneWithoutDriftCorrection =       obj.Tracking.performMethod('getPlaneOfActiveTrackForFrame', obj.getActiveFrames);
+            [~, ~, planeOfActiveTrack ] =       obj.addAppliedDriftCorrection( 0, 0, PlaneWithoutDriftCorrection);
             planeOfActiveTrack =                round(planeOfActiveTrack);
         end
         
@@ -1593,7 +1639,13 @@ classdef PMMovieTracking < PMChannels
            end
         end
 
+        
         function Coordinates =                      getActiveCoordinatesOfManualDriftCorrection(obj)
+          error('Not supported. Use getActiveManualDriftCorrectionWithAppliedDriftCorrection instead')
+
+        end
+        
+        function Coordinates =                      getActiveManualDriftCorrectionWithAppliedDriftCorrection(obj)
              % GETACTIVECOORDINATESOFMANUALDRIFTCORRECTION returns coordinates of active drift correction;
              % coordinate at current frame with applied drift correction;
             ManualDriftCorrectionValues =                   obj.DriftCorrection.getManualDriftCorrectionValues;
@@ -1601,7 +1653,7 @@ classdef PMMovieTracking < PMChannels
             xWithoutDrift =                                 ManualDriftCorrectionValues(ActiveFrame, 2);
             yWithoutDrift =                                 ManualDriftCorrectionValues(ActiveFrame, 3);
             planeWithoutDrift =                             ManualDriftCorrectionValues(ActiveFrame, 4);
-            [xWithDrift, yWithDrift, zWithDrift ] =         obj.addDriftCorrection(xWithoutDrift, yWithoutDrift, planeWithoutDrift);
+            [xWithDrift, yWithDrift, zWithDrift ] =         obj.addAppliedDriftCorrection(xWithoutDrift, yWithoutDrift, planeWithoutDrift);
             Coordinates =                                   [xWithDrift, yWithDrift, zWithDrift ];
 
         end
@@ -1618,24 +1670,20 @@ classdef PMMovieTracking < PMChannels
             final =    shifts(obj.getActiveFrames);
         end
 
-        function [xCoordinates, yCoordinates, zCoordinates ] =              removeDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates)
-            % REMOVEDRIFTCORRECTION convert coordinates with drift correction to coordinates without drift correction;
-            % takes 3 arguments:
-            % 1: X-coordinates
-            % 2: y-coordinates
-            % 3: z-coordinates
-            % returns 3 values:
-            % 1: X-coordinates
-            % 2: y-coordinates
-            % 3: z-coordinates
-            
-            xCoordinates=       xCoordinates - obj.getAplliedColumnShiftsForActiveFrames;
-            yCoordinates=       yCoordinates - obj.getAplliedRowShiftsForActiveFrames;
-            zCoordinates=       zCoordinates - obj.getAplliedPlaneShiftsForActiveFrames;
-            
-        end
+    
 
-        function [row, column, plane, frame] =      getCoordinatesForPosition(obj, DownColumn,  MouseDownRow)
+     
+        
+        function AplliedPlaneShifts = getMaxAplliedColumnShifts(obj)
+            % GETMAXAPLLIEDCOLUMNSHIFTS
+            AplliedPlaneShifts =  max(obj.DriftCorrection.getAppliedColumnShifts);
+        end 
+        
+    end
+    
+    methods % PROCESSING DRIFT CORRECTION
+       
+           function [row, column, plane, frame] =      removeAppliedDriftCorrectionFromFrames(obj, DownColumn,  MouseDownRow)
             % GETCOORDINATESFORPOSITION converts input coordinates into "verified" coordinates with applied drift correction removed;
             % takes 2 arguments:
             % 1: numerical scalar of column position
@@ -1646,15 +1694,12 @@ classdef PMMovieTracking < PMChannels
             % 2: plane (rounded, drift removed, NaN if out of range)
             % 2: frame (rounded, drift removed, NaN if out of range)
             
-            [column, row, plane] =            obj.removeDriftCorrection(DownColumn, MouseDownRow, obj.getActivePlanes);
+            removeApplied
+            
+            [column, row, plane] =            obj.removeAppliedDriftCorrection(DownColumn, MouseDownRow, obj.getActivePlanesWithAppliedDriftCorrection);
             [row, column, plane, frame] =     obj.roundCoordinates(row, column, plane, obj.getActiveFrames);
             [row, column, plane]  =           obj.verifyCoordinates(row, column,plane);
         end
-        
-        function AplliedPlaneShifts = getMaxAplliedColumnShifts(obj)
-            % GETMAXAPLLIEDCOLUMNSHIFTS
-            AplliedPlaneShifts =  max(obj.DriftCorrection.getAppliedColumnShifts);
-        end 
         
     end
     
@@ -1928,7 +1973,10 @@ classdef PMMovieTracking < PMChannels
             
             mySegmentationObject =          obj.getDefaultSegmentationCapture;
             mySegmentationObject =          mySegmentationObject.setImageVolume(obj.getActiveImage);
-            mySegmentationObject =          obj.applyActiveStateToSegmentationCapture(mySegmentationObject);
+          
+               mySegmentationObject =        mySegmentationObject.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
+                mySegmentationObject =        mySegmentationObject.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
+                mySegmentationObject =        mySegmentationObject.setBlackedOutPixelsByPreviousTrackedPixels;
             mySegmentationObject =          mySegmentationObject.setActiveCoordinateBy(rowPos, columnPos, planePos);
             mySegmentationObject =          mySegmentationObject.generateMaskByClickingThreshold;
             
@@ -2152,7 +2200,7 @@ classdef PMMovieTracking < PMChannels
 
 
             SegmentationCaptureSourceList =             obj.getSegmenationCaptureSourceListForFrames(...
-                                                obj.AutoCellRecognition.getSelectedFrames);
+                                                            obj.AutoCellRecognition.getSelectedFrames);
             obj =                                   obj.setTrackingAnalysis;     
             
             
@@ -2340,7 +2388,7 @@ classdef PMMovieTracking < PMChannels
             % 1: column;
             % 2: row;
             frame =                                             obj.getActiveFrames;
-            [ClickedColumn, ClickedRow, ClickedPlane] =         obj.removeDriftCorrection(MouseColumn, MouseRow, obj.getActivePlanes);
+            [ClickedColumn, ClickedRow, ClickedPlane] =         obj.removeAppliedDriftCorrection(MouseColumn, MouseRow, obj.getActivePlanesWithAppliedDriftCorrection);
             [ClickedRow, ClickedColumn, ClickedPlane, ~] =      obj.roundCoordinates(ClickedRow, ClickedColumn, ClickedPlane, frame);
             SelectedTrackID=                                    obj.getIdOfTrackThatIsClosestToPoint([ClickedRow, ClickedColumn, ClickedPlane]);
 
@@ -2379,7 +2427,8 @@ classdef PMMovieTracking < PMChannels
             % cell array:   one cell contains coordinates for each track:
             %               each cell contains numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;    
             % coordinates are filtered for "visible planes" and coordinates are adjusted for active drift-correction;
-            coordinates =        obj.Tracking.get('CoordinatesForTrackIDsPlanes', TrackIDs, obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
+            MyPlanes =              obj.getVisibleTrackingPlanesWithoutDriftCorrection; % should this be with applied drift-correction?
+            coordinates =           obj.Tracking.get('CoordinatesForTrackIDsPlanes', TrackIDs, MyPlanes, obj.DriftCorrection);
         end
 
         function segmentationOfActiveTrack =        getSegmentationOfActiveMask(obj)
@@ -2444,7 +2493,8 @@ classdef PMMovieTracking < PMChannels
             % returns 1 value:
             % numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;   
             % out of plane-range coordinates are replaced with NaN;
-            coordinates =        obj.Tracking.get('CoordinatesForActiveTrackPlanes', obj.getPlanesThatAreVisibleForSegmentation, obj.DriftCorrection);
+             MyPlanes =              obj.getVisibleTrackingPlanesWithoutDriftCorrection; % should this be with applied drift-correction?
+            coordinates =        obj.Tracking.get('CoordinatesForActiveTrackPlanes', MyPlanes, obj.DriftCorrection);
         end
 
     end
@@ -2667,7 +2717,7 @@ classdef PMMovieTracking < PMChannels
         function thresholds = getDefaultThresholdsForAllPlanes(obj)
             % GETDEFAULTTHRESHOLDSFORALLPLANES returns default threshold values;
             % numeric vector with a number for each plane;
-            thresholds(1: obj.getMaxPlane, 1) = 30;
+            thresholds(1: obj.getMaxPlaneWithoutDriftCorrection, 1) = 30;
 
         end
 
@@ -2863,14 +2913,17 @@ classdef PMMovieTracking < PMChannels
 
         function planeStamps =  getPlaneStamps(obj) 
             % GETPLANESTAMPS returns cell string with for all Z-planes
-              PlanesAfterDrift =         obj.Navigation.getMaxPlane + max(obj.DriftCorrection.getAplliedPlaneShifts);
-              planeStamps =             (arrayfun(@(x) sprintf('Z-depth= %i µm', int16((x-1) * obj.SpaceCalibration.getDistanceBetweenZPixels_MicroMeter)), 1:PlanesAfterDrift, 'UniformOutput', false))';;
+              PlanesAfterDrift =         obj.getMaxPlaneWithAppliedDriftCorrection;
+              planeStamps =             (arrayfun(@(x) ...
+                  sprintf('Z-depth= %i µm', int16((x-1) * obj.SpaceCalibration.getDistanceBetweenZPixels_MicroMeter)), ...
+                  1 : PlanesAfterDrift, ...
+                  'UniformOutput', false))';
         end
 
         function string  =      getActivePlaneStamp(obj)
             % GETACTIVEPLANESTAMP
             myPlaneStamps =     obj.getPlaneStamps;
-            string =            myPlaneStamps{obj.getActivePlanes};
+            string =            myPlaneStamps{obj.getActivePlanesWithAppliedDriftCorrection};
         end
 
         function string  =      getActiveTimeStamp(obj)
@@ -2924,7 +2977,7 @@ classdef PMMovieTracking < PMChannels
             SegmentationCaptureSourceList =     cellfun(@(x)                        mySegmentationCaptureSource.setSegmentationOfCurrentFrame(x), MySegmentationLists, 'UniformOutput', false);
             SegmentationCaptureSourceList =     cellfun(@(segmentation, x)          mySegmentationCaptureSource.setImageVolume(x), SegmentationCaptureSourceList, MyActiveImages); 
 
-            MyPlane =                           obj.getActivePlanes;
+            MyPlane =                           obj.getActivePlanesWithoutDriftCorrection;
             SegmentationCaptureSourceList =     arrayfun(@(x) x.setActiveZCoordinate(MyPlane), SegmentationCaptureSourceList);
 
 
@@ -2955,8 +3008,16 @@ classdef PMMovieTracking < PMChannels
         
     end
     
-    methods (Access = private) % getImageDimensionsWithAppliedDriftCorrection
+    methods (Access = private) % GETTERS NAVIGATION
 
+    
+        
+        function AplliedPlaneShifts = getMaxAplliedPlaneShifts(obj)
+            AplliedPlaneShifts =  max(obj.DriftCorrection.getAplliedPlaneShifts);
+        end 
+
+      
+        
       function rows = getMaxRowWithAppliedDriftCorrection(obj)
         rows =          obj.Navigation.getMaxRow + obj.getMaxAplliedRowShifts;
     end
@@ -2965,9 +3026,7 @@ classdef PMMovieTracking < PMChannels
         columns =       obj.Navigation.getMaxColumn +obj.getMaxAplliedColumnShifts;
     end
 
-    function planes = getMaxPlaneWithAppliedDriftCorrection(obj)
-        planes =        obj.Navigation.getMaxPlane + obj.getMaxAplliedPlaneShifts;
-    end  
+
 
 
    end
@@ -3587,7 +3646,9 @@ classdef PMMovieTracking < PMChannels
         
          function filtered = filterImageVolumeByActivePlanes(obj, Volume)
             % FILTERIMAGEVOLUMEBYACTIVEPLANES
-            filtered =    Volume(:, :, obj.getListOfVisiblePlanesWithoutDriftCorrection, :, :);
+            
+              VisiblePlanesWithoutDriftCorrection =         obj.getVisibleTrackingPlanesWithoutDriftCorrection;
+              filtered =                                    Volume(:, :, VisiblePlanesWithoutDriftCorrection, :, :);
          end
         
 
@@ -3597,16 +3658,24 @@ classdef PMMovieTracking < PMChannels
 
 
             ColorOfSelectedTracks =     obj.getColorOfSelectedMasksForImage(rgbImage);
-            MyFrame =                   obj.getActiveFrames;
-            MyPlanes =                  obj.getPlanesThatAreVisibleForSegmentation;
-            MyDriftCorrection =         obj.getDriftCorrection;
+          
+            ListWithSelectedMasks =     obj.getTracking.get('SelectedMasksAtFramePlaneDrift', ...
+                                                obj.getActiveFrames, ...
+                                                obj.getVisibleTrackingPlanesWithoutDriftCorrection, ...
+                                                obj.getDriftCorrection...
+                                                );
+            
+            
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ListWithSelectedMasks, 1, ColorOfSelectedTracks(1));
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ListWithSelectedMasks, 2, ColorOfSelectedTracks(2));
+            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ListWithSelectedMasks, 3, ColorOfSelectedTracks(3));
 
-            MasksSelected =             obj.getTracking.get('SelectedMasksAtFramePlaneDrift', MyFrame, MyPlanes, MyDriftCorrection);
-            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 1, ColorOfSelectedTracks(1));
-            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 2, ColorOfSelectedTracks(2));
-            rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, MasksSelected, 3, ColorOfSelectedTracks(3));
-
-            ActiveMask =                obj.getTracking.get('ActiveMasksAtFramePlaneDrift', MyFrame, MyPlanes, MyDriftCorrection);
+            ActiveMask =                obj.getTracking.get('ActiveMasksAtFramePlaneDrift', ...
+                                        obj.getActiveFrames, ...
+                                        obj.getVisibleTrackingPlanesWithoutDriftCorrection, ...
+                                        obj.getDriftCorrection...
+                                        );
+                                    
             Intensity =                 obj.getColorOfActiveMaskForImage(rgbImage);
             rgbImage =                  obj.highlightPixelsInRgbImage(rgbImage, ActiveMask, 1:3, Intensity);
 
@@ -3645,6 +3714,7 @@ classdef PMMovieTracking < PMChannels
             obj =                           obj.resetChannelSettings('Red', 'ChannelColors');
             Image =                         obj.convertImageVolumeIntoRgbImage(activeVolume); 
             MyImageVolume =                 Image(:,:,1);
+            
             CleanedUpVolume =               MyImageVolume;
             CleanedUpVolume(:, :) =         0;
             Rectangle =                     obj.getAppliedCroppingRectangle;
@@ -3677,24 +3747,9 @@ classdef PMMovieTracking < PMChannels
 
         end
 
-        function VisiblePlanesWithoutDriftCorrection = getListOfVisiblePlanesWithoutDriftCorrection(obj)
+    
 
-            if obj.DriftCorrection.getDriftCorrectionActive
-                 VisiblePlanesWithoutDriftCorrection =      obj.removeDriftCorrectionFromPlaneList(obj.getPlanesThatAreVisibleForSegmentation);
-
-            else
-                VisiblePlanesWithoutDriftCorrection =       obj.getPlanesThatAreVisibleForSegmentation;
-
-            end
-
-
-        end
-
-        function PlanesWithoutDrift =   removeDriftCorrectionFromPlaneList(obj, PlanesWithDrift)
-            PlanesWithoutDrift =                            PlanesWithDrift - obj.getAplliedPlaneShiftsForActiveFrames;
-            PlanesWithoutDrift(PlanesWithoutDrift < 1) =      [];
-            PlanesWithoutDrift(PlanesWithoutDrift > obj.Navigation.getMaxPlane) = [];
-        end
+       
 
            
 
@@ -3877,19 +3932,38 @@ classdef PMMovieTracking < PMChannels
          
     end
 
-    methods (Access = private) % navigation: get plane information
+ 
 
-        function AplliedPlaneShifts = getMaxAplliedPlaneShifts(obj)
-        AplliedPlaneShifts =  max(obj.DriftCorrection.getAplliedPlaneShifts);
-        end 
-
-      
-
-    end
-
-    methods (Access = private) % GETTERS DRIFT CORRECTION
+    methods (Access = private) % PROCESS DRIFT CORRECTION
+        function removeDriftCorrection(obj)
+           error('Not supported anymore. Use removeAppliedDriftCorrection instead.')
+        end
         
-        function [xCoordinates, yCoordinates, zCoordinates ] =              addDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates) 
+        function addDriftCorrection(obj)
+           error('Not supported anymore. Use addAppliedDriftCorrection instead.')
+        end
+        
+        
+        function [xCoordinates, yCoordinates, zCoordinates ] =              removeAppliedDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates)
+            % REMOVEDRIFTCORRECTION convert coordinates with drift correction to coordinates without drift correction;
+            % takes 3 arguments:
+            % 1: X-coordinates
+            % 2: y-coordinates
+            % 3: z-coordinates
+            % returns 3 values:
+            % 1: X-coordinates
+            % 2: y-coordinates
+            % 3: z-coordinates
+
+            xCoordinates=       xCoordinates - obj.getAplliedColumnShiftsForActiveFrames;
+            yCoordinates=       yCoordinates - obj.getAplliedRowShiftsForActiveFrames;
+            zCoordinates=       zCoordinates - obj.getAplliedPlaneShiftsForActiveFrames;
+
+        end
+        
+        
+        
+        function [xCoordinates, yCoordinates, zCoordinates ] =              addAppliedDriftCorrection(obj, xCoordinates, yCoordinates, zCoordinates) 
             xCoordinates=         xCoordinates + obj.getAplliedColumnShiftsForActiveFrames;
             yCoordinates=         yCoordinates + obj.getAplliedRowShiftsForActiveFrames;
             zCoordinates=         zCoordinates + obj.getAplliedPlaneShiftsForActiveFrames;
@@ -3925,21 +3999,21 @@ classdef PMMovieTracking < PMChannels
         
         
         function rowFinal = verifyYCoordinate(obj, rowFinal)
-            if     rowFinal>=1 && rowFinal<=obj.Navigation.getMaxRow 
+            if     rowFinal >= 1 && rowFinal <= obj.Navigation.getMaxRow 
             else
                 rowFinal = NaN;
             end
         end
 
         function columnFinal = verifyXCoordinate(obj, columnFinal)
-            if    columnFinal>=1 && columnFinal<=obj.Navigation.getMaxColumn 
+            if    columnFinal >= 1 && columnFinal <= obj.Navigation.getMaxColumn 
             else
               columnFinal = NaN;
             end
         end
 
         function planeFinal = verifyZCoordinate(obj, planeFinal)
-            if    planeFinal>=1 && planeFinal<=obj.Navigation.getMaxPlane
+            if    planeFinal >= 1 && planeFinal <= obj.getMaxPlaneWithoutDriftCorrection
             else
               planeFinal = NaN;
             end
