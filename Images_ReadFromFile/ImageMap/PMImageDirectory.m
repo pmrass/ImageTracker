@@ -115,6 +115,7 @@ classdef PMImageDirectory
         function ListWithUpperRows =        getTopRowsPerStrip(obj)
             ListWithUpperRows=        obj.RawData{13};
             if length(ListWithUpperRows) ~= obj.getNumberOfStrips
+                assert(isscalar(ListWithUpperRows), 'Something wrong with strip-data.')
                 ListWithUpperRows(1:obj.getNumberOfStrips,1) = ListWithUpperRows;
             end
         end
@@ -122,6 +123,7 @@ classdef PMImageDirectory
         function ListWithLowerRows =        getBottomRowsPerStrip(obj)
                 ListWithLowerRows=                   obj.RawData{14};
                 if length(ListWithLowerRows) ~= obj.getNumberOfStrips
+                     assert(isscalar(ListWithLowerRows), 'Something wrong with strip-data.')
                     ListWithLowerRows(1:obj.getNumberOfStrips,1) = ListWithLowerRows;
                 end
         end
@@ -172,9 +174,9 @@ classdef PMImageDirectory
          function StripData =       reshapeStripData(obj, StripData)
              
              
-             StripInput = StripData;
+              StripInput = StripData;
              
-                StripData= cell(obj.getNumberOfStrips, 1);
+              StripData= cell(obj.getNumberOfStrips, 1);
               for CurrentStripIndex = 1 : obj.getNumberOfStrips
               
                   Input = StripInput{CurrentStripIndex, 1};
@@ -196,7 +198,9 @@ classdef PMImageDirectory
     methods (Access = private) % GETTERS STRIPS (PER INDEX);
         
         function rowPerStrip =             getRowsOfStripIndex(obj, Index)
-            rowPerStrip =               obj.RawData{14}(Index) - obj.RawData{13}(Index) + 1;
+            Bottom = obj.getBottomRowsPerStrip;
+            Top = obj.getTopRowsPerStrip;
+            rowPerStrip =               Bottom(Index) - Top(Index) + 1;
         end
          
         function CurrentUpperRow =          getUpperRowForStripIndex(obj, Index)

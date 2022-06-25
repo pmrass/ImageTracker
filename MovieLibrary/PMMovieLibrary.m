@@ -57,9 +57,9 @@ classdef PMMovieLibrary
                     case 1
                         obj.FileName =      varargin{1};
                         
-                        [a,~,~]= fileparts(varargin{1});
+                            [a,~,~]= fileparts(varargin{1});
                         
-                         obj.PathForImageAnalysis =  a;
+                            obj.PathForImageAnalysis =  a;
                             obj.PathOfMovieFolder =    a;
                             obj.PathForExport=         a;
                         
@@ -77,8 +77,9 @@ classdef PMMovieLibrary
                             case 'DoNotLoad'
                                  obj.FileName =      varargin{1};
                                  obj =               obj.load;
+                                 
                             otherwise
-                                 obj.FileName =      varargin{1};
+                                obj.FileName =      varargin{1};
                                 obj =               obj.load;
                                 obj =               obj.ensureAllMovieTrackingFilesCanConnect(varargin{2});
                                 obj =               obj.loadAllMoviesFromFile(varargin{2});
@@ -835,15 +836,20 @@ classdef PMMovieLibrary
                
                 case 0
                     MyVersion =     '';
+                 
                 case 1
                     MyVersion =     varargin{1};
+                    
+                case 2
+                    MyVersion =     varargin{1};
+                   
                 otherwise
                     error('Wrong input.')
                 
             end
 
             myMovieTracking =           obj.ListhWithMovieObjects{obj.getSelectedRowInLibrary,1};
-            if isempty(myMovieTracking)
+            if isempty(myMovieTracking) 
                 myMovieTracking =      obj.getActiveMovieTrackingFromFile(MyVersion);
             end
         end
@@ -861,7 +867,19 @@ classdef PMMovieLibrary
                     myMovieTracking =       myMovieTracking.load;
                     
                 case 1
-                    myMovieTracking =       myMovieTracking.load(varargin{1});
+                    
+                    switch varargin{1}
+                       
+                        case 'DoNotLoad'
+                            
+                            
+                        otherwise
+                             myMovieTracking =       myMovieTracking.load(varargin{1});
+                        
+                        
+                    end
+                    
+                   
 
                 otherwise
                     error('Wrong input.')

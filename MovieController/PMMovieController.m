@@ -808,6 +808,10 @@ classdef PMMovieController < handle
     
     methods % GETTERS SOURCE IMAGES:
         
+        function obj = setDefaultNumberOfLoadedFrames(obj, Value)
+           obj.LoadedMovie = obj.LoadedMovie.setDefaultNumberOfLoadedFrames(Value); 
+        end
+        
         function volumes =              getLoadedImageVolumes(obj)
             % GETLOADEDIMAGEVOLUMES get access to all image-volumes that are current stored in cash;
             % this is used by PMMovieLibrary which keeps track of all movies so that the movie does not have to be reloaded as soon as the user changes the movie;
@@ -1607,16 +1611,19 @@ classdef PMMovieController < handle
                     
                     
                     if isempty(obj.Views) ||  ~isvalid(obj.Views.getFigure)
-                         obj.LoadedMovie =           obj.LoadedMovie.setFrameTo(newFrame);
+                         obj.LoadedMovie =              obj.LoadedMovie.updateLoadedImageVolumes(newFrame);
+                         obj.LoadedMovie =              obj.LoadedMovie.setFrameTo(newFrame);
                         
                     else 
                         
                         switch obj.Views.getModifier
                             case 'shift'
+                                obj.LoadedMovie =       obj.LoadedMovie.updateLoadedImageVolumes(newFrame);
                                 obj.LoadedMovie =                   obj.LoadedMovie.setFrameTo(newFrame); 
                              %   obj =               obj.focusOnActiveMask;
 
                             otherwise
+                                obj.LoadedMovie =       obj.LoadedMovie.updateLoadedImageVolumes(newFrame);
                                 obj.LoadedMovie =   obj.LoadedMovie.setFrameTo(newFrame);  
                                 obj =               obj.updateMovieView;
                                 obj =               obj.setNavigationControls;
