@@ -10,7 +10,6 @@ classdef PMChannels
     
     methods % initizlization
         
-        
         function obj = PMChannels(varargin)
             %PMCHANNELS Construct an instance of this class
             %   Detailed explanation goes here
@@ -99,7 +98,7 @@ classdef PMChannels
         
     end
     
-    methods % SETTERS FOR ACTIVE CHANNEL
+    methods % SETTERS: ACTIVE CHANNEL
         
         function obj = setVisible(obj, Value)
             obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setVisible(Value);
@@ -126,6 +125,25 @@ classdef PMChannels
         end
  
     end
+    
+        
+    methods % SETTERS: CHANNEL BY INDEX
+        
+         function obj = setVisibleOfChannelIndex(obj, index, Value)
+             obj.Channels(index) = obj.Channels(index).setVisible(Value);
+         end
+        
+        function visible = getVisibleOfChannelIndex(obj, Value)
+            visible = obj.Channels(Value).getVisible;
+        end
+        
+        function obj = setVisibleForAllChannels(obj, Value)
+             assert(islogical(Value) && isvector(Value) && length(Value) == obj.getMaxChannel, 'Wrong input')
+            obj.Channels = arrayfun(@(x, y) y.setVisible(x), Value(:), obj.Channels);
+        end
+ 
+    end
+    
     
     methods % GETTERS
         
@@ -229,23 +247,6 @@ classdef PMChannels
         end
   
     end
-    
-    methods % set channels by index
-        
-         function obj = setVisibleOfChannelIndex(obj, index, Value)
-             obj.Channels(index) = obj.Channels(index).setVisible(Value);
-         end
-        
-        function visible = getVisibleOfChannelIndex(obj, Value)
-            visible = obj.Channels(Value).getVisible;
-        end
-        
-        function obj = setVisibleForAllChannels(obj, Value)
-             assert(islogical(Value) && isvector(Value) && length(Value) == obj.getMaxChannel, 'Wrong input')
-             
-            obj.Channels = arrayfun(@(x, y) y.setVisible(x), Value(:), obj.Channels);
-        end
- 
-    end
+
 end
 

@@ -100,7 +100,7 @@ classdef PMRGBImage
                     
                     ImageToAdd=          imadjust(ImageToAdd, [obj.ListWithMinimumIntensities_Select(ChannelIndex)  obj.ListWithMaximumIntensities_Select(ChannelIndex)], [0 1]);
 
-                    rgbImage =              obj.addImageWithColor(rgbImage, ImageToAdd, obj.ListWithChannelColors_Select{ChannelIndex});
+                    rgbImage =            obj.addImageWithColor(rgbImage, ImageToAdd, obj.ListWithChannelColors_Select{ChannelIndex});
                 end
 
             end
@@ -149,8 +149,9 @@ classdef PMRGBImage
                         sourceImage(:,:,2)=    sourceImage(:,:,2) + imageToAdd;
                         sourceImage(:,:,3)=    sourceImage(:,:,3) + imageToAdd;
                         
-                        
                     case 'Black'
+                        
+                    case 'ColorMap'
                         
                        Map =                colormap(jet);
                        ColorMapImage =      ind2rgb(imageToAdd,Map);

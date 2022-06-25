@@ -97,10 +97,10 @@ classdef PMTrackingNavigationController
 
 
              if  isempty(obj.getFigureHandle) || ~isvalid(obj.getFigureHandle) 
-             else
-              obj.View =         obj.View.updateFinishedTracksChangeWith(obj.Model);
-             end
-        end
+                 else
+                  obj.View =         obj.View.updateFinishedTracksChangeWith(obj.Model);
+                 end
+            end
     
     end
     

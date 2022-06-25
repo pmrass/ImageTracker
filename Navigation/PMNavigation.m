@@ -116,7 +116,7 @@ classdef PMNavigation
         end
         
         function obj =      setActivePlanes(obj, Value)
-            if Value >= 1 &&  Value <= obj.getMaxPlane
+            if min(Value) >= 1 &&  max(Value) <= obj.getMaxPlane
                 obj.ActivePlanes =  Value;
             elseif isnan(Value)
 

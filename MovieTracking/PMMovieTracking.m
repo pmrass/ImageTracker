@@ -730,6 +730,11 @@ classdef PMMovieTracking < PMChannels
    
     methods % SETTERS IMAGE-VOLUMES
        
+        function obj = setDefaultNumberOfLoadedFrames(obj, Value)
+           obj.DefaultNumberOfLoadedFrames = Value; 
+            
+        end
+        
         function obj =                      setLoadedImageVolumes(obj, Value)
             % SETLOADEDIMAGEVOLUMES sets LoadedImageVolumes (which contains stored images of source files so that they don't have to be loaded from file each time);
             obj.LoadedImageVolumes =      Value; 
@@ -750,18 +755,35 @@ classdef PMMovieTracking < PMChannels
                
                 case 0
                      WantedFrames =          obj.getSetFrameRanged;
-                    
+                     
                 case 1
                     
-                    switch varargin{1}
-                       
-                        case 'All'
-                            WantedFrames =  obj.getEntireFrameRange;
+                    switch class(varargin{1})
+                        
+                        case 'double'
+                            WantedFrames = varargin{1};
+                            
+                        case 'char'
+                            
+                                
+                                switch varargin{1}
+
+                                    case 'All'
+                                        WantedFrames =  obj.getEntireFrameRange;
+
+                                    otherwise
+                                        error('Wrong input.')
+
+                                end
+                    
                             
                         otherwise
                             error('Wrong input.')
                         
+                        
+                        
                     end
+                
                     
                     
                 otherwise
@@ -1694,7 +1716,7 @@ classdef PMMovieTracking < PMChannels
             % 2: plane (rounded, drift removed, NaN if out of range)
             % 2: frame (rounded, drift removed, NaN if out of range)
             
-            removeApplied
+            
             
             [column, row, plane] =            obj.removeAppliedDriftCorrection(DownColumn, MouseDownRow, obj.getActivePlanesWithAppliedDriftCorrection);
             [row, column, plane, frame] =     obj.roundCoordinates(row, column, plane, obj.getActiveFrames);
@@ -3932,8 +3954,6 @@ classdef PMMovieTracking < PMChannels
          
     end
 
- 
-
     methods (Access = private) % PROCESS DRIFT CORRECTION
         function removeDriftCorrection(obj)
            error('Not supported anymore. Use removeAppliedDriftCorrection instead.')
@@ -4023,7 +4043,6 @@ classdef PMMovieTracking < PMChannels
          
      end
      
-   
     methods (Access = private)
         
         function complete = checkCompletenessOfNavigation(obj)
