@@ -183,6 +183,16 @@ classdef PMMovieLibraryManager < handle
 
         end
         
+         function obj =      setLoadedMovie(obj, LoadedMovie)
+            % SETLOADEDMOVIE allows visualization of a user-defined PMMovieTracking object:
+            % takes 1 argument:
+            % 1: PMMovieTracking
+            obj.ActiveMovieController  =          obj.ActiveMovieController.setLoadedMovie(LoadedMovie);
+            obj.ActiveMovieController =           obj.ActiveMovieController.initializeViews;
+
+         end
+        
+        
         function obj =      forwardUpdatedInteractionsManagerToMovieController(obj)
                MyInteractionsManager =              obj.getInteractionsManager;
               MyInteractionsManager =                MyInteractionsManager.resetModelByMovieTracking(obj.ActiveMovieController.getLoadedMovie);
@@ -233,14 +243,7 @@ classdef PMMovieLibraryManager < handle
              
         end
         
-        function obj =      setLoadedMovie(obj, LoadedMovie)
-            % SETLOADEDMOVIE allows visualization of a user-defined PMMovieTracking object:
-            % takes 1 argument:
-            % 1: PMMovieTracking
-            obj.ActiveMovieController  =          obj.ActiveMovieController.setLoadedMovie(LoadedMovie);
-            obj.ActiveMovieController =           obj.ActiveMovieController.initializeViews;
-
-        end
+       
         
         
     end

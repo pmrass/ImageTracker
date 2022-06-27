@@ -748,11 +748,7 @@ classdef PMMovieTracking < PMChannels
         function obj =                      updateLoadedImageVolumes(obj, varargin)
             % UPDATELOADEDIMAGEVOLUMES loads image data from file and sets LoadedImageVolumesn property;
             %takes 1 argument:
-            % 0: loads frames of specified range around active frame, e.g. : lower frame: 60- 40 = 20, higher frame: 60  + 40 = 100;
-            % 1: a) number of wanted frame
-            %    b) 'All" loads all image data:
-            % only frames that are currently not in memory are loaded;
-            % to reset already loaded frames have to call emptyOutLoadedImageVolumes first;
+            % 1: 
             if isempty(obj.LoadedImageVolumes)
                 obj = obj.emptyOutLoadedImageVolumes; 
             end
