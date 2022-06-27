@@ -36,7 +36,7 @@ classdef PMMovieController < handle
         MouseUpRow =              NaN
         MouseUpColumn =           NaN
         
-        ShowLog = false;
+        ShowLog =                false;
         
     end
     
@@ -49,7 +49,7 @@ classdef PMMovieController < handle
             %   option 1: PMImagingProjectViewer, no data, but setup all views;
             %   option 2: PMMovieTracking
             % 2 arguments: 
-            %    1: PMImagingProjectViewer;
+            %    1: PMImagingProjectViewer or PMMovieControllerView;
             %    2: PMMovieTracking;
              switch length(varargin)
 
@@ -80,6 +80,15 @@ classdef PMMovieController < handle
                        
                         assert(isscalar(varargin{1}) && isscalar(varargin{2}), 'Wrong input.')
                         
+                        switch class(varargin{2}) % loaded movie has to be set first, otherwise initialization of view not possible;
+                             
+                             case 'PMMovieTracking'
+                                 obj.LoadedMovie =                                           varargin{2};
+                                 
+                             otherwise
+                                 error('Wrong input.')
+                         end
+                             
                         switch class(varargin{1})
                             
                              case 'PMImagingProjectViewer'
@@ -96,23 +105,11 @@ classdef PMMovieController < handle
                                 
                         end
                         
-                         switch class(varargin{2})
-                             
-                             case 'PMMovieTracking'
-                                 obj.LoadedMovie =                                           varargin{2};
-                             otherwise
-                                 error('Wrong input.')
-                         end
-                             
+                        
                        
              end
-             
-         
 
             obj =                               obj.setCallbacks;
-
-
-
 
 
         end
@@ -155,7 +152,7 @@ classdef PMMovieController < handle
         
     end
     
-      methods % SETTERS FILE-MANAGEMENT
+    methods % SETTERS FILE-MANAGEMENT
         
         function obj =      setNamesOfMovieFiles(obj, Value)
             % SETNAMESOFMOVIEFILES set names of attached movie files
@@ -361,22 +358,22 @@ classdef PMMovieController < handle
 
     methods % GETTERS
         
-        function Value = getNickName(obj)
+        function Value =                getNickName(obj)
             Value = obj.LoadedMovie.getNickName;
         end
 
-         function action = getMouseAction(obj)
+        function action =               getMouseAction(obj)
              action = obj.MouseAction;
          end
          
-         function verifiedStatus =                     verifyActiveMovieStatus(obj)
+         function verifiedStatus =      verifyActiveMovieStatus(obj)
              % VERIFYACTIVEMOVIESTATUS tests whether object contains valid PMMovieTracking object;
              % returns 1 value:
              % 1: logical scalar;
               verifiedStatus = ~isempty(obj.LoadedMovie) &&   isa(obj.LoadedMovie, 'PMMovieTracking') && isscalar(obj.LoadedMovie) &&  obj.LoadedMovie.verifyThatEssentialPropertiesAreSet;
          end
          
-        function CompleteFileName = getMovieFileNameForFrames(obj, varargin)
+        function CompleteFileName =     getMovieFileNameForFrames(obj, varargin)
             % GETMOVIEFILENAMEFORFRAMES returns standard filename for movie sequences;
             % takes 2 arguments
             % 1: first frame (numeric integer scalar)
@@ -415,17 +412,7 @@ classdef PMMovieController < handle
 
         end
         
-     
-        
-     
-
-          
-         
-         
-             
-             
-         
-          
+    
       end
     
     methods % SETTERS
@@ -596,7 +583,7 @@ classdef PMMovieController < handle
 
     methods % SETTERS VIEW
         
-        function obj = setView(obj, Value)
+        function obj =      setView(obj, Value)
            obj.Views = Value; 
         end
            
@@ -769,6 +756,12 @@ classdef PMMovieController < handle
     
     methods % SETTERS IMAGE VOLUMES
         
+        
+        function obj =      updateLoadedImageVolumes(obj, Value)
+            
+           obj.LoadedMovie =    obj.LoadedMovie.updateLoadedImageVolumes(Value); 
+        end
+        
         function obj =     setLoadedImageVolumes(obj, Value)
           % SETLOADEDIMAGEVOLUMES sets LoadedImageVolumes (which contains stored images of source files so that they don't have to be loaded from file each time);
           obj.LoadedMovie =     obj.LoadedMovie.setLoadedImageVolumes(Value);
@@ -777,31 +770,29 @@ classdef PMMovieController < handle
       
         function obj =     resetLoadedMovieFromImageFiles(obj)
             % RESETLOADEDMOVIEFROMIMAGEFILES LoadedMovie reset completely from file (including meta-data, e.g. space calibration);
-           obj.LoadedMovie =     obj.LoadedMovie.emptyOutLoadedImageVolumes;
-            obj.LoadedMovie =   obj.LoadedMovie.setPropertiesFromImageMetaData;
-            obj =               obj.setActiveCropOfMovieView;
-            obj =               obj.updateMovieViewImage;
-            obj =               obj.updateMovieView;
+            obj.LoadedMovie =       obj.LoadedMovie.emptyOutLoadedImageVolumes;
+            obj.LoadedMovie =       obj.LoadedMovie.setPropertiesFromImageMetaData;
+            obj =                   obj.setActiveCropOfMovieView;
+            obj =                   obj.updateMovieViewImage;
+            obj =                   obj.updateMovieView;
         end
 
         function obj =     manageResettingOfImageMap(obj)
             error('Not supported anymore. Use resetLoadedMovieFromImageFiles instead.')
         end
         
-                function obj =      updateAllViewsThatDependOnSelectedTracks(obj)
+        function obj =      updateAllViewsThatDependOnSelectedTracks(obj)
 
-        %   obj.LoadedMovie = obj.LoadedMovie.generalCleanup;
+            %   obj.LoadedMovie = obj.LoadedMovie.generalCleanup;
 
             obj.Views =         setSelectedCentroidsWith(obj.Views, obj.LoadedMovie);
             obj.Views =         setActiveCentroidWith(obj.Views, obj.LoadedMovie);
 
-             obj.Views =        setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
-            
+            obj.Views =        setTrackLineViewsWith(obj.Views, obj.LoadedMovie); 
+
             obj.Views =         setTrackingViewsWith(obj.Views, obj.LoadedMovie);
             obj =               obj.updateMovieViewImage;
-    
 
-         
         end
 
     end
