@@ -178,7 +178,7 @@ classdef PMInteractionsView
               % takes 1 argument: PMMovieTracking
               % sets list in plane, channel and reference time-frame, so that appropriate options are visible;
               assert(isscalar(MovieTracking) && isa(MovieTracking, 'PMMovieTracking'), 'Wrong input.')
-                obj.PlaneThresholds.Data =          (linspace(10, 10, MovieTracking.getMaxPlane))';
+                obj.PlaneThresholds.Data =          (linspace(10, 10, MovieTracking.getMaxPlaneWithoutDriftCorrection))';
                 obj.Channel.Items =                 arrayfun(@(x)  num2str(x), 1 : MovieTracking.getMaxChannel, 'UniformOutput', false);
                 obj.ReferenceTimeFrame.Items =      arrayfun(@(x)  num2str(x), 1 : MovieTracking.getMaxFrame, 'UniformOutput', false);
           end

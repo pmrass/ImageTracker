@@ -604,11 +604,11 @@ classdef PMMovieLibrary
             
             assert(isscalar(ActiveMovieController) && isa(ActiveMovieController, 'PMMovieController'), 'Wrong input.')
            
-            if obj.allPropertiesAreValid
+            try
                 MyLoadedImageVolumes =          ActiveMovieController.getLoadedImageVolumes;
                 SelectedRow =                   find(obj.getRowForNickName(ActiveMovieController.getNickName));
                 obj =                           obj.updateMovieIndexWith(SelectedRow, ActiveMovieController.getLoadedMovie, MyLoadedImageVolumes);
-            else
+            catch
                    warning('Library could not be saved. Reason: Not allPropertiesAreValid')
               
             end

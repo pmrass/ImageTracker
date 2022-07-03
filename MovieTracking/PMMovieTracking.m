@@ -2493,19 +2493,19 @@ classdef PMMovieTracking < PMChannels
             Segmentation =        obj.Tracking.get('SegmentationOfFrame', Frame);
         end
 
-        function metricCoordinatesForEachSegment =  getMetricCoordinatesOfActiveTrackFilteredForFrames(obj, myFrames)
+        function metricCoordinatesForEachSegment =  getMetricCoordinatesOfActiveTrackFilteredForFrames(obj, myWantedFrames)
             % GETMETRICCOORDINATESOFACTIVETRACKFILTEREDFORFRAMES returns metric coordinates of active track, filtered for input;
             % takes 1 argument:
             % 1: numerical vector with wanted frame-numbers
             % returns 1 value:
             % numerical matrix with 3 columns (coordinates), each row are the coordinates for a single frame;   
             % out of plane-range coordinates are replaced with NaN;
-            MyTrackMatrix =                         [obj.Tracking.get('FramesOfActiveTrack'), obj.getMetricCoordinatesOfActiveTrack];
-            
-                 MatchingRows =      ismember(MyTrackMatrix(:, 1), myFrames);
-        metricCoordinatesForEachSegment =        MyTrackMatrix(MatchingRows,:);
-            
-            metricCoordinatesForEachSegment =       metricCoordinatesForEachSegment(:, 2:4);
+            MetricCoordinatesOfActiveTrack =            [obj.Tracking.get('FramesOfActiveTrack'), obj.getMetricCoordinatesOfActiveTrack];
+
+            MatchingRows =                              ismember(MetricCoordinatesOfActiveTrack(:, 1), myWantedFrames);
+            metricCoordinatesForEachSegment =           MetricCoordinatesOfActiveTrack(MatchingRows,:);
+
+            metricCoordinatesForEachSegment =           metricCoordinatesForEachSegment(:, 2:4);
         end
 
         function metricCoordinates =                getMetricCoordinatesOfActiveTrack(obj)
@@ -2927,16 +2927,12 @@ classdef PMMovieTracking < PMChannels
         end
 
         function strings =      getTimeStamps(obj)
-            % GETTIMESTAMPS returns cell string with formatted time of active frame;
+            % GETTIMESTAMPS returns cell string with formatted time of all frames;
 
-            TimeInSeconds=                obj.TimeCalibration.getRelativeTimeStampsInSeconds;
-
-            TimeInMinutes=                TimeInSeconds / 60;
-            MinutesInteger=               floor(TimeInMinutes);
-            SecondsInteger=               round((TimeInMinutes- MinutesInteger)*60);
-            SecondsString=                (arrayfun(@(x) num2str(x), SecondsInteger, 'UniformOutput', false));
-            MinutesString=                (arrayfun(@(x) num2str(x), MinutesInteger, 'UniformOutput', false));
-            strings=           cellfun(@(x,y) strcat(x, '''', y, '"'), MinutesString, SecondsString, 'UniformOutput', false);
+            TimesInSeconds=            obj.TimeCalibration.getRelativeTimeStampsInSeconds;
+            strings =                   arrayfun(@(x) PMTime(x).getMinSecString, TimesInSeconds, 'UniformOutput', false);
+            
+           
         end
 
         function planeStamps =  getPlaneStamps(obj) 
