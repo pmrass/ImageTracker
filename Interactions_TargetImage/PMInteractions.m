@@ -150,6 +150,7 @@ classdef PMInteractions
     
     methods % ACTION
         
+        
         function InteractionMapForAllTracks = getInteractionsMap(obj)
             %GETINTERACTIONSMAP main function of PMInteractions class
             % returns a cell array for each time frame, each cell has the
@@ -162,12 +163,12 @@ classdef PMInteractions
             % column 4: number of "full target pixels" surrounding searcher;
             % column 5: shortest 2D distance to target;
             
-            obj.FastTracking =                  true;
+            obj.FastTracking =                      true;
           
-            obj.MyTrackingAnalysis_Metric =     obj.MyTrackingAnalysis_Metric.initializeTrackCell;
-            obj.MyTrackingAnalysis_Pixels =     obj.MyTrackingAnalysis_Pixels.initializeTrackCell;
+            obj.MyTrackingAnalysis_Metric =         obj.MyTrackingAnalysis_Metric.initializeTrackCell;
+            obj.MyTrackingAnalysis_Pixels =         obj.MyTrackingAnalysis_Pixels.initializeTrackCell;
             
-            InteractionMapForAllTracks =    cell(obj.MyTrackingAnalysis_Metric.getNumberOfTracks, 1);
+            InteractionMapForAllTracks =            cell(obj.MyTrackingAnalysis_Metric.getNumberOfTracks, 1);
              for TrackIndex = 1 : obj.MyTrackingAnalysis_Metric.getNumberOfTracks
                  obj.CurrentTrackIndex =                                    TrackIndex;
                  InteractionMapForAllTracks{obj.CurrentTrackIndex,1} =      obj.getInteractionMapFromAllFrames;
@@ -177,6 +178,38 @@ classdef PMInteractions
              
         end
       
+    end
+    
+    methods (Static)
+       
+        function InteractionMapForAllTracks = loadInteractionsMapFromFile( FileName)
+           InteractionMapForAllTracks =  load(FileName);
+           InteractionMapForAllTracks = InteractionMapForAllTracks.InteractionObject;
+           assert(iscell(InteractionMapForAllTracks) && isvector(InteractionMapForAllTracks), 'Interactions map has invalid format.')
+           
+           cellfun(@(x) PMInteractions.checkIntactnessOfInteractionMap(x), InteractionMapForAllTracks)
+            
+        end
+        
+        function checkIntactnessOfInteractionMap(Map)
+            assert(iscell(Map) && ismatrix(Map),  'Interactions map has invalid format.')
+            assert(size(Map, 2) == 5, 'Interactions map has invalid format.')
+            assert(min(min(cellfun(@(x) isnumeric(x), Map))), 'Interactions map has invalid format.')
+        end
+        
+        function isValidInteractionType(Type)
+            
+            types{1, 1} = 'FractionFullPixels';
+            types{2, 1} = '3D';
+            types{3, 1} = '2D';
+            
+            value = max(strcmp(Type, types));
+            assert(value, 'Invalid interaction type.')
+             
+        end
+        
+        
+        
     end
     
     methods % EXPORT
@@ -252,18 +285,20 @@ classdef PMInteractions
             %      5: optional: 2D distance to closest target
             % 2: PMInteraction scalar of active track and frame;
             
-            InteractionsOfTrack{1, 1} =          obj.getTrackIDOfActiveSearcher;
-            InteractionsOfTrack{1, 2} =          obj.getFrameNumberOfActiveSearcher;
-            InteractionsOfTrack{1, 4} =          obj.getFractionOfPositiveTargetVolume;
+            InteractionsOfTrack{1, 1} =                 obj.getTrackIDOfActiveSearcher;
+            InteractionsOfTrack{1, 2} =                 obj.getFrameNumberOfActiveSearcher;
+            InteractionsOfTrack{1, 4} =                 obj.getFractionOfPositiveTargetVolume;
 
             if   obj.FastTracking
                 myInteractionObject = '';
-                InteractionsOfTrack{1, 3} =         NaN;
-                InteractionsOfTrack{1, 5} =         NaN;
+                InteractionsOfTrack{1, 3} =             NaN;
+                InteractionsOfTrack{1, 5} =             NaN;
+
             else
-                myInteractionObject =               obj.getActiveInteractionObject;
-                InteractionsOfTrack{1, 3} =          myInteractionObject.getDistanceToClosestTarget;
-                InteractionsOfTrack{1, 5} =          myInteractionObject.getDistanceToClosestTarget('2D');    
+                myInteractionObject =                   obj.getActiveInteractionObject;
+                InteractionsOfTrack{1, 3} =             myInteractionObject.getDistanceToClosestTarget;
+                InteractionsOfTrack{1, 5} =             myInteractionObject.getDistanceToClosestTarget('2D');
+                
             end
 
                
