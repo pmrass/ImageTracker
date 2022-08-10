@@ -32,7 +32,7 @@ classdef PMMovieController_Keypress
             obj.Modifiers =      PMKeyModifiers(CurrentModifier).getNameOfModifier;
             obj =                obj.processKeyPressAnyTime;
                
-            switch obj.MovieController.getViews.getEditingType
+              switch obj.MovieController.getViews.getEditingType
             
                 case 'No editing'
                     

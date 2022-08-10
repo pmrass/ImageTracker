@@ -167,7 +167,7 @@ classdef PMImageFiles
             end
                     
                 switch obj.getFileExtension
-                    case {'.tif', '.lsm'}
+                    case {'.tif', '.lsm', '.TIFF'}
                           obj.myImageDocuments =                            cellfun(@(x)  PMTIFFDocument(x), obj.getPathsOfImageFiles);
 
                     case '.czi'

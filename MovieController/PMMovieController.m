@@ -96,8 +96,12 @@ classdef PMMovieController < handle
                                 
                             
                             case 'PMMovieControllerView'
+                                
+                                myMovieControllerView =     varargin{1}.getFigure;
+                                
                                 obj.Views =       varargin{1};
-                                obj.Views =       setFigure(obj.Views, varargin{1}.Figure); 
+                                obj.Views =       setFigure(obj.Views, myMovieControllerView); 
+                                    obj =           obj.initializeViews;
                                 
                             otherwise
                                 error('Wrong input.')
@@ -111,6 +115,7 @@ classdef PMMovieController < handle
 
             obj =                               obj.setCallbacks;
 
+            obj =               obj.initializeViews;  % some things are set properly only when called a second time: fix;       
 
         end
 
@@ -1015,8 +1020,8 @@ classdef PMMovieController < handle
              % takes 1 to multiple arguments
              % 1: name of method ('char')
              % 2: multiple aditional arguments, as required by method;
-             obj.LoadedMovie = obj.LoadedMovie.(Name)(varargin{:});
-               obj.PressedKeyValue  = '';
+             obj.LoadedMovie =              obj.LoadedMovie.(Name)(varargin{:});
+             obj.PressedKeyValue  =         '';
              
         end
         
@@ -2465,7 +2470,7 @@ classdef PMMovieController < handle
                 Rectangle(2) =                 obj.Views.getMovieAxes.YLim(1);
                   Rectangle(3) =                obj.Views.getMovieAxes.XLim(2) - obj.Views.getMovieAxes.XLim(1);
                 Rectangle(4) =                 obj.Views.getMovieAxes.YLim(2) - obj.Views.getMovieAxes.YLim(1);
-        end
+            end
         
         function check = pointIsWithinRightBounds(obj, CurrentColumn)
             check = min(CurrentColumn <= obj.Views.getMovieAxes.XLim(2));

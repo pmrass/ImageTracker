@@ -213,7 +213,8 @@ classdef PMTIFFDocument
             
         end
         
-        function EndRows =          getStripEndRows(~, RowsPerStrip, TotalRows)
+        function EndRows =          getStripEndRows(obj, RowsPerStrip, TotalRows)
+            StartRows =     obj.getStripStartRows(RowsPerStrip, TotalRows);
              EndRows = RowsPerStrip : RowsPerStrip :  TotalRows;
                 if length(StartRows) == length(EndRows)
                     
@@ -651,7 +652,6 @@ classdef PMTIFFDocument
                  
              end
              
-             
                 FieldsForImageReading.ListWithStripOffsets(:,1)=            MyImageFileDirectory.getStripOffsets;
                 FieldsForImageReading.ListWithStripByteCounts(:,1)=         MyImageFileDirectory.getStripByteCounts;
 
@@ -683,7 +683,7 @@ classdef PMTIFFDocument
          
     end
     
-    methods (Access = private) % GETTERS: FILE-MANAGEMENT
+    methods  % GETTERS: FILE-MANAGEMENT
         
         function value =        getFileCouldBeAccessed(obj)
             value =         obj.getPointer ~= -1;

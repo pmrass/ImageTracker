@@ -219,6 +219,9 @@ classdef PMInteractionsCapture
      
      methods % SETTERS simple
          
+         function obj = setShowThresholdedImage(obj, Value)
+            obj.ShowThresholdedImage = Value; 
+         end
       
         function obj =      setThresholdsForImageVolumeOfTarget(obj, Value)
             obj.ThresholdsForImageVolumes = Value;

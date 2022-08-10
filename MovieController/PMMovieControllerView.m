@@ -73,7 +73,7 @@ classdef PMMovieControllerView
                 obj =       obj.updateTrackLinesWithIDAndSize(MovieTracking, MovieTracking.getSelectedTrackIDs, 1);
             end
             
-            if MovieTracking.getRestingTracksAreVisible
+            if 0 % MovieTracking.getRestingTracksAreVisible
                 obj =       obj.updateTrackLinesWithIDAndSize(MovieTracking, MovieTracking.getIdsOfRestingTracks, 0);
             end
 
@@ -85,7 +85,10 @@ classdef PMMovieControllerView
             % 1:  logical scalar
 
             function track = changeTrackVisibility(track, state)
+                try 
                 track.Visible = state;
+                catch
+                end
             end
             
             obj.TrackingViews.ShowTracks.Value =        Input;
@@ -113,8 +116,9 @@ classdef PMMovieControllerView
                     switch class(varargin{1})
                         case 'matlab.graphics.axis.Axes'
                             
+                            MyAxes = varargin{1};
                               obj.Figure =    varargin{1}.Parent;  
-                              obj =           obj.createMovieView(varargin{1});
+                              obj =           obj.createMovieView(MyAxes);
                             
                         case 'PMImagingProjectViewer'
                             
@@ -146,6 +150,10 @@ classdef PMMovieControllerView
 
         end
         
+        function obj = set.Channels(obj, Value)
+            
+           obj.Channels = Value; 
+        end
         
         function obj = set.TrackingViews(obj, Value)
             obj.TrackingViews = Value;
@@ -522,6 +530,42 @@ classdef PMMovieControllerView
         
     end
     
+    methods % SETTERS ANNOTATION:
+       
+         function obj = setScaleBarVisibility(obj, ScaleBarVisible)
+           obj.MovieView = obj.MovieView.setScaleBarVisibility(ScaleBarVisible);
+        end
+        
+        
+    end
+    
+    methods % SETTERS: ACTIVE CENTROID
+       
+        function obj = setActiveCentroidWith(obj, Value)
+            Type = class(Value);
+            switch Type
+                case 'PMMovieTracking'
+                    
+                    Coordinates =  Value.getTracking.getActiveCentroidAtFramePlaneDrift(...
+                                                        Value.getActiveFrames, ...
+                                                        Value.getVisibleTrackingPlanesWithoutDriftCorrection, ...
+                                                        Value.getDriftCorrection...
+                                                        );
+                   if isempty(Coordinates)
+                        obj =               obj.setCoordinatesOfActiveTrack(zeros(0,1), zeros(0,1));
+                   else
+                       
+                        obj =               obj.setCoordinatesOfActiveTrack(Coordinates(:, 1), Coordinates(:, 2));
+                   end
+                otherwise
+                    error('Wrong input.')
+                    
+            end
+
+        end
+        
+    end
+    
     methods % setters
         
        
@@ -589,23 +633,7 @@ classdef PMMovieControllerView
         end
         
         %% setActiveCentroidWith:
-        function obj = setActiveCentroidWith(obj, Value)
-            Type = class(Value);
-            switch Type
-                case 'PMMovieTracking'
-                    Coordinates =  Value.getTracking.getActiveCentroidAtFramePlaneDrift(Value.getActiveFrames, Value.getVisibleTrackingPlanesWithoutDriftCorrection, Value.getDriftCorrection);
-                   if isempty(Coordinates)
-                       obj =               obj.setCoordinatesOfActiveTrack(zeros(0,1), zeros(0,1));
-                   else
-                       
-                    obj =               obj.setCoordinatesOfActiveTrack(Coordinates(:, 1), Coordinates(:, 2));
-                   end
-                otherwise
-                    error('Wrong input.')
-                    
-            end
-
-        end
+        
         
         function obj = setCurrentCharacter(obj, Value)
             
@@ -675,8 +703,12 @@ classdef PMMovieControllerView
             NumberOfViews = size(ListWithAllViews,1);
             for CurrentIndex=1:NumberOfViews
                 CurrentView =   ListWithAllViews{CurrentIndex,1};
+                try
                 if isvalid(CurrentView)
                     CurrentView.Enable = 'on';
+                end
+                catch
+                    
                 end
 
             end
@@ -735,7 +767,12 @@ classdef PMMovieControllerView
         end
         
         function value = getShowTracks(obj)
+            try
             value  = logical(obj.TrackingViews.ShowTracks.Value);
+            catch
+                warning('showTracks could not be retrieved from PMMovieControllerView.')
+               value = true; 
+            end
         end
         
         function value = getShowMaxProjectionOfTrackingData(obj)
@@ -760,7 +797,15 @@ classdef PMMovieControllerView
         end
         
        function string = getEditingType(obj)
-            input =                        obj.Navigation.EditingOptions.String{obj.Navigation.EditingOptions.Value};
+           
+           try
+            input =                        obj.Navigation.EditingOptions.String{MyValue};
+            
+           catch
+               input = 'Viewing only';
+           end
+           
+          
             switch input
                 case 'Viewing only' % 'Visualize'
                     string =                                   'No editing';
@@ -793,6 +838,7 @@ classdef PMMovieControllerView
          function planeRange = getPlaneRange(obj)
              % GETPLANERANGE returns range of planes as shown in view;
             
+             try 
                 CurrentPlaneHandle=              obj.Navigation.CurrentPlane(1);
                 ShowMaxVolume=                   obj.Navigation.ShowMaxVolume.Value;
 
@@ -807,7 +853,11 @@ classdef PMMovieControllerView
 
                 end
 
-
+             catch
+                 warning('Plane range could not be retrieved from PMMovieControllerView.')
+                 planeRange = [1, 1];
+                 
+             end
                 
             
          end
@@ -818,6 +868,15 @@ classdef PMMovieControllerView
     
     methods % getters
         
+          function TrackHandles =     getHandlesForTrackIDs(obj, TrackID)
+            if isempty(TrackID)
+                TrackHandles = cell(0,1);
+            else
+                TrackHandles =      obj.ListOfTrackViews(ismember(obj.getTrackIdsOfTrackHandles,  TrackID), :);
+            end    
+          end
+        
+          
         function activeView = getActiveView(obj)
             if obj.Figure.CurrentObject == obj.getMovieImage
                 activeView = 'MovieImage';
@@ -914,13 +973,19 @@ classdef PMMovieControllerView
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 7
-                    obj.Channels.SelectedChannel.Callback =         varargin{1};
-                    obj.Channels.MinimumIntensity.Callback =        varargin{2};
-                    obj.Channels.MaximumIntensity.Callback =        varargin{3};
-                    obj.Channels.Color.Callback =                   varargin{4};
-                    obj.Channels.Comment.Callback =                 varargin{5};
-                    obj.Channels.OnOff.Callback =                  varargin{6};
-                    obj.Channels.ChannelReconstruction.Callback =  varargin{7};
+                    
+                    if isempty(obj.Channels)
+                        
+                    else
+                        obj.Channels.SelectedChannel.Callback =         varargin{1};
+                        obj.Channels.MinimumIntensity.Callback =        varargin{2};
+                        obj.Channels.MaximumIntensity.Callback =        varargin{3};
+                        obj.Channels.Color.Callback =                   varargin{4};
+                        obj.Channels.Comment.Callback =                 varargin{5};
+                        obj.Channels.OnOff.Callback =                  varargin{6};
+                        obj.Channels.ChannelReconstruction.Callback =  varargin{7};
+                    
+                    end
 
                 otherwise
                     error('Wrong input.')
@@ -996,8 +1061,7 @@ classdef PMMovieControllerView
 
     function obj = setNavigationWithMovieTracking(obj, MovieTracking)
 
-        assert(~isempty(obj.getNavigation), 'Could not update Navigation panels because they do not exist.')
-
+    try
       
         obj.Navigation.CurrentPlane.String =        1 : MovieTracking.getMaxPlaneWithAppliedDriftCorrection;
         obj.Navigation.CurrentPlane.Value =         MovieTracking.getActivePlanesWithAppliedDriftCorrection;
@@ -1020,6 +1084,10 @@ classdef PMMovieControllerView
 
 
         obj =   obj.setMaxTime(MovieTracking.getMaxFrame);
+        
+    catch
+        
+    end
 
     end
 
@@ -1031,6 +1099,7 @@ classdef PMMovieControllerView
         end
 
 
+        try
         Range = obj.Navigation.TimeSlider.Max -   obj.Navigation.TimeSlider.Min;
         if Range == 0
         obj.Navigation.TimeSlider.Visible = 'off';
@@ -1045,6 +1114,10 @@ classdef PMMovieControllerView
 
         obj.Navigation.TimeSlider.Min =                 1;
         obj.Navigation.TimeSlider.Max =                 Value;  
+        
+        catch
+            
+        end
 
     end
 
@@ -1125,7 +1198,8 @@ classdef PMMovieControllerView
 
             if isempty(missingTrackIds)
             else
-                CellWithNewLineHandles =    (arrayfun(@(x) line(obj.MovieView.getAxes), 1:length(missingTrackIds), 'UniformOutput', false))';
+                MyAxes = obj.MovieView.getAxes;
+                CellWithNewLineHandles =    (arrayfun(@(x) line(MyAxes), 1:length(missingTrackIds), 'UniformOutput', false))';
                 CellWithNewLineHandles =    cellfun(@(x,y) setTagOfTrackLines(x,y), CellWithNewLineHandles, num2cell(missingTrackIds), 'UniformOutput', false);
                 obj.ListOfTrackViews =      [obj.ListOfTrackViews; CellWithNewLineHandles];   
             end
@@ -1149,13 +1223,7 @@ classdef PMMovieControllerView
 
         end
 
-        function TrackHandles =     getHandlesForTrackIDs(obj, TrackID)
-            if isempty(TrackID)
-                TrackHandles = cell(0,1);
-            else
-                TrackHandles =      obj.ListOfTrackViews(ismember(obj.getTrackIdsOfTrackHandles,  TrackID), :);
-            end    
-        end
+      
 
         function ListWithTrackIDsThatHaveAHandle =     getTrackIdsOfTrackHandles(obj)
             ListWithTrackIDsThatHaveAHandle =           cellfun(@(x) str2double(x.Tag), obj.ListOfTrackViews); 
@@ -1188,7 +1256,7 @@ classdef PMMovieControllerView
                 obj =     obj.enableAllViews;
                 obj =     obj.updateDriftWith(Value);  
                 obj =     obj.setTrackVisibility(Value.getTrackVisibility);
-                obj =     obj.setTrackLineViewsWith(Value); 
+             %   obj =     obj.setTrackLineViewsWith(Value); 
   
         end
         
@@ -1206,10 +1274,7 @@ classdef PMMovieControllerView
             
         end
         
-        function obj = setScaleBarVisibility(obj, ScaleBarVisible)
-           obj.MovieView = obj.MovieView.setScaleBarVisibility(ScaleBarVisible);
-        end
-        
+      
    
         
     end

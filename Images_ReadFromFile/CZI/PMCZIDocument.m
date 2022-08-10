@@ -253,7 +253,7 @@ classdef PMCZIDocument
             
             for ImageIndex = 1 : NumberOfImages
                 
-                CurrentImageStructure =     SelectedImageSegments{ImageIndex,6};\
+                CurrentImageStructure =     SelectedImageSegments{ImageIndex,6};
                 
                 switch CurrentImageStructure.Directory.Compression   
                     case 'Uncompressed'

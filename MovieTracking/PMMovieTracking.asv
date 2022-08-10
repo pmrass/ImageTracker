@@ -2775,11 +2775,6 @@ classdef PMMovieTracking < PMChannels
               interactions = obj.Interactions;
         end
         
-        function obj = setShowThresholdedImage(obj, Value)
-            
-            obj.Interactions = obj.Interactions.setShowThresholdedImage(Value);
-        end
-        
          function interactions = getInteractions(obj)
              % GETINTERACTIONS returns 'PMInteractionsCapture' object;
                 error('Use getInteractionsCapture instead.')
@@ -3688,11 +3683,11 @@ classdef PMMovieTracking < PMChannels
 
             else
 
-                MyInteractionsCapture =         obj.getInteractionsCapture;
-                MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
-                ThresholdedImage =              MyInteractionsCapture.getImageVolume;
-                filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
-                image =                         max(filtered, [], 3);
+            MyInteractionsCapture =         obj.getInteractionsCapture;
+            MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
+            ThresholdedImage =              MyInteractionsCapture.getImageVolume;
+            filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
+            image =                         max(filtered, [], 3);
 
             end
 
