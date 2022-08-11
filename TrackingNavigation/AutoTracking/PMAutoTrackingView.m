@@ -166,12 +166,11 @@ classdef PMAutoTrackingView < PMFigure
         function obj =  updateHandles(obj)
             
               
-            ScreenSize =                                                get(0, 'screensize');
-            Left =                                                      ScreenSize(3)*0.6;
-            Position =                                              [Left 0 obj.getWidth obj.getHeight];
+            ScreenSize =                    get(0, 'screensize');
+            Left =                          ScreenSize(3)*0.6;
+            Position =                      [Left 0 obj.getWidth obj.getHeight];
         
-            
-             obj =       obj.setPosition(Position);            
+             obj =                          obj.setPosition(Position);            
          
             MaximumAcceptedDistanceForAutoTrackingTitle =           uilabel(obj.getFigureHandle);
             MaximumAcceptedDistanceForAutoTrackingTitle.Position =                [obj.getWidth*0.05 obj.getHeight - 30  obj.getWidth*0.7 20 ];

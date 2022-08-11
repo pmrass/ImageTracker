@@ -51,8 +51,22 @@ classdef PMMovieView
             %   takes 1 argument:
             % 1: axes or object that has method getFigure
             
-            obj =       obj.initializeFigure(Input);
-            obj =       obj.initializeHandles(Input);
+             switch class(Input)
+                   
+                    case 'PMImagingProjectViewer'
+                        obj.Figure=          Input.getFigure;
+                    obj =       obj.clear;
+                         obj =       obj.initializeHandles(Input);
+
+                    case 'matlab.graphics.axis.Axes'
+                         obj.Figure =        Input.Parent;
+                       obj =       obj.initializeHandles(Input);
+                        
+                    otherwise
+                        error('Wrong input.')
+                    
+              end
+           
         end
         
         function obj = set.CentroidLine(obj, Value)
@@ -149,8 +163,11 @@ classdef PMMovieView
             Type = class(Value);
             switch Type
                 case 'PMMovieTracking'
-                    obj.MainImage.XData =       obj.getXLimitsOfImage(Value);
-                    obj.MainImage.YData =       obj.getYLimitsOfImage(Value);
+                    XLimits =                       obj.getXLimitsOfImage(Value);
+                    YLimits =                       obj.getYLimitsOfImage(Value);
+                    
+                    obj.MainImage.XData =       XLimits;
+                    obj.MainImage.YData =       YLimits;
 
                 otherwise
                    error('Type not supported.')
@@ -197,9 +214,9 @@ classdef PMMovieView
              % 1: numerical vector with X-values
              % 2: numerical vector with Y-values
             
-            obj =                           obj.updateGraphicHandles;
-            obj.CentroidLineOfActiveTrack.XData =      XCoordinates;
-            obj.CentroidLineOfActiveTrack.YData =      YCoordinates;
+            obj =                                       obj.updateGraphicHandles;
+            obj.CentroidLineOfActiveTrack.XData =       XCoordinates;
+            obj.CentroidLineOfActiveTrack.YData =       YCoordinates;
                 
         end
         
@@ -425,26 +442,9 @@ classdef PMMovieView
     
      methods (Access = private) % SETTERS INITIALIZE GRAPHIC OBJECTS;
         
-        function obj =      initializeFigure(obj, Input)
-            % INITIALIZEFIGURE 
-             switch class(Input)
-                   
-                    case 'PMImagingProjectViewer'
-                        obj.Figure=          Input.getFigure;
-
-                    case 'matlab.graphics.axis.Axes'
-                         obj.Figure =        Input.Parent;
-                        
-                        
-                    otherwise
-                        error('Wrong input.')
-                    
-              end
-            
-        end
        
         function obj =      initializeHandles(obj, Input)
-            obj =       obj.clear;
+            
             obj =       obj.initializeAxes(Input);
             obj =       obj.initializeImage;
             obj =       obj.initializeAnnotationHandles;
@@ -650,20 +650,26 @@ classdef PMMovieView
         
         function obj = updateGraphicHandles(obj)
             
-            AllValid =     min(arrayfun(@(x) isvalid(x), obj.getListOfHandles));
-            
-            if AllValid
-                
-            else
-                
-                if isvalid(obj.Figure)
-                    obj = obj.initializeHandles('');
-                else
-                   error('Cannot continue because parent figure is unspecfied.') 
+
+                try
+                    AllValid =     min(arrayfun(@(x) isvalid(x), obj.getListOfHandles));
+
+                    if AllValid
+
+                    else
+
+                        if isvalid(obj.Figure)
+                            obj = obj.initializeHandles('');
+                        else
+                           error('Cannot continue because parent figure is unspecfied.') 
+                        end
+
+
+                    end
+
+                catch
+                    warning('Could not update graphics handles.')
                 end
-                
-                
-            end
         end
         
         function ListWithHandles = getListOfHandles(obj)
@@ -721,16 +727,16 @@ classdef PMMovieView
         
         function xLimits =  getXLimitsOfImage(~, Value)
              assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
-            [~, columnsInImage, ~] =        Value.getImageDimensionsWithAppliedDriftCorrection;
+            [~, columnsInImage, ~] =        Value.getImageDimensions;
             CurrentColumnShift=             Value.getAplliedColumnShiftsForActiveFrames;
-            xLimits =                       [1+  CurrentColumnShift, columnsInImage ];
+            xLimits =                       [1+  CurrentColumnShift, columnsInImage + CurrentColumnShift ];
         end
 
         function yLimits =  getYLimitsOfImage(~, Value)
             assert(isscalar(Value) && isa(Value, 'PMMovieTracking'), 'Wrong input.')
-            [rowsInImage, ~, ~] =       Value.getImageDimensionsWithAppliedDriftCorrection;
+            [rowsInImage, ~, ~] =       Value.getImageDimensions;
             CurrentRowShift =           Value.getAplliedRowShiftsForActiveFrames;
-            yLimits =                   [1+  CurrentRowShift, rowsInImage];
+            yLimits =                   [1+  CurrentRowShift, rowsInImage + CurrentRowShift];
         end
         
         

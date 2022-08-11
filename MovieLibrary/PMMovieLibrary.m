@@ -246,7 +246,7 @@ classdef PMMovieLibrary
          end
          
          function obj =         changeMovieFileNamesFromTo(obj, OriginalName, NewName)
-            error('Something seems wrong here. Check before using the method.')
+           
             for index = 1 : obj.getNumberOfMovies
                 obj.ListhWithMovieObjects{index} = obj.ListhWithMovieObjects{index}.changeMovieFileNamesFromTo(OriginalName, NewName);
             end

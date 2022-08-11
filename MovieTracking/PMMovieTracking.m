@@ -173,7 +173,7 @@ classdef PMMovieTracking < PMChannels
                        
                             if isfield(InputStructure.MetaData, 'EntireMovie') % without meta-data this field will stay empty; (need channel number to complete this; when using channels: this object must be completed);
                                  NumberOfChannels =     InputStructure.MetaData.EntireMovie.NumberOfChannels;
-                                obj =      obj.setChannels(obj.setDefaultChannelsForChannelCount(NumberOfChannels));
+                                obj =                   obj.setChannels(obj.setDefaultChannelsForChannelCount(NumberOfChannels));
                              end
 
                             obj.CollapseAllPlanes =                     InputStructure.ViewMovieSettings.MaximumProjection;
@@ -204,6 +204,7 @@ classdef PMMovieTracking < PMChannels
 
                 otherwise
                     error('Wrong number of arguments')
+                    
             end
             
             if ~isa(obj.Interactions, 'PMInteractionsCapture')
@@ -692,6 +693,12 @@ classdef PMMovieTracking < PMChannels
             
              value = obj.sourceFileExists_Internal(MyVersion);
             
+             if value == true
+                
+             else
+                 disp('test')
+                 
+             end
         
         end
 
@@ -920,7 +927,6 @@ classdef PMMovieTracking < PMChannels
         
     end
     
- 
     methods % AUTO-DETECTION
         
         function obj = removeFromActiveMaskPixelList(obj, UserSelectedY, UserSelectedX)
@@ -1094,6 +1100,12 @@ classdef PMMovieTracking < PMChannels
     
     methods % SETTERS VIEW
        
+        
+        function obj = setActiveTrackIsHighlighted(obj, Value)
+            obj.ActiveTrackIsHighlighted = Value;
+            
+        end
+        
           function obj =      setCollapseAllTrackingTo(obj, Value)
               % SETCOLLAPSEALLTRACKINGTO set whether tracked data of all planes, or just of "visible" planes are shown;
             obj.CollapseAllTracking = Value;
@@ -1128,9 +1140,7 @@ classdef PMMovieTracking < PMChannels
             obj.Navigation =                   myImageFiles.getNavigation; 
            
             
-            MyTiffsDir =    myImageFiles.getTIFFImageFileDirectoryContents;
-            MyTiffDir = MyTiffsDir{1}{1};
-            
+             
             if obj.getNumberOfChannels ~= obj.Navigation.getMaxChannel
                     obj =                           obj.setDefaultChannelsForChannelCount(obj.Navigation.getMaxChannel);
             end
@@ -1632,7 +1642,7 @@ classdef PMMovieTracking < PMChannels
             % SETDRIFTDEPENDENTPARAMETERS sets properties that are influenced by drift-correction;
             obj.DriftCorrection =       obj.DriftCorrection.setNavigation(obj.Navigation);
             obj.Tracking =              obj.Tracking.performMethod('setTrackingAnalysis', obj.getTrackingAnalysis);
-            obj.Tracking =              obj.Tracking.performMethod('setTrackingCellForTimeWithDriftByDriftCorrection', obj.DriftCorrection);
+          %  obj.Tracking =              obj.Tracking.performMethod('setTrackingCellForTimeWithDriftByDriftCorrection', obj.DriftCorrection);
             % % this really slow and not necessary I think;
 
         end
@@ -2226,28 +2236,56 @@ classdef PMMovieTracking < PMChannels
        
         function obj =          autDetectMasksByIntensity(obj)
 
+            MySelectedFrames =                    obj.AutoCellRecognition.getSelectedFrames  ;
+            PreventDoubleTracking =                 obj.AutoCellRecognition.getPreventDoubleTracking;
+            DoubleTrackingDistance =                obj.AutoCellRecognition.getPreventDoubleTrackingDistance;
 
-            SegmentationCaptureSourceList =             obj.getSegmenationCaptureSourceListForFrames(...
-                                                            obj.AutoCellRecognition.getSelectedFrames);
+            SegmentationCaptureSourceList =             obj.getSegmenationCaptureSourceListForFramesWithAuto(...
+                                                            MySelectedFrames);
+                                                        
             obj =                                   obj.setTrackingAnalysis;     
             
             
-             obj.Tracking =               obj.Tracking.performMethod('performIntensityAutoRecognition', ...
+            obj.Tracking =               obj.Tracking.performMethod('performIntensityAutoRecognition', ...
                                                             SegmentationCaptureSourceList, ...
-                                                            obj.AutoCellRecognition.getSelectedFrames, ...
-                                                            obj.AutoCellRecognition.getPreventDoubleTracking, ...
-                                                            obj.AutoCellRecognition.getPreventDoubleTrackingDistance ...
+                                                            MySelectedFrames, ...
+                                                            PreventDoubleTracking, ...
+                                                            DoubleTrackingDistance ...
                                                             );
             
+
           
+        end
+        
+        
+         function SegmentationCaptureSourceList =        getSegmenationCaptureSourceListForFramesChannel(obj, FramesThatShouldBeTracked, ChannelIWant)
+             
+              if isempty(obj.LoadedImageVolumes)
+                obj = obj.emptyOutLoadedImageVolumes; 
+            end
+            FramesINeed =                       obj.removeAlreadyLoadedFramesFromFrames(FramesThatShouldBeTracked);
+            obj =                               obj.updateLoadedImageVolumesForFrames(FramesINeed);
+
+
+           
+            obj =                               obj.setActiveChannel(ChannelIWant);
+
+            mySegmentationCaptureSource =       obj.getDefaultSegmentationCapture;
+
+            MyActiveImages =                    arrayfun(@(x) obj.getActiveImage(x), FramesThatShouldBeTracked, 'UniformOutput', false);
+            MySegmentationLists =               arrayfun(@(x) obj.getUnfilteredSegmentationOfFrame(x), FramesThatShouldBeTracked, 'UniformOutput', false);
+
+            SegmentationCaptureSourceList =     cellfun(@(x)                        mySegmentationCaptureSource.setSegmentationOfCurrentFrame(x), MySegmentationLists, 'UniformOutput', false);
+            SegmentationCaptureSourceList =     cellfun(@(segmentation, x)          mySegmentationCaptureSource.setImageVolume(x), SegmentationCaptureSourceList, MyActiveImages); 
+
+            MyPlane =                           obj.getActivePlanesWithoutDriftCorrection;
+            SegmentationCaptureSourceList =     arrayfun(@(x) x.setActiveZCoordinate(MyPlane), SegmentationCaptureSourceList);
 
             
-            obj =                                   obj.updateTrackingDataBySegmentationList(...
-                                                            ListWithSegmentationCaptureResults, ...
-                                                            obj.AutoCellRecognition.getSelectedFrames...
-                                                            );
-
-        end
+         end
+  
+       
+        
 
         function obj =      updateTrackingDataBySegmentationList(obj, ListWithSegmentationCaptureResults, FramesThatShouldBeTracked)
 
@@ -2737,6 +2775,11 @@ classdef PMMovieTracking < PMChannels
               interactions = obj.Interactions;
         end
         
+        function obj = setShowThresholdedImage(obj, Value)
+            
+            obj.Interactions = obj.Interactions.setShowThresholdedImage(Value);
+        end
+        
          function interactions = getInteractions(obj)
              % GETINTERACTIONS returns 'PMInteractionsCapture' object;
                 error('Use getInteractionsCapture instead.')
@@ -2978,34 +3021,19 @@ classdef PMMovieTracking < PMChannels
             controller =                            PMAutoCellRecognitionController(obj.AutoCellRecognition, View);
             
         end
-  
-        function SegmentationCaptureSourceList =        getSegmenationCaptureSourceListForFrames(obj, FramesThatShouldBeTracked)
+        
+         function SegmentationCaptureSourceList =        getSegmenationCaptureSourceListForFramesWithAuto(obj, FramesThatShouldBeTracked)
             % GETSEGMENATIONCAPTURESOURCELISTFORFRAMES returns PMSegmentationCapture vector for input frames;
             % this vector can be used for various cell tracking objectives;
 
-            if isempty(obj.LoadedImageVolumes)
-                obj = obj.emptyOutLoadedImageVolumes; 
-            end
-            FramesINeed =                       obj.removeAlreadyLoadedFramesFromFrames(FramesThatShouldBeTracked);
-            obj =                               obj.updateLoadedImageVolumesForFrames(FramesINeed);
+             ChannelIWant =                      obj.AutoCellRecognition.getActiveChannel;
+            
+             
+             SegmentationCaptureSourceList =        getSegmenationCaptureSourceListForFramesChannel(obj, FramesThatShouldBeTracked, ChannelIWant);
+           
 
-
-            ChannelIWant =                      obj.AutoCellRecognition.getActiveChannel;
-            obj =                               obj.setActiveChannel(ChannelIWant);
-
-            mySegmentationCaptureSource =       obj.getDefaultSegmentationCapture;
-
-            MyActiveImages =                    arrayfun(@(x) obj.getActiveImage(x), FramesThatShouldBeTracked, 'UniformOutput', false);
-            MySegmentationLists =               arrayfun(@(x) obj.getUnfilteredSegmentationOfFrame(x), FramesThatShouldBeTracked, 'UniformOutput', false);
-
-            SegmentationCaptureSourceList =     cellfun(@(x)                        mySegmentationCaptureSource.setSegmentationOfCurrentFrame(x), MySegmentationLists, 'UniformOutput', false);
-            SegmentationCaptureSourceList =     cellfun(@(segmentation, x)          mySegmentationCaptureSource.setImageVolume(x), SegmentationCaptureSourceList, MyActiveImages); 
-
-            MyPlane =                           obj.getActivePlanesWithoutDriftCorrection;
-            SegmentationCaptureSourceList =     arrayfun(@(x) x.setActiveZCoordinate(MyPlane), SegmentationCaptureSourceList);
-
-
-        end
+         end
+        
         
     end
     
@@ -3071,6 +3099,8 @@ classdef PMMovieTracking < PMChannels
             obj.Tracking =          PMTrackingNavigationController(PMTrackingNavigation(obj.getTrackingFolder));
             try
                 obj.Tracking =      obj.Tracking.performMethod('load');
+                obj.Tracking =              obj.Tracking.permformMethod('initializeWithDrifCorrectionAndFrame', obj.DriftCorrection, obj.Navigation.getMaxFrame);
+
             catch
                 warning('Tracking was not loaded.')
             end
@@ -3654,15 +3684,15 @@ classdef PMMovieTracking < PMChannels
 
             if ~obj.Interactions.getShowThresholdedImage
 
-            image = '';
+                image = '';
 
             else
 
-            MyInteractionsCapture =         obj.getInteractionsCapture;
-            MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
-            ThresholdedImage =              MyInteractionsCapture.getImageVolume;
-            filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
-            image =                         max(filtered, [], 3);
+                MyInteractionsCapture =         obj.getInteractionsCapture;
+                MyInteractionsCapture =         MyInteractionsCapture.setMovieTracking(obj);
+                ThresholdedImage =              MyInteractionsCapture.getImageVolume;
+                filtered =                      obj.filterImageVolumeByActivePlanes(ThresholdedImage);
+                image =                         max(filtered, [], 3);
 
             end
 
@@ -3742,9 +3772,20 @@ classdef PMMovieTracking < PMChannels
             CleanedUpVolume =               MyImageVolume;
             CleanedUpVolume(:, :) =         0;
             Rectangle =                     obj.getAppliedCroppingRectangle;
+            
+             try
+            if isscalar(CleanedUpVolume)
+                
+            else
             CleanedUpVolume(Rectangle(2): Rectangle(2) + Rectangle(4)-1,Rectangle(1): Rectangle(1) + Rectangle(3) - 1) = ...
             MyImageVolume(Rectangle(2): Rectangle(2) + Rectangle(4)-1,Rectangle(1): Rectangle(1) + Rectangle(3) - 1);
-
+            end
+            
+             catch
+                 
+                warning('Could not apply rectangle.') 
+             end
+            
 
         end
 

@@ -41,7 +41,7 @@ classdef PMChannel
           function obj = set.IntensityLow(obj,Value)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value) || Value >= obj.getIntensityHigh
+            if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value) 
                error('Wrong channel input.')
             else
                 obj.IntensityLow = Value;
@@ -54,7 +54,7 @@ classdef PMChannel
            function obj = set.IntensityHigh(obj,Value)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value) || Value <= obj.getIntensityLow
+            if ~(isnumeric(Value) && isscalar(Value)) || isnan(Value)  
               error('Wrong channel input.')
             else
                 obj.IntensityHigh = Value;

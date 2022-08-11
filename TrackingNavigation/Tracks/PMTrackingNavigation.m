@@ -1196,15 +1196,15 @@ classdef PMTrackingNavigation
         function obj =              setTrackingCellForTimeWithDriftByDriftCorrection(obj, DriftCorrection)
             % SETTRACKINGCELLFORTIMEWITHDRIFTBYDRIFTCORRECTION: it seems there is something wrong with this method: check;
             fprintf('Adding drift correction:')
-            obj.TrackingCellForTimeWithDrift =  obj.getTrackingCellForTimeForFrames(NaN);
+            NoDrift =  obj.getTrackingCellForTimeForFrames(NaN);
 
             MaximumTrackedFrame =               obj.getMaxFrame;
             assert(MaximumTrackedFrame <= DriftCorrection.getNumberOfFrames, 'Drift correction does not span tracking range.')
 
             tic
-            coordinates =                   obj.extractCoordinatesFromTrackingCell(obj.TrackingCellForTimeWithDrift);
-            UpdatedCoordinates =            obj.updateCoordinatesWithDriftCoorection(coordinates, DriftCorrection);
-            obj =                           obj.applyCoordinatesToTrackingCellForTimeWithDrift(UpdatedCoordinates);
+            Coordinates_NoDrift =                   obj.extractCoordinatesFromTrackingCell(NoDrift);
+            Coordinates_WithDrift =            obj.updateCoordinatesWithDriftCoorection(Coordinates_NoDrift, DriftCorrection);
+            obj =                           obj.applyCoordinatesToTrackingCellForTimeWithDrift(Coordinates_WithDrift);
 
             fprintf(' %6.2f seconds.\n', toc)
         end
@@ -1227,6 +1227,12 @@ classdef PMTrackingNavigation
             
         end
         
+        
+        
+    end
+    
+    methods (Access = private)
+       
         function obj =                      applyCoordinatesToTrackingCellForTimeWithDrift(obj, coordinates)
            
                 for index = 1 : length(coordinates)
@@ -1465,7 +1471,6 @@ classdef PMTrackingNavigation
         
           function obj =                performIntensityAutoRecognition(obj, SourceSegmentationCaptures, MySelectedFrames, MyPreventDoubleTracking, MyPreventDoubleTrackingDistance)
                
-             
                   for FrameIndex = 1 : MySelectedFrames
 
                     fprintf('\nIntensity recognition frame %i:\n', FrameIndex)
@@ -2592,6 +2597,10 @@ classdef PMTrackingNavigation
                  [~, SegmentationList] =        obj.getTrackingCellForTimeForFrames(Frame);
 
 
+                 
+
+                 SegmentationList(:, obj.TrackIDColumn) =       SegmentationCellWithNoDrift(:, obj.TrackIDColumn);
+                 SegmentationList(:, obj.TimeColumn) =       SegmentationCellWithNoDrift(:, obj.TimeColumn);
                  SegmentationList(:, obj.PixelColumn) =       SegmentationCellWithNoDrift(:, obj.PixelColumn);
 
              else
@@ -2691,7 +2700,7 @@ classdef PMTrackingNavigation
                end
 
 
-                NoMemberShip = ~ismember(list(:,1), SelectedPlane);  
+                NoMemberShip = ~ismember(round(list(:,1)), SelectedPlane);  
                 list(NoMemberShip, :) = [];
             end
 

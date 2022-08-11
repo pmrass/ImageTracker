@@ -153,28 +153,26 @@ classdef PMMovieLibraryManager < handle
                 case 1
                     
                 
-                    obj.MovieLibrary=                       obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
-                    obj =                                   obj.setMovieControllerByLibrary;
-                    
-                   
+                    obj.MovieLibrary=                           obj.MovieLibrary.switchActiveMovieByNickName(varargin{1});
+                    obj =                                       obj.setMovieControllerByLibrary;
                     
                     assert(~isempty(obj.ActiveMovieController), 'Something went wrong. No active movie-controller could be retrieved')
                     
-                    obj.Viewer =                            obj.Viewer.updateWith(obj.MovieLibrary);
-                    obj.ActiveMovieController =             obj.ActiveMovieController.setView(obj.MovieControllerView);
-                    obj =             obj.setAutoTrackingView(obj.AutoTrackingView);
+                    obj.Viewer =                                obj.Viewer.updateWith(obj.MovieLibrary);
+                    obj.ActiveMovieController =                 obj.ActiveMovieController.setView(obj.MovieControllerView);
+                    obj =                                       obj.setAutoTrackingView(obj.AutoTrackingView);
                     
                     
-                    obj =                                   obj.forwardUpdatedInteractionsManagerToMovieController;
+                    obj =                                       obj.forwardUpdatedInteractionsManagerToMovieController;
                     
                     
                     
-                    obj.ActiveMovieController =             obj.ActiveMovieController.setMovieDependentProperties;
+                    obj.ActiveMovieController =                 obj.ActiveMovieController.setMovieDependentProperties;
 
-                    obj =                                   obj.setMovieDependentViews;
+                    obj =                                       obj.setMovieDependentViews;
                     
-                    obj =                                   obj.addCallbacksToInteractionManager;
-                    obj =                                   obj.addCallbacksToFileAndProject;
+                    obj =                                       obj.addCallbacksToInteractionManager;
+                    obj =                                       obj.addCallbacksToFileAndProject;
            
                 otherwise
                     error('Invalid number of arguments')
@@ -414,8 +412,8 @@ classdef PMMovieLibraryManager < handle
                                                         MyAutoTracking, ...
                                                         'ForceDisplay'...
                                                         );
-          obj =             obj.setAutoTrackingView(obj.TrackingAutoTrackingController.getView);
-          obj =             obj.setCallbacksForAutoTracking;                                           
+            obj =             obj.setAutoTrackingView(obj.TrackingAutoTrackingController.getView);
+            obj =             obj.setCallbacksForAutoTracking;                                           
 
         end
 
@@ -660,7 +658,7 @@ classdef PMMovieLibraryManager < handle
   
     end
     
-    methods (Access = private) % SETTERS SAVE LIBRARY FROM FILE
+    methods  % SETTERS SAVE LIBRARY FROM FILE
         
           function obj =    saveActiveMovieAndLibrary(obj)
               
@@ -700,7 +698,7 @@ classdef PMMovieLibraryManager < handle
           function obj =    letUserAddNewMovie(obj)
                  ListWithMovieFileNames =    obj.MovieLibrary.askUserToSelectMovieFileNames;
                  NickName =                  obj.MovieLibrary.askUserToEnterUniqueNickName;
-                 obj =                       obj.addNewMovie(NickName, ListWithMovieFileNames);
+                 obj =                       obj.addNewMovieWithNicknameFiles(NickName, ListWithMovieFileNames);
              
          end
          
@@ -718,85 +716,73 @@ classdef PMMovieLibraryManager < handle
 
         end
 
-        function obj =      addNewMovie(obj, Nickname, AttachedFiles)
+        function obj =      addNewMovieWithNicknameFiles(obj, Nickname, AttachedFiles)
 
-                if obj.MovieLibrary.checkWheterNickNameAlreadyExists(Nickname)
-                    warning('Nickname already exists and could therefore not be added.')
+                try
+            
+                    if obj.MovieLibrary.checkWheterNickNameAlreadyExists(Nickname)
+                        warning('Nickname already exists and could therefore not be added.')
 
-                else
-                    
-                    obj =                   obj.saveActiveMovieAndLibrary;
-                        
-                    [~, ~, Extension] = fileparts(AttachedFiles{1});
-                    
-                    switch Extension
-                       
-                        case '.czi'
-                            
-                            NumberOfPositions = PMCZIDocument([obj.MovieLibrary.getMovieFolder, '/', AttachedFiles{1}]).getNumberOfScences;
-                            if NumberOfPositions > 1
-                               assert( length(AttachedFiles) == 1, 'When using multiple positions, only one attached file allowed.')
-                            end
-                            
-                        otherwise
-                            NumberOfPositions = 1;
-                        
-                    end
-                    
-                    if NumberOfPositions == 1
-                        obj =       obj.addMovieWithOnePosition(Nickname, AttachedFiles);
-                      
                     else
-                        
-                        
-                        
-                        
-                        
-                        
+
+                        obj =                   obj.saveActiveMovieAndLibrary;
+                        [~, ~, Extension] =     fileparts(AttachedFiles{1});
+
+                        switch Extension
+
+                            case '.czi'
+
+                                NumberOfPositions = PMCZIDocument([obj.MovieLibrary.getMovieFolder, '/', AttachedFiles{1}]).getNumberOfScences;
+                                if NumberOfPositions > 1
+                                   assert( length(AttachedFiles) == 1, 'When using multiple positions, only one attached file allowed.')
+                                end
+
+                            otherwise
+                                NumberOfPositions = 1;
+
+                        end
+
+                        if NumberOfPositions == 1
+                            obj =       obj.addMovieWithOnePosition(Nickname, AttachedFiles);
+
+                        else
+                            obj =      obj.addMovieWithMultiplePositions(NumberOfPositions, Nickname, AttachedFiles);
+
+
+                        end
+
                     end
-                    
-                   
-                    
-                   
-
-
-
+                
+                catch
+                      warning('Movie could not be added for unknown reason.')
+                        
+                        
                 end
 
 
         end
         
-        function obj =      addMovieWithOnePosition(obj, Nickname, AttachedFiles)
+        function obj =      addMovieWithOnePosition(obj, MyNickName, AttachedFiles)
 
                NewMovieTracking =                   PMMovieTracking(...
-                                                            Nickname, ...
+                                                            MyNickName, ...
                                                             obj.MovieLibrary.getMovieFolder, ...
                                                             AttachedFiles, ...
                                                             obj.MovieLibrary.getPathForImageAnalysis ...
                                                             );
                      
-                NewMovieTracking =      NewMovieTracking.setPropertiesFromImageMetaData;
-
-                NewMovieController =    PMMovieController(...
-                                                                obj.Viewer, ...
-                                                                NewMovieTracking...
-                                                                );
-
-                obj.MovieLibrary =      obj.MovieLibrary.addNewEntryToMovieList(NewMovieController);
-                
-                obj =                   obj.setActiveMovieByNickName(Nickname);
-                obj =                   obj.callbackForFilterChange;
+              obj =                                     obj.addNewMovieByMovieTracking(NewMovieTracking);
 
         end
         
-        function obj =      addMovieWithMultiplePositions(obj)
+        function obj =      addMovieWithMultiplePositions(obj, NumberOfPositions, Nickname, AttachedFiles)
             
              for index = 1 : NumberOfPositions
                         
-                     CurrentNickname = [Nickname, '_Scene', num2str(index)];
+                     MyNickName =           [Nickname, '_Scene', num2str(index)];
 
                      NewMovieTracking =      PMMovieTracking(...
-                                                    CurrentNickname, ...
+                                                    MyNickName, ...
                                                     obj.MovieLibrary.getMovieFolder, ...
                                                     AttachedFiles, ...
                                                     obj.MovieLibrary.getPathForImageAnalysis ...
@@ -804,19 +790,27 @@ classdef PMMovieLibraryManager < handle
                                                 
                     NewMovieTracking =          NewMovieTracking.setWantedScene(index);
 
-                    NewMovieTracking =          NewMovieTracking.setPropertiesFromImageMetaData;
-
-                    NewMovieController =        PMMovieController(...
-                                                                    NewMovieTracking ...
-                                                                    );
-
-                    obj.MovieLibrary =          obj.MovieLibrary.addNewEntryToMovieList(NewMovieController);   
-                    obj =                       obj.setActiveMovieByNickName(CurrentNickname);
-                    obj =                       obj.callbackForFilterChange;
-                    obj =                       obj.saveActiveMovieAndLibrary;
+                    
+                    
+                    obj =                       obj.addNewMovieByMovieTracking(NewMovieTracking);
  
              end
 
+        end
+        
+        function obj = addNewMovieByMovieTracking(obj, NewMovieTracking)
+              NewMovieTracking =                  NewMovieTracking.setPropertiesFromImageMetaData;
+
+               NewMovieController =                 PMMovieController(...
+                                                                    NewMovieTracking ...
+                                                                    );
+
+                obj.MovieLibrary =                  obj.MovieLibrary.addNewEntryToMovieList(NewMovieController);
+                
+                obj =                               obj.setActiveMovieByNickName(NewMovieTracking.getNickName);
+                obj =                               obj.callbackForFilterChange;
+                obj =                               obj.saveActiveMovieAndLibrary;
+                
         end
 
     end
@@ -1047,11 +1041,11 @@ classdef PMMovieLibraryManager < handle
         function obj =      updateAfterChangingMovieFolder(obj)
             
            
-            obj =                    obj.saveActiveMovieAndLibrary;
-           obj =                              obj.setMovieControllerByLibrary;
-                 obj.ActiveMovieController =        obj.ActiveMovieController.setView(obj.MovieControllerView);
-                 obj.ActiveMovieController =        obj.ActiveMovieController.initializeViews;
-            obj =                    obj.setInfoTextView;
+            obj =                               obj.saveActiveMovieAndLibrary;
+            obj =                               obj.setMovieControllerByLibrary;
+            obj.ActiveMovieController =         obj.ActiveMovieController.setView(obj.MovieControllerView);
+            obj.ActiveMovieController =         obj.ActiveMovieController.initializeViews;
+            obj =                               obj.setInfoTextView;
         end
         
 
@@ -1074,7 +1068,9 @@ classdef PMMovieLibraryManager < handle
             missingFiles =                          obj.MovieLibrary.getFileNamesOfUnincorporatedMovies;
             for FileIndex= 1 : size(missingFiles,1)
                 CurrentFileName =       missingFiles{FileIndex,1};
-                obj =                   obj.addNewMovie(obj.convertFileNameIntoNickName(CurrentFileName), {CurrentFileName});
+                obj =                   obj.addNewMovieWithNicknameFiles(...
+                                                        obj.convertFileNameIntoNickName(CurrentFileName), ...
+                                                        {CurrentFileName});
             end
         end
 

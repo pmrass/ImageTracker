@@ -49,6 +49,8 @@ classdef PMImageTimeSeriesView
         SelectedTracksAreVisible = false
         RestingTracksAreVisible = false
         MasksAreVisible = false
+        
+        
        
         
     end
@@ -603,6 +605,7 @@ classdef PMImageTimeSeriesView
             else
                     completeCoordinateLists =       arrayfun(@(x)       x.getMetricCoordinatesOfActiveTrack, obj.getMovieTrackingForEachPanel,  'UniformOutput', false); 
             end
+            
         end
         
         function CoordinateListForTrackSegments=    getCoordinatesOfTrackSegments(obj)
@@ -611,8 +614,8 @@ classdef PMImageTimeSeriesView
                 CoordinateListForTrackSegments = cell(0,3);
                 
             else
-                SegmentsForEachPanel = obj.getFramesForTrackSegmentsOfEachPanel;
-                MoviePanels = obj.getMovieTrackingForEachPanel;
+                SegmentsForEachPanel =      obj.getFramesForTrackSegmentsOfEachPanel;
+                MoviePanels =               obj.getMovieTrackingForEachPanel;
                 
                 for index = 1 : length(SegmentsForEachPanel)
                     CurrentSegments = SegmentsForEachPanel{index};
@@ -700,11 +703,8 @@ classdef PMImageTimeSeriesView
             movieTracking =              arrayfun(@(x)                 x.setScaleBarVisibility(obj.ScaleBarAnnotationIsVisible), movieTracking);
             movieTracking =              arrayfun(@(x)                 x.setScaleBarSize(obj.ScaleBarSize), movieTracking);
             
-            
             obj.MovieControllers =      arrayfun(@(x, y) x.setLoadedMovie(y, 'DoNotEmtpyOut'), obj.MovieControllers, movieTracking);
-
-            
-            
+ 
         end
         
     end
@@ -738,7 +738,7 @@ classdef PMImageTimeSeriesView
         
     end
 
-    methods (Access = private) % retrieve model data;
+    methods  % retrieve model data;
         
         function HighlightedFramesForEachPanel = getFramesForTrackSegmentsOfEachPanel(obj, varargin)
             % GETFRAMESFORTRACKSEGMENTSOFEACHPANEL
