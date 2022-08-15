@@ -1080,31 +1080,21 @@ classdef PMTrackingNavigation
               % SETTRACKINFOLISTFROMSCRATCH cleans up tracking-info and segmentation addresses;
             % orders tracks in info list, adds missing IDs to info-list, resets segmentation addresses for all tracked information;
             tic
-            fprintf('Set tracking info from scratch: \n')
-            
-              obj.ActiveTrackID  =              NaN;
-      
-        
+            fprintf('Set tracking info from scratch: ')
             
              obj.TrackInfoList = '';
              
              ListWithTrackIDs =     (obj.getUniqueTrackIDsFromTrackingCell);
              
-              obj.SelectedTrackIDs =            ListWithTrackIDs';
-       
-             
          
-            obj.TrackInfoList =       arrayfun(@(x) PMTrackInfo(x), (1 : max(ListWithTrackIDs))', 'UniformOutput', false);
+            obj.TrackInfoList =       arrayfun(@(x) PMTrackInfo(x), (1 : max(ListWithTrackIDs)', 'UniformOutput', false);
 
             
             
             for TrackID =  ListWithTrackIDs'
-                tic
-                fprintf('TrackID %i: ', TrackID)
                 obj = obj.updateSegmentationAddressInTrackInfoListForIDs(TrackID);
-                fprintf('%6.5f seconds.\n', toc)
             end
-            
+             fprintf('%6.5f seconds.\n', toc)
         end
         
         function obj =      generalCleanup(obj)
@@ -1462,7 +1452,6 @@ classdef PMTrackingNavigation
                  RowsToChange = MyTrackIDs == MyUniqueTrackIDs(index);
                  
                  pooled(RowsToChange, obj.TrackIDColumn) = {MyNewUniqueTrackIDs(index)};
-                 pooledWithDrift(RowsToChange, obj.TrackIDColumn) = {MyNewUniqueTrackIDs(index)};
                  
              end
              

@@ -1,7 +1,6 @@
 classdef PMMovieLibrary
     %PMMOVIELIBRARY manage movies for tracking analysis
     %   Saves filename and nickname information of attached movie-series so that all movie-related data can be loaded from file;
-    % also has ListWithLoadedImageData that saves previously loaded image data, useful when switching between different movies to avoid reloading data repeatedly from file;
     
 
     properties (Access = private) % FILE-MANAGEMENT
@@ -22,7 +21,7 @@ classdef PMMovieLibrary
     
     properties (Access = private) % MOVIE-LIST
        
-        SelectedNickname =                                  ''
+          SelectedNickname =                                  ''
         ListWithMovieObjectSummary =                        cell(0,1); % summary of movie objects; this is stored in library file, and needed for example to filter files by movie vs. Z-stack etc;
         ListhWithMovieObjects =                             cell(0,1); % list with complete information; this is stored in memory, not in library file; files are created for individual movie analyses
         ListWithLoadedImageData =                           cell(0,1);
@@ -514,10 +513,12 @@ classdef PMMovieLibrary
             assert(isscalar(ActiveMovieController) && isa(ActiveMovieController, 'PMMovieController'), 'Wrong input.')
             assert(~obj.checkWheterNickNameAlreadyExists(ActiveMovieController.getNickName), '[Nickname already exists. Choose a different one.')
 
+            MyLoadedImageVolumes =          ActiveMovieController.getLoadedMovie.getLoadedImageVolumes;
             SelectedRow =                   obj.getNumberOfMovies + 1;
             obj =                           obj.updateMovieIndexWith(...
                                                 SelectedRow, ...
-                                                ActiveMovieController.getLoadedMovie ...
+                                                ActiveMovieController.getLoadedMovie, ...
+                                                MyLoadedImageVolumes...
                                                 );
                                             
             obj =                           obj.sortByNickName;
@@ -604,9 +605,9 @@ classdef PMMovieLibrary
             assert(isscalar(ActiveMovieController) && isa(ActiveMovieController, 'PMMovieController'), 'Wrong input.')
            
             try
-               
+                MyLoadedImageVolumes =          ActiveMovieController.getLoadedImageVolumes;
                 SelectedRow =                   find(obj.getRowForNickName(ActiveMovieController.getNickName));
-                obj =                           obj.updateMovieIndexWith(SelectedRow, ActiveMovieController.getLoadedMovie);
+                obj =                           obj.updateMovieIndexWith(SelectedRow, ActiveMovieController.getLoadedMovie, MyLoadedImageVolumes);
                 
             catch
                    warning('Library could not be saved. Reason: Not allPropertiesAreValid')
@@ -789,21 +790,20 @@ classdef PMMovieLibrary
 
     end
     
-    methods % GETTERS: MOVIECONTROLLER
+    methods % GETTERS MOVIECONTROLLER/ MOVIETRACKING
         
         function myMovieController =        getActiveMovieController(obj, varargin)
             % GETACTIVEMOVIECONTROLLER get active PMMovieTracking;
             % takes 0 or 1 arguments:
-            % returns a PMMovieController object with the following properties:
+            % return movie controller for selected nickanme
             % the movie-controller is set from scratch and comes with movie-specific properties;
-            % PMovieTracking set from file or loaded from memory;
-            % if any image-volumes were already stored in PMMovieLibrary, these images will be set on the PMMovieController;
+            % also sets loaded movie, image-volumes, export-folder and interaction folder;
 
             assert(~isempty(obj.ListhWithMovieObjects) && ~isempty(obj.SelectedNickname), 'Cannot create movie controller, because library has nof information about movies.')  
             switch length(varargin)
 
                 case 0
-                   myMovieTracking = obj.getActiveMovieTracking;
+                    myMovieController =     PMMovieController(obj.getActiveMovieTracking);
                 case 1
                     error('Not supported anymore.')
 
@@ -816,11 +816,9 @@ classdef PMMovieLibrary
             if isempty(Input)
                 
             else
-                 myMovieTracking =     myMovieTracking.setLoadedImageVolumes(Input); 
+                 myMovieController =     myMovieController.setLoadedImageVolumes(Input); 
             end
-            
-            
-            myMovieController =     PMMovieController(myMovieTracking);
+
             myMovieController =     myMovieController.updateWith(obj);
             myMovieController =     myMovieController.setExportFolder(obj.getExportFolder);
             myMovieController =     myMovieController.setInteractionsFolder(obj.getInteractionFolder);
@@ -828,19 +826,12 @@ classdef PMMovieLibrary
 
         end
 
-       
-          
-        
-    end
-    
-    methods (Access = private)
-       
-           function myMovieTracking=           getActiveMovieTracking(obj, varargin)
+        function myMovieTracking=           getActiveMovieTracking(obj, varargin)
             % GETACTIVEMOVIETRACKING returns PMMovieTracking of active movie entry;
             % takes 0 or 1 arguments:
             % 1: character string with wanted version (default: current version), only relevant when loading from file, otherwise just taking what's in memory;
-            % if the movie was NOT loaded before: loads data from file;
-            % if the movie WAS already loaded: simply get previously loaded MovieTracking from memory;
+            % gets from memory (if available);
+            % otherwise uses getActiveMovieTrackingFromFile to get object from file;
             
             switch length(varargin)
                
@@ -901,13 +892,8 @@ classdef PMMovieLibrary
 
 
         end
-      
         
-    end
-    
-    methods % GETTERS: MOVIE-TRACKING
-       
-           function myMovieTracking =          getMovieTrackingForNickNames(obj, NickNames)
+        function myMovieTracking =          getMovieTrackingForNickNames(obj, NickNames)
             MyRows =            obj.getLibraryRowsOfNicknames(NickNames);
             myMovieTracking =     obj.ListhWithMovieObjects(MyRows,:);
         end
@@ -915,7 +901,7 @@ classdef PMMovieLibrary
         function myMovieTracking =          getMovieWithNickName(obj, Nickname)
             myMovieTracking  =      obj.ListhWithMovieObjects{strcmp(obj.getAllNicknames, Nickname)};    
         end
-   
+        
         
     end
     
@@ -1270,17 +1256,16 @@ classdef PMMovieLibrary
     
     methods (Access = private) % SETTERS MOVIELIST: updateMovieIndexWith;
        
-        function obj =      updateMovieIndexWith(obj, SelectedRow, MyLoadedMovie)
+        function obj =      updateMovieIndexWith(obj, SelectedRow, MyLoadedMovie, MyLoadedImageVolumes)
             
             assert(isnumeric(SelectedRow) && isscalar(SelectedRow) && ~isnan(SelectedRow), 'Selected row is not valid')
             assert(isa(MyLoadedMovie, 'PMMovieTracking'), 'Movie controller has no LoadedMovie attached.')
             assert(ischar(MyLoadedMovie.getNickName), 'LoadedMovie has no nickname.')
             assert(~isempty(MyLoadedMovie.getLinkedMovieFileNames), 'LoadedMovie has no filenames for image files attached.')
 
-             
             obj.ListWithMovieObjectSummary{SelectedRow,1} =     PMMovieTrackingSummary(MyLoadedMovie);
             obj.ListhWithMovieObjects{SelectedRow,1} =          MyLoadedMovie;
-            obj.ListWithLoadedImageData{SelectedRow,1} =        MyLoadedMovie.getLoadedImageVolumes;
+            obj.ListWithLoadedImageData{SelectedRow,1} =        MyLoadedImageVolumes;
             obj.FilterList(SelectedRow, 1)=                     true;
             
          end

@@ -137,7 +137,7 @@ classdef PMMovieLibraryManager < handle
             % only works when precisely one movie is selected 
             SelectedNicknames =     obj.Viewer.getSelectedNicknames;
             if length(SelectedNicknames) == 1
-             %   obj =    obj.saveActiveMovieAndLibrary;
+                obj =    obj.saveActiveMovieAndLibrary;
                 obj =    obj.setActiveMovieByNickName(SelectedNicknames{1});
             end
                     
@@ -340,11 +340,15 @@ classdef PMMovieLibraryManager < handle
                     end
                     
               
+                    
+                    
+                    
+
                 otherwise
                      assert(ischar(varargin{1}), 'Wrong input.')
                      MyMethod = varargin{1};
-                     MyParameters = varargin{2:end};
-                    Output = obj.MovieLibrary.(MyMethod)(MyParameters);
+                     
+                    Output = obj.MovieLibrary.(MyMethod)(varargin{:});
                     if isa(Output, 'PMMovieLibrary')
                         obj.MovieLibrary = Output;
                     end
@@ -536,7 +540,7 @@ classdef PMMovieLibraryManager < handle
                                     FileName ...
                                     );
 
-           % obj =                       obj.saveActiveMovieAndLibrary;
+            obj =                       obj.saveActiveMovieAndLibrary;
             obj =                       obj.setEmpyActiveMovieController;                
             obj.savePreviousSettings; 
             obj =                       obj.updateFilterView;
@@ -675,7 +679,7 @@ classdef PMMovieLibraryManager < handle
         [FileName, SelectedPath] =    uiputfile;
         if SelectedPath== 0
         else
-       % obj =       obj.saveActiveMovieAndLibrary;
+        obj =       obj.saveActiveMovieAndLibrary;
         obj =       obj.changeToNewLibraryWithFileName([SelectedPath, FileName]);
         end
 
@@ -698,7 +702,7 @@ classdef PMMovieLibraryManager < handle
                 if isempty(Path)
                 else
                     
-                %    obj =                       obj.saveActiveMovieAndLibrary;
+                    obj =                       obj.saveActiveMovieAndLibrary;
                     obj.MovieLibrary =          PMMovieLibrary(Path, 'LoadMasks');
                     obj =                       obj.saveActiveMovieAndLibrary;
                     obj =                       obj.setEmpyActiveMovieController;                

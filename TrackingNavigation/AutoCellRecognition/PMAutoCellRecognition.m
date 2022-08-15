@@ -333,10 +333,12 @@ classdef PMAutoCellRecognition
         end
 
     end
-
-    methods (Access = private) % GETTERS
+    
+  
+    methods  % GETTERS
         
-        function number =           getNumberOfChannels(obj)
+       function number =           getNumberOfChannels(obj)
+            assert(~isempty(obj.ImageSequence), 'No image sequence set. Unknown channel number.')
            number = size(obj.ImageSequence{1},5);
         end
         

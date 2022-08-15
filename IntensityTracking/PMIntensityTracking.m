@@ -103,8 +103,12 @@ classdef PMIntensityTracking
                 
                 MyImage = obj.MovieTracking.getLoadedImageVolumes(Frame);
                 
-                MedianIntensity = median(arrayfun(@(row, column) MyImage(row, column), Coordinates(:,1), Coordinates(:, 2)));
                 
+                try
+                MedianIntensity = median(arrayfun(@(row, column) MyImage(row, column), Coordinates(:,1), Coordinates(:, 2)));
+                catch
+                   error('Something went wrong.') 
+                end
                 intensities(timeIndex, 1) = TrackID;
                 intensities(timeIndex, 2) = Frame;
                 intensities(timeIndex, 3) = MedianIntensity;

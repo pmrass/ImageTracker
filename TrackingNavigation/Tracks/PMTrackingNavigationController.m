@@ -130,6 +130,11 @@ classdef PMTrackingNavigationController
     
     methods % GETTERS FROM MODEL
        
+        function model = getModel(obj)
+            model = obj.Model;
+            
+        end
+        
          function Value = get(obj, Value, varargin)
             Value = obj.Model.get(Value, varargin{:});
             

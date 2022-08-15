@@ -81,11 +81,15 @@ classdef PMImage
         
         function obj =      removeSmallObjects(obj, MinimumSize)
             
-            ClearedImage =          bwareaopen(obj.Image, MinimumSize);
-            ClearedImage =          cast(ClearedImage, class( obj.Image));
-            ConvertedImage  =       ClearedImage .* obj.Image;
-            obj.Image =             ConvertedImage;
+            ClearedImage =   bwareaopen(obj.Image, MinimumSize);
             
+            ClearedImage = cast(ClearedImage, class( obj.Image));
+            
+            ConvertedImage  =   ClearedImage .* obj.Image;
+            
+             
+            
+            obj.Image =  ConvertedImage;
         end
         
         function obj =      filter(obj, varargin)

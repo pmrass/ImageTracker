@@ -884,7 +884,7 @@ classdef PMSegmentationCapture
                
                
                
-               Sizes =                                      cellfun(@(x) length(x), row');
+               Sizes =                                      cellfun(@(x) length(x), row);
                myRefShape =                                obj.getShapeForCoordinateList('');
 
                 MinimumSizeForPreClear =                    myRefShape.getMinimumSize;
@@ -893,12 +893,8 @@ classdef PMSegmentationCapture
                DeleteSmall = Sizes < MinimumSizeForPreClear;
                DeleteLarge = Sizes > MaximumSizeForPreClear;
                
-               Delete = max([DeleteSmall, DeleteLarge], [], 2);
+               Delete = max([DeleteSmall, DeleteLarge]);
                
-               row(Delete) = [];
-                col(Delete) = [];
-                
-                fprintf('(%i cells)', length(col))
                
                 ListWithSegmentationCaptures =              cellfun(@(row, col) PMSegmentationCapture([row, col]), row, col); %slow;
            %     ListWithSegmentationCaptures =              obj.cleanupListWithSegmentationCaptures(ListWithSegmentationCaptures);

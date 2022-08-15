@@ -761,14 +761,13 @@ classdef PMMovieController < handle
     
     methods % SETTERS IMAGE VOLUMES
         
-        
         function obj =      updateLoadedImageVolumes(obj, Value)
-            
            obj.LoadedMovie =    obj.LoadedMovie.updateLoadedImageVolumes(Value); 
         end
         
         function obj =     setLoadedImageVolumes(obj, Value)
           % SETLOADEDIMAGEVOLUMES sets LoadedImageVolumes (which contains stored images of source files so that they don't have to be loaded from file each time);
+          error('Do not use. Set LoadedMovie directly.')
           obj.LoadedMovie =     obj.LoadedMovie.setLoadedImageVolumes(Value);
         end
 
@@ -811,6 +810,7 @@ classdef PMMovieController < handle
         function volumes =              getLoadedImageVolumes(obj)
             % GETLOADEDIMAGEVOLUMES get access to all image-volumes that are current stored in cash;
             % this is used by PMMovieLibrary which keeps track of all movies so that the movie does not have to be reloaded as soon as the user changes the movie;
+            error('Do not use. Get directly from LoadedMovie.')
             volumes =  obj.LoadedMovie.getLoadedImageVolumes;
         end
         
@@ -1026,12 +1026,9 @@ classdef PMMovieController < handle
         end
         
         function obj =      setMovieDependentProperties(obj)
-            
-            OldStructure = obj.LoadedMovie.getTracking.getAutoTracking.getPropertiesStructure
-            
-            
+
                                                             
-            obj.LoadedMovie =                           obj.LoadedMovie.setAutoCellRecognition;   
+            obj.LoadedMovie =                           obj.LoadedMovie.initializeAutoCellRecognition;   
                
         end
          
@@ -1485,49 +1482,47 @@ classdef PMMovieController < handle
                 );
         end
 
-        function [obj] =           channelViewClicked(obj,~,~)
+        function [obj] =            channelViewClicked(obj,~,~)
            obj.LoadedMovie =    obj.LoadedMovie.setActiveChannel(getSelectedChannel(obj.Views));
            obj =                obj.updateControlElements;
         end
 
-        function [obj] =           channelLowIntensityClicked(obj,~,~)
+        function [obj] =            channelLowIntensityClicked(obj,~,~)
                 obj.LoadedMovie =       obj.LoadedMovie.resetChannelSettings(getMinimumIntensityOfSelectedChannel(obj.Views), 'ChannelTransformsLowIn');
                 obj =                   obj.updateMovieView;
                 obj =                   obj.updateControlElements;
         end
 
-        function [obj] =           channelHighIntensityClicked(obj,~,~)
+        function [obj] =            channelHighIntensityClicked(obj,~,~)
             obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getMaximumIntensityOfSelectedChannel(obj.Views), 'ChannelTransformsHighIn');
             obj =                   obj.updateMovieView;
             obj =                   obj.updateControlElements;
         end
 
-        function [obj] =          channelColorClicked(obj,~,~)
+        function [obj] =            channelColorClicked(obj,~,~)
             obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getColorOfSelectedChannel(obj.Views), 'ChannelColors');
             obj =           obj.updateMovieView;
             obj =           obj.updateControlElements;
         end
 
-        function [obj] =          channelCommentClicked(obj,~,~)
+        function [obj] =            channelCommentClicked(obj,~,~)
             obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getCommentOfSelectedChannel(obj.Views), 'ChannelComments');
             obj =           obj.updateMovieView;
             obj =           obj.updateControlElements;
         end
 
-        function [obj] =          channelOnOffClicked(obj,~,~)
+        function [obj] =            channelOnOffClicked(obj,~,~)
             obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getVisibilityOfSelectedChannel(obj.Views), 'SelectedChannels');   
-            obj =           obj.updateMovieView;
-            obj =           obj.updateControlElements;
+            obj =                   obj.updateMovieView;
+            obj =                   obj.updateControlElements;
 
         end
 
-        function [obj] =         channelReconstructionClicked(obj,~,~)
+        function [obj] =            channelReconstructionClicked(obj,~,~)
             obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getFilterTypeOfSelectedChannel(obj.Views), 'ChannelReconstruction');
-            obj.LoadedMovie =     obj.LoadedMovie.emptyOutLoadedImageVolumes;
-            obj =           obj.updateMovieViewImage;
-            obj =           obj.updateMovieView;
-
-            obj =           obj.updateControlElements;    
+            obj.LoadedMovie =       obj.LoadedMovie.emptyOutLoadedImageVolumes;
+            obj =                   obj.updateMovieView;
+            obj =                   obj.updateControlElements;    
         end
 
 
