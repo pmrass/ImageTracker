@@ -1291,6 +1291,19 @@ classdef PMTrackingNavigation
     
     methods % SETTERS TRACKINGCELLFORTIME: ADD SEGMENTATION DELETE TRACKS;
 
+        
+        function obj = deleteAllTracks(obj)
+              obj.ActiveTrackID  =              NaN;
+              obj.ActiveFrame =                 1;
+        
+        obj.SelectedTrackIDs =            zeros(0,1);
+
+        obj.TrackingCellForTime  = cell(0,1);% by far the most important data-piece; pretty much everything else can be reconstructed or is not that important;
+        obj.TrackingCellForTimeWithDrift = cell(0,1);
+            obj.TrackInfoList =               cell(0,1);
+        
+        end
+        
         function obj =      addSegmentation(obj, SegmentationCapture)
         % ADDSEGMENTATION: add new tracking content to object:
         % takes one argument:
