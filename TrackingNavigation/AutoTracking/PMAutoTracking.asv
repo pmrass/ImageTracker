@@ -73,8 +73,6 @@ classdef PMAutoTracking
                         % obj.ShowDetailedMergeInformation =              Value.getShowDetailedMergeInformation;
                         obj.FirstPassDeletionFrameNumber =              Value.FirstPassDeletionFrameNumber;
                         obj.AutoTrackingConnectionGaps =                Value.AutoTrackingConnectionGaps;
-                        
-                   
 
             otherwise
                  error('Wrong input.')
@@ -198,15 +196,15 @@ classdef PMAutoTracking
                 while ~isempty(PostFrameSegmentationList) && ~isempty(PreFrameSegmentationList) % when all cells in post-frame have been tracked (or we ran out of pre cells stop this pair;
 
                     % calculate minimum distance between consecutive tracks (and continue only if below limit);
-                    DistanceMatrix =                    pdist2(cell2mat(PreFrameSegmentationList(:,3:5)), cell2mat(PostFrameSegmentationList(:,3:5)));
-                    minDistance =                       min(DistanceMatrix(:));
+                    DistanceMatrix =            pdist2(cell2mat(PreFrameSegmentationList(:,3:5)), cell2mat(PostFrameSegmentationList(:,3:5)));
+                    minDistance =                     min(DistanceMatrix(:));
 
                      if minDistance > obj.MaximumAcceptedDistanceForAutoTracking
                         break
                      end
 
-                    [rowsInPreTrack, rowsInPostTrack] =         find(DistanceMatrix == minDistance);
-                    NumberOfEqualDistances =                    size(rowsInPreTrack,1);
+                    [rowsInPreTrack, rowsInPostTrack] =   find(DistanceMatrix == minDistance);
+                    NumberOfEqualDistances =    size(rowsInPreTrack,1);
                     for PairIndex = 1 : NumberOfEqualDistances
 
                         PreTrackID =                                    PreFrameSegmentationList{rowsInPreTrack(PairIndex),1};
@@ -228,6 +226,8 @@ classdef PMAutoTracking
 
                 CollectedPreTrackIDs(NumberOfFoundPairs : end, :) =             [];
                 CollectedPostTrackIDs(NumberOfFoundPairs : end, :) =            [];
+
+
 
         end
 

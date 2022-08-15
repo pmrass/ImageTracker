@@ -30,6 +30,7 @@ classdef PMRGBImage
                     obj.ListWithMinimumIntensities_Select=      varargin{3};
                     obj.ListWithMaximumIntensities_Select=      varargin{4};
                     obj.ListWithChannelColors_Select =          varargin{5};
+                    
                 otherwise
                     error('Wrong input.')
                 
@@ -82,29 +83,57 @@ classdef PMRGBImage
     
     methods % GETTERS:
  
+        function imageVolume = getImageVolumeWithAdjustedIntensities(obj)
+            
+            
+            imageVolume = obj.SourceImageVolume;
+            
+             for ChannelIndex = 1 : size(imageVolume, 4)
+                 
+                 for planeIndex = 1 : size(imageVolume, 3)
+                 
+                    imageVolume(:, :, planeIndex, ChannelIndex)=          imadjust(imageVolume(:, :, planeIndex, ChannelIndex), [obj.ListWithMinimumIntensities_Select(ChannelIndex)  obj.ListWithMaximumIntensities_Select(ChannelIndex)], [0 1]);
+
+                 end
+                    
+             end
+            
+            
+        end
+        
+   
+        
         function rgbImage =             getImage(obj)
             % GETIMAGE returns rgb image determined by object state:
            
-            rgbImage=     cast(0, obj.getImagePrecision(obj.SourceImageVolume));
-            rgbImage(size(obj.SourceImageVolume,1), size(obj.SourceImageVolume,2), 3)=                   0;
+           
 
             if isempty(obj.SourceImageVolume) % if no image remains: return black;
                 
             else
 
-                for ChannelIndex= 1 : length(obj.ListWithMinimumIntensities_Select) % go through all channels of image:
-                    
-                    ImageToAdd=          obj.SourceImageVolume(:, :, :, obj.indicesOfSourceChannels(ChannelIndex)); 
-
-                    ImageToAdd =         max(ImageToAdd(:,:,:), [], 3);
-                    
-                    ImageToAdd=          imadjust(ImageToAdd, [obj.ListWithMinimumIntensities_Select(ChannelIndex)  obj.ListWithMaximumIntensities_Select(ChannelIndex)], [0 1]);
-
-                    rgbImage =            obj.addImageWithColor(rgbImage, ImageToAdd, obj.ListWithChannelColors_Select{ChannelIndex});
-                end
+               imageVolume =        obj.getImageVolumeWithAdjustedIntensities; 
+               rgbImage =            obj.getRgbImageFromImageVolume(imageVolume);
 
             end
         end
+        
+     function rgbImage =            getRgbImageFromImageVolume(obj, imageVolume)
+
+          rgbImage=     cast(0, obj.getImagePrecision(imageVolume));
+          rgbImage(size(imageVolume,1), size(imageVolume,2), 3)=                   0;
+         
+          for ChannelIndex= 1 : length(obj.ListWithChannelColors_Select) % go through all channels of image:
+                    
+                    ImageOfSourceChannel=          imageVolume(:, :, :, obj.indicesOfSourceChannels(ChannelIndex)); 
+                    ImageOfSourceChannel =          max(ImageOfSourceChannel(:,:,:), [], 3);
+                    rgbImage =                      obj.addImageWithColor(rgbImage, ImageOfSourceChannel, obj.ListWithChannelColors_Select{ChannelIndex});
+           end
+         
+     end
+
+        
+             
         
         function numberOfPlanes =       getNumberOfChannels(obj)
             numberOfPlanes = size(obj.SourceImageVolume, 5);

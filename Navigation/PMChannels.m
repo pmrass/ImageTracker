@@ -1,6 +1,6 @@
 classdef PMChannels
-    %PMCHANNELS Summary of this class goes here
-    %   Detailed explanation goes here
+    %PMCHANNELS To manage properties of channels of image volumne
+    %   setting visibility, intensity levels, colors, etc. of channels of an image-volume;
     
     properties (Access = private)
        ActiveChannel = 1
@@ -12,7 +12,8 @@ classdef PMChannels
         
         function obj = PMChannels(varargin)
             %PMCHANNELS Construct an instance of this class
-            %   Detailed explanation goes here
+            % takes 0 or 1 arguments:
+            % 1:
             NumberOfArguments = length(varargin);
             switch NumberOfArguments
                 case 0
@@ -101,26 +102,33 @@ classdef PMChannels
     methods % SETTERS: ACTIVE CHANNEL
         
         function obj = setVisible(obj, Value)
+            % SETVISIBLE set visibility of active channel;
+            % 1: logical scalar
             obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setVisible(Value);
         end
         
         function obj = setIntensityLow(obj, Value)
+            % SETINTENSITYLOW set low intensity of active channel;
              obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setIntensityLow(Value);
         end
         
         function obj = setIntensityHigh(obj, Value)
+            % SETINTENSITYHIGH set low intensity of active channel;
              obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setIntensityHigh(Value);
         end
         
         function obj = setColor(obj, Value)
+            % SETCOLOR set low intensity of active channel;
             obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setColor(Value);
         end
         
         function obj = setComment(obj, Value)
+             % SETCOMMENT set low intensity of active channel;
             obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setComment(Value);
         end
         
         function obj = setReconstructionType(obj, Value)
+             % SETRECONSTRUCTIONTYPE set reconstruction type (filter) of active channel;
            obj.Channels(obj.ActiveChannel) = obj.Channels(obj.ActiveChannel).setReconstructionType(Value);
         end
  
@@ -172,17 +180,30 @@ classdef PMChannels
         
     end
     
-    methods % GETTERS for visible channels: this is called by PMMovieTracking when processing image volume for display;
+    methods % GETTERS: ALL CHANNELS
         
-        function intensities = getIntensityLowOfVisibleChannels(obj)
-            intensities = arrayfun(@(x) x.getIntensityLow, obj.Channels(obj.getIndicesOfVisibleChannels));
+         function intensities = getIntensityLowOfAllChannels(obj)
+            intensities = arrayfun(@(x) x.getIntensityLow, obj.Channels);
         end
+
+        function intensities = getIntensityHighOfAllChannels(obj)
+             intensities = arrayfun(@(x) x.getIntensityHigh, obj.Channels);
+        end
+
+        
+        
+    end
+    
+    methods % GETTERS for visible channels: this is called by PMMovieTracking when processing image volume for display;
         
         function indices = getIndicesOfVisibleChannels(obj)
             indices = find(arrayfun(@(x) x.getVisible, obj.Channels));
         end
         
-        
+        function intensities = getIntensityLowOfVisibleChannels(obj)
+            intensities = arrayfun(@(x) x.getIntensityLow, obj.Channels(obj.getIndicesOfVisibleChannels));
+        end
+
         function intensities = getIntensityHighOfVisibleChannels(obj)
              intensities = arrayfun(@(x) x.getIntensityHigh, obj.Channels(obj.getIndicesOfVisibleChannels));
         end
@@ -201,7 +222,7 @@ classdef PMChannels
         end
 
         function intensities = getReconstructionTypeOfVisibleChannels(obj)
-            intensities = arrayfun(@(x) x.getComment, obj.Channels(obj.getReconstructionType), 'UniformOutput', false);
+            intensities = arrayfun(@(x) x.getReconstructionType, obj.Channels(obj.getIndicesOfVisibleChannels), 'UniformOutput', false);
         end
         
         

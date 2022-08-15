@@ -2336,10 +2336,7 @@ classdef PMMovieTracking < PMChannels
              obj.Tracking =     obj.Tracking.performMethod('autTrackingProcedure', obj.DriftCorrection, obj.SpaceCalibration, obj.TimeCalibration);
         end
         
-        function obj =      trackByMinimizingDistances(obj)
-            
-           obj.Tracking = obj.Tracking.performMethod('trackByMinimizingDistancesOfTracks',  obj.DriftCorrection, obj.SpaceCalibration, obj.TimeCalibration);
-        end
+        function obj = 
         
          
     end
@@ -2415,7 +2412,6 @@ classdef PMMovieTracking < PMChannels
             end
 
 
-            TrackIDsToShow = unique(TrackIDsToShow);
         end
         
         function IdOfActiveTrack =      getIdOfActiveTrack(obj)
