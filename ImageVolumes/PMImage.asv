@@ -34,9 +34,22 @@ classdef PMImage
         
         
     end
+
+    methods % PROCESSING
+
+
+        function image = getImageWithBorderForCoordinates(obj, YCoordindates, XCoordinates)
+
+
+        end
+
+
+    end
     
     methods % GETTERS
        
+     
+
          function Image =   getImage(obj)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
@@ -63,6 +76,15 @@ classdef PMImage
     
     methods % SETTERS
         
+        function obj = clear(obj)
+
+            obj.Image(:, :) = 0;
+
+
+        end
+
+
+
         function obj =      threshold(obj, Threshold)
             
            if ~ (isnumeric(Threshold) && isscalar(Threshold))
@@ -81,15 +103,11 @@ classdef PMImage
         
         function obj =      removeSmallObjects(obj, MinimumSize)
             
-            ClearedImage =   bwareaopen(obj.Image, MinimumSize);
+            ClearedImage =          bwareaopen(obj.Image, MinimumSize);
+            ClearedImage =          cast(ClearedImage, class( obj.Image));
+            ConvertedImage  =       ClearedImage .* obj.Image;
+            obj.Image =             ConvertedImage;
             
-            ClearedImage = cast(ClearedImage, class( obj.Image));
-            
-            ConvertedImage  =   ClearedImage .* obj.Image;
-            
-             
-            
-            obj.Image =  ConvertedImage;
         end
         
         function obj =      filter(obj, varargin)
@@ -127,24 +145,24 @@ classdef PMImage
              PixelList =      obj.removeOutOfRangeCoordinates(PixelList); % necessary?
              
              if length(PixelList) < 100
-                MinY = min(PixelList(:, 1)) - 10;
-                MaxY = max(PixelList(:, 1)) + 10;
-
-                MinX = min(PixelList(:, 2)) - 10;
-                MaxX = max(PixelList(:, 2)) + 10;
-                
-                 MinX = max([1, MinX]);
-                 MaxX = max([1, MaxX]);
-                
-                MinY = max([1, MinY]);
-                 MaxY = max([1, MaxY]);
+                    MinY =      min(PixelList(:, 1)) - 10;
+                    MaxY =      max(PixelList(:, 1)) + 10;
+                    
+                    MinX =      min(PixelList(:, 2)) - 10;
+                    MaxX =      max(PixelList(:, 2)) + 10;
+                    
+                    MinX =      max([1, MinX]);
+                    MaxX =      max([1, MaxX]);
+                    
+                    MinY =      max([1, MinY]);
+                    MaxY =      max([1, MaxY]);
              
              else
-                      MinY = min(PixelList(:, 1));
-             MaxY = max(PixelList(:, 1));
-             
-              MinX = min(PixelList(:, 2));
-             MaxX = max(PixelList(:, 2));
+                    MinY =      min(PixelList(:, 1));
+                    MaxY =      max(PixelList(:, 1));
+                    
+                    MinX =      min(PixelList(:, 2));
+                    MaxX =      max(PixelList(:, 2));
              
                  
              end

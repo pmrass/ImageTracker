@@ -55,6 +55,11 @@ classdef PMImageFiles
     
     methods % GETTERS
         
+        function documents = getImageFileDocuments(obj)
+            documents = obj.myImageDocuments;
+        end
+
+
         function value =            supportedFileType(obj)
                % SUPPORTEDFILETYPE returns true when file-type is supported and false when image file-type is not supported;
                   FileType =      obj.getFileType;
@@ -99,7 +104,7 @@ classdef PMImageFiles
 
                 switch obj.getFileType
                     case 'czi' 
-                        obj.myImageDocuments =      cellfun(@(x)  PMCZIDocument(x), obj.getPathsOfImageFiles, 'UniformOutput', false);
+                      
                         FirstMovie =                obj.myImageDocuments{1,1};
                         MetaDataString =            FirstMovie.getMetaDataString;
                         
@@ -125,9 +130,9 @@ classdef PMImageFiles
             fileType =                                           obj.getFileType;
             switch fileType
                 case 'czi' 
-                    obj.myImageDocuments =   cellfun(@(x)  PMCZIDocument(x), obj.getPathsOfImageFiles, 'UniformOutput', false);
-                        Summary =          obj.myImageDocuments{1,1}.getObjectiveSummary;
-                            ImageCaptureSummary = obj.myImageDocuments{1,1}.getImageCaptureSummary;
+                  
+                        Summary =          obj.myImageDocuments(1,1).getObjectiveSummary;
+                            ImageCaptureSummary = obj.myImageDocuments(1,1).getImageCaptureSummary;
 
                             Summary = [Summary; ImageCaptureSummary];
 
@@ -171,7 +176,7 @@ classdef PMImageFiles
                           obj.myImageDocuments =                            cellfun(@(x)  PMTIFFDocument(x), obj.getPathsOfImageFiles);
 
                     case '.czi'
-                         obj.myImageDocuments =                              cellfun(@(x)  PMCZIDocument(x, WantedScenes), obj.getPathsOfImageFiles);
+                         obj.myImageDocuments =                              cellfun(@(x)  PMCZIMetaData(x, WantedScenes), obj.getPathsOfImageFiles);
 
                     case '.pic'
                          obj.myImageDocuments =                             cellfun(@(x)  PMImageBioRadPicFile(x), obj.getPathsOfImageFiles);

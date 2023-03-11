@@ -4,14 +4,14 @@ classdef PMTrackingNavigation
     
     properties (Access = private)
 
-        TrackInfoList =               cell(0,1)
+        TrackInfoList =                         cell(0,1)
         
-        ActiveTrackID  =              NaN;
-        ActiveFrame =                 1;
+        ActiveTrackID  =                        NaN;
+        ActiveFrame =                           1;
         
-        SelectedTrackIDs =            zeros(0,1);
+        SelectedTrackIDs =                      zeros(0,1);
 
-        TrackingCellForTime % by far the most important data-piece; pretty much everything else can be reconstructed or is not that important;
+        TrackingCellForTime                     % by far the most important data-piece; pretty much everything else can be reconstructed or is not that important;
         TrackingCellForTimeWithDrift 
         
     end
@@ -217,6 +217,12 @@ classdef PMTrackingNavigation
             
         end
 
+        function MaskPixels = getMasksFromFile(obj)
+
+               load(obj.getFileNameForStoringMaskData, 'MaskPixels')
+
+        end
+
         function obj =      loadMasks(obj)
 
             try
@@ -405,6 +411,45 @@ classdef PMTrackingNavigation
         
     end
     
+    methods % GETTERS: SELECTED TRACKS
+        
+        function TrackID =              getIDOfFirstSelectedTrack(obj)
+        % GETIDOFFIRSTSELECTEDTRACK
+        if isempty(obj.SelectedTrackIDs)
+            TrackID = NaN;
+        else
+            TrackID = obj.SelectedTrackIDs(1);
+        end
+        
+        end
+        
+        function trackIDs =             getIdsOfSelectedTracks(obj)
+        % GETIDSOFSELECTEDTRACKS returns all selected track IDs;
+        trackIDs =           obj.SelectedTrackIDs;
+        end
+
+        function RestingTrackIDs =      getIdsOfRestingTracks(obj)
+        % GETIDSOFRESTINGTRACKS returns IDs of all tracks that are neither "active" nor "selected";
+        UniqueTrackIDs =          obj.getListWithAllUniqueTrackIDs;
+        NonRestingTracks =         [obj.ActiveTrackID; obj.getIdsOfSelectedTracks];
+        RowsOfRestingTracks =      ~ismember(UniqueTrackIDs, NonRestingTracks);
+        RestingTrackIDs =          UniqueTrackIDs(RowsOfRestingTracks);
+        end
+
+
+        
+    end
+    
+    methods % GETTERS: ACTIVE TRACK
+        
+          function trackID =              getIdOfActiveTrack(obj)
+            % GETIDOFACTIVETRACK
+            trackID =                 obj.ActiveTrackID;
+         end
+
+        
+    end
+    
     methods % BASIC GETTERS
        
         function Value =                get(obj, Input, varargin)
@@ -414,6 +459,43 @@ classdef PMTrackingNavigation
             
         end
         
+           
+        function ActiveFrame =          getActiveFrame(obj)
+            % GETACTIVEFRAME returns active frame
+            ActiveFrame =           obj.ActiveFrame;
+        end
+        
+        function Value =                getAutoTracking(obj)
+           Value = obj.AutoTracking; 
+        end
+
+       
+         function value =               getAutoTrackingActiveGap(obj)
+            % GETAUTOTRACKINGACTIVEGAP
+                value = obj.AutoTrackingActiveGap;
+           end
+        
+    end
+    
+    methods % GETTERS: TRACKINGCELLFORTIME
+    
+          function maxFrame =            getMaxFrame(obj)
+            maxFrame = length(obj.getTrackingCellForTimeForFrames(NaN));
+
+          end
+         
+          function values =               getFieldNamesOfTrackingCell(obj)
+             % GETFIELDNAMESOFTRACKINGCELL get fieldnames of segmentation list;
+                values = obj.FieldNamesForTrackingCell;
+          end
+         
+        
+        
+    end
+    
+    
+    methods % GETTERS: TRACKINGCELLFORTIME- NUMBER OF TRACKS:
+
         function Value =                getTracksExist(obj)
             % GETTRACKSEXIST determines whether at least one track has been generated;
             % returns 1 value:
@@ -439,52 +521,15 @@ classdef PMTrackingNavigation
                 numberOfTracks =        length(ListWithAllUniqueTrackIDs);
             end
         end
-        
-        function ActiveFrame =          getActiveFrame(obj)
-            % GETACTIVEFRAME returns active frame
-            ActiveFrame =           obj.ActiveFrame;
-        end
-        
-        function Value =                getAutoTracking(obj)
-           Value = obj.AutoTracking; 
-        end
-
-         function maxFrame =            getMaxFrame(obj)
-            maxFrame = length(obj.getTrackingCellForTimeForFrames(NaN));
-
-         end
-        
-         function value =               getAutoTrackingActiveGap(obj)
-            % GETAUTOTRACKINGACTIVEGAP
-                value = obj.AutoTrackingActiveGap;
-           end
-        
+  
     end
     
-    methods % GETTERS TRACKING-CELL TRACK IDs
-
-        function trackID =              getIdOfActiveTrack(obj)
-            % GETIDOFACTIVETRACK
-            trackID =                 obj.ActiveTrackID;
-         end
+    methods % GETTERS: TRACKINGCELLFORTIME- TRACK-IDs:
 
         function listWithIDs =          getListWithAllUniqueTrackIDs(obj)
             % GETLISTWITHALLUNIQUETRACKIDS returns list with IDs of all tracked cells;
             listWithIDs = find(cellfun(@(x) x.getExistenceOfSegmentationAddress, obj.TrackInfoList));
 
-        end
-
-        function RestingTrackIDs =      getIdsOfRestingTracks(obj)
-            % GETIDSOFRESTINGTRACKS returns IDs of all tracks that are neither "active" nor "selected";
-            UniqueTrackIDs =          obj.getListWithAllUniqueTrackIDs;
-            NonRestingTracks =         [obj.ActiveTrackID; obj.getIdsOfSelectedTracks];
-            RowsOfRestingTracks =      ~ismember(UniqueTrackIDs, NonRestingTracks);
-            RestingTrackIDs =          UniqueTrackIDs(RowsOfRestingTracks);
-        end
-
-        function trackIDs =             getIdsOfSelectedTracks(obj)
-            % GETIDSOFSELECTEDTRACKS returns all selected track IDs;
-            trackIDs =           obj.SelectedTrackIDs;
         end
 
         function newTrackID =           getNewTrackID(obj, varargin)
@@ -504,17 +549,7 @@ classdef PMTrackingNavigation
             
             newTrackID = newTrackID : newTrackID + Number - 1;
         end
-
-        function TrackID =              getIDOfFirstSelectedTrack(obj)
-            % GETIDOFFIRSTSELECTEDTRACK
-            if isempty(obj.SelectedTrackIDs)
-                TrackID = NaN;
-            else
-                TrackID = obj.SelectedTrackIDs(1);
-            end
-
-        end
-
+      
         function trackIDs =             getTrackIDsOfFrame(obj, FrameNumber)
           % GETTRACKIDSOFFRAME returns list of all track IDs for input frame-number;
             trackIDs =         obj.getTrackIDsFromSegmentationList(obj.getTrackingCellForTimeForFrames(FrameNumber));
@@ -524,12 +559,8 @@ classdef PMTrackingNavigation
     
     methods % GETTERS SEGMENTATION LIST
         
-        function values =               getFieldNamesOfTrackingCell(obj)
-             % GETFIELDNAMESOFTRACKINGCELL get fieldnames of segmentation list;
-                values = obj.FieldNamesForTrackingCell;
-         end
-
         function TrackList =            getSortedTrackingData(obj, varargin)
+            
                     % GETSORTEDTRACKINGDATA returns pooled segmentation-list sorted by track ID and time;
                     [TrackList, ~] =        obj.getPooledTrackingData;
                     EmptyRows =             max(cellfun(@(x) isempty(x) , TrackList(:,1)));
@@ -571,44 +602,7 @@ classdef PMTrackingNavigation
             
 
              end
-        
-        function Segmentation =         getSegmentationForTrackID(obj, TrackID, varargin)
-            % GETSEGMENTATIONFORTRACKID returns segmentation for track ID;
-            % takes 1 or 2 arguments:
-            % 1: track ID (numeric scalar) or NaN;
-            % 2: name of method (default: 'getTrackingSegmentationForFrameRowColumn');
-            % returns 1 value:
-            % segmentation list for all frames where wanted TrackID was successfully tracked;
-            assert(isnumeric(TrackID) && isscalar(TrackID) , 'Wrong input.')
-            switch length(varargin)
-                case 0
-                    MethodName = 'getTrackingSegmentationForFrameRowColumn';
-                case 1
-                    assert(ischar(varargin), 'Wrong input.')
-                    MethodName = varargin{1};
-                otherwise
-                    error('Wrong input.')
-
-
-            end
-
-            if isnan(TrackID)
-                Segmentation =          obj.getEmptySegmentation;
-
-            elseif size(obj.TrackInfoList, 1) < TrackID
-                error('Track id is not present in the TrackInfoList.')
-
-            else
-                    Address =           obj.TrackInfoList{TrackID,1}.getSegmentationAddress;
-
-                    Segmentation =      arrayfun(@(x, y) ...
-                                        obj.(MethodName)(x, y, NaN), ...
-                                        Address(:, 1), Address(:, 2), 'UniformOutput', false);
-
-                    Segmentation =      vertcat(Segmentation{:});
-            end
-
-        end
+    
         
         function Segmentation =         getDriftCorrectedSegementationForTrackID(obj, TrackID)
             % GETDRIFTCORRECTEDSEGEMENTATIONFORTRACKID returns drift-corrected segmentation list for track ID;
@@ -691,8 +685,6 @@ classdef PMTrackingNavigation
 
           end
         
-       
-           
         function numberOfFrames =       getNumberOfFramesPerTrack(obj,FrameLists)
              numberOfFrames =      cellfun(@(x) length(x)   , FrameLists);   
          end
@@ -712,7 +704,7 @@ classdef PMTrackingNavigation
             error('Use getPooledTrackingData instead of getPooledSegmentation.')
         end
         
-         function list =  getTrackSummaryList(obj)
+        function list =                 getTrackSummaryList(obj)
             list = obj.getTrackSummaryListInternal;
          end
         
@@ -782,11 +774,11 @@ classdef PMTrackingNavigation
         % GETACTIVESEGMENTATIONFORFRAMES returns segmentation of active track filtered for input frame;
             assert(isnumeric(Value) && isscalar(Value), 'Wrong input.')
             if isempty(obj.TrackingCellForTime)
-                
                  segmentation =        obj.getEmptySegmentation;
                  
             elseif length(obj.TrackingCellForTime) < Value
                 segmentation =        obj.getEmptySegmentation;
+                
             else
                 SegmentationOfSelectedFrame =   obj.TrackingCellForTime{Value};  
                 segmentation =                  obj.filterSegementationListForSelectedTracks(SegmentationOfSelectedFrame, obj.ActiveTrackID);
@@ -962,72 +954,7 @@ classdef PMTrackingNavigation
         end
 
     end
-     
-    methods % PROCESS SEGMENTATION DATA: gets segmentation list as input, and returns pertinent value;
-        
-        function [SegmentationData] =           getMiniMask(obj, SegmentationData)
-        % GETMINIMASK converts segmentation data with "normal" masks into segmentation data with "mini-masks";
-        % mini masks have just one point;
-        % takes 1 argument:
-        % 1: segmentation list
-        % returns 1 value:
-        % 1: segmentation list
-        MiniCoordinateList(:,1) =    arrayfun(@(x) [round(SegmentationData{1,obj.CentroidXColumn}), round(SegmentationData{1,obj.CentroidXColumn}), x], min(SegmentationData{1,obj.PixelColumn}(:,3)):max(SegmentationData{1,obj.PixelColumn}(:,3)), 'UniformOutput',false); 
-        MiniCoordinateList =         vertcat(MiniCoordinateList{:});
-        assert(~isempty(MiniCoordinateList), 'Cannot corrupt database with empty coordinate list')
-        SegmentationData{1,obj.PixelColumn} =        MiniCoordinateList;
-        end
 
-        function [FrameNumber, RowNumber ] =    getFrameAndRowInTrackTimeCellForMask(obj, Mask)
-            % GETFRAMEANDROWINTRACKTIMECELLFORMASK gets location in tracking cell matrix for segmentation nput;
-            % takes 1 argument:
-            % 1: segmentation matrix
-            % returns 2 values:
-            % 1: frame-number
-            % 2: row-number
-
-            assert(size(Mask,1) == 1, 'This function only accepts a single mask as input.')
-            FrameNumber =                   Mask{1,obj.TimeColumn};
-            MyTrackingCellForTime  =        obj.getTrackingCellForTimeForFrames(FrameNumber);
-            RowNumber =                     cell2mat(MyTrackingCellForTime(:,obj.TrackIDColumn)) ==  Mask{1,obj.TrackIDColumn};
-            WarningText =                   sprintf('The data file or input is corrupt. There are %i repeats of track %i in frame %i. There should be 1 precisely', sum(RowNumber),  Mask{1,obj.TrackIDColumn}, FrameNumber);
-            assert(sum(RowNumber) == 1, WarningText)
-
-        end
-
-        function [filteredList]=                filterSegmentationListForFrames(obj, List, WantedFrames)
-        % FILTERSEGMENTATIONLISTFORFRAMES filters a segmentation list by specified frame-numbers;
-        % takes 2 arguments:
-        % 1: segmentation list
-        % 1: list with wanted frames
-        % returns 1 value:
-        % 1: segmentation list (after removal of unwanted frames);
-        AvailableFrames =       cell2mat(List(:, obj.TimeColumn));
-        MatchingRows =          ismember(AvailableFrames, WantedFrames);
-        filteredList =          List(MatchingRows,:);
-        end
-
-        function filteredList =                 filterMatrixByFirstColumnForValues(~, Matrix, Values)
-        % FILTERMATRIXBYFIRSTCOLUMNFORVALUES filters input matrix by specified values;
-        % takes 2 arguments:
-        % 1: matrix
-        % 2: list of values for which to filter
-        % returns 1 value:
-        % filtered matrix
-        MatchingRows =      ismember(Matrix(:, 1), Values);
-        filteredList =        Matrix(MatchingRows,:);
-        end
-
-        function coordinates =      extractCoordinatesFromTrackingCell(obj, TrackingCell)
-           coordinates = cellfun(@(x) ...
-            cell2mat(x(:, [obj.CentroidYColumn, obj.CentroidXColumn, obj.CentroidZColumn])), TrackingCell,...
-            'UniformOutput', false);
-
-        end
-        
-        
-    end
-    
     methods % SETTERS IMAGES
        
            function obj = setTrackImages(obj)
@@ -1115,210 +1042,150 @@ classdef PMTrackingNavigation
         
     end
     
-    methods % SETTERS: TRACKINGCELLFORTIME (AUTOCELLRECOGNITION)
-        
-          function obj =                                performIntensityAutoRecognition(obj, SourceSegmentationCaptures, ListWithFrameNumbers, varargin)
-              % PERFORMINTENSITYAUTORECOGNITION detects new masks by fluorescence intensity and adds to TrackingCellForTime;
-              % takes 2 or 4 arguments:
-              % 1: vector with PMSegmentationCapture objects; one for each time frame;
-              % 2: numerical vector: numbers indicate frames to which input 1 corresponds;
-              % 3: prevent double-tracking: logical scalar
-              % 4: maximum distance for double-tracking: numeric scalar
-               
-              
-          %    obj =     obj.addMissingTrackIdsToTrackInfoListForMaxTrack(1000000);
-              
-              switch length(varargin)
-                 
-                  case 0
-                      MyPreventDoubleTracking =         	false;
-                      MyPreventDoubleTrackingDistance =     NaN;
-                      SegmentationType =                    'Default';
-                      
-                  case 2
-                      MyPreventDoubleTracking =         varargin{1};
-                      MyPreventDoubleTrackingDistance =         varargin{2};
-                       SegmentationType =                    'Default';
-                       
-                  case 3
-                       MyPreventDoubleTracking =         varargin{1};
-                      MyPreventDoubleTrackingDistance =         varargin{2};
-                       SegmentationType =                    varargin{3};
-                       
-                  otherwise
-                      error('Wrong input.')
-                  
-              end
-              
-              
-                  for FrameIndex = 1 : length(ListWithFrameNumbers)
-                        
-                        CurrentFrameNumber =                            ListWithFrameNumbers(FrameIndex);
-                        tic
-                       fprintf('Cell detection: Frame %i: ', CurrentFrameNumber)
-                   
-                   
-                  
-                   
-                        SegmentationCaptureOfCurrentFrame =             SourceSegmentationCaptures(FrameIndex);
-                        
-                        switch SegmentationType
-                            case 'Default'
-                                ListWithSegmentationCaptures =                  SegmentationCaptureOfCurrentFrame.getSegmentationCaptureListByIntensityRecognition;
-                                
-                            case 'Fast'
-                                ListWithSegmentationCaptures =                  SegmentationCaptureOfCurrentFrame.getSegmentationCaptureListByNeighborMerging;
-                                
-                            otherwise
-                                error('Segmentation type not supported.')
-                                
-                        end
-                        
-                        
-                        ListWithSegmentationCaptures =                  obj.removeSegmentationCapturesByDoubleTrackingDistance(ListWithSegmentationCaptures, MyPreventDoubleTracking, MyPreventDoubleTrackingDistance);
-                        
-                        
-                        EndTime = toc;
-                        fprintf('%6.2f seconds.\n', EndTime)
-                   
-                        tic
-                        fprintf('Cell addition: Frame %i: ', CurrentFrameNumber)
-                        
-                        AllIds =    obj.getUniqueTrackIDsFromTrackingCell;
-                        if isempty(AllIds)
-                            
-                           TrackIDStart = 1;
-                        else
-                            TrackIDStart = max(AllIds) + 1 ;
-                        end
-                        
-                        NewTrackIDs =                                   TrackIDStart : TrackIDStart + (length(ListWithSegmentationCaptures)) - 1;
-                        
-                  
-                        MyFramesOfInterest =                            repmat(CurrentFrameNumber, length(ListWithSegmentationCaptures), 1);
-                        obj =                                           obj.addSegmentationListToTrackingCellForTime(ListWithSegmentationCaptures, NewTrackIDs, MyFramesOfInterest);
-
-                         EndTime = toc;
-                        fprintf('%6.2f seconds.\n', EndTime)
-                  end
-                
-               
-          end
-           
-          function ListWithSegmentationCaptures =       removeSegmentationCapturesByDoubleTrackingDistance(obj, ListWithSegmentationCaptures, MyPreventDoubleTracking, MyPreventDoubleTrackingDistance)
-              
-              
-                if MyPreventDoubleTracking && ~isnan(MyPreventDoubleTrackingDistance)
-
-                    indices =                               obj.getIndicesWithCloseNeighbors(ListWithSegmentationCaptures,MyPreventDoubleTrackingDistance);
-
-                    if ~isempty(indices)
-                        ListWithSegmentationCaptures(indices, :) = [];
-                        % fprintf('%i masks were removed because of double-tracking. %i cells remaining.\n', sum(indices), length(ListWithSegmentationCaptures))
-
-                    end
-
-                end
-
-
-                        
-              
-          end
-          
-          function indices =                            getIndicesWithCloseNeighbors(~, ListWithSegmentationCaptures, myPreventDoubleTrackingDistance)
-               
-             
-
-                       Centroids = arrayfun(@(x) x.getActiveShape.getCentroid, ListWithSegmentationCaptures, 'UniformOutput', false);
-                        a = repmat(Centroids, 1, length(Centroids));
-                        StartRowIndex = 0;
-                        distances = nan(size(a, 1), size(a, 2));
-                        for index = 1 : size(a, 2)
-
-                            StartRowIndex = StartRowIndex + 1;
-                            for rowIndex = StartRowIndex + 1 : size(a, 1)
-
-                                MyDistance = pdist([a{StartRowIndex, index}; a{rowIndex, index}]);
-                                distances(rowIndex, index) = MyDistance;
-
-                            end
-
-
-                        end
-                        
-                         distances(isnan(distances)) = myPreventDoubleTrackingDistance + 10;
-                          indices = distances <= myPreventDoubleTrackingDistance;
-
-                          indices = max(indices, [], 2);
-
+    methods % GETTERS: TRACKINFOLIST
+       
             
+        function Segmentation =         getSegmentationForTrackID(obj, TrackID, varargin)
+            % GETSEGMENTATIONFORTRACKID returns segmentation for track ID;
+            % takes 1 or 2 arguments:
+            % 1: track ID (numeric scalar) or NaN;
+            % 2: name of method (default: 'getTrackingSegmentationForFrameRowColumn');
+            % returns 1 value:
+            % segmentation list for all frames where wanted TrackID was successfully tracked;
+            assert(isnumeric(TrackID) && isscalar(TrackID) , 'Wrong input.')
+            switch length(varargin)
+                case 0
+                    MethodName = 'getTrackingSegmentationForFrameRowColumn';
+                case 1
+                    assert(ischar(varargin), 'Wrong input.')
+                    MethodName = varargin{1};
+                otherwise
+                    error('Wrong input.')
 
-                
-                       
 
-          end
-        
-          function obj =                                addSegmentationListToTrackingCellForTime(obj, ListWithSegmentationCaptures, NewTrackIDs, MyFramesOfInterest)
-              
-                for indexOfDetectedCells = 1 :                        length(ListWithSegmentationCaptures)
-                            
-                            SegmentationCapture =                    ListWithSegmentationCaptures(indexOfDetectedCells);
-                    
-                            obj =                                   obj.setActiveFrameTo(MyFramesOfInterest(indexOfDetectedCells));
-                      
-                            obj.ActiveTrackID =                      NewTrackIDs(indexOfDetectedCells); % setActiveTrackIDTo too slow;
+            end
 
-                            [NewMask, NewMaskWithDrift] =           obj.getMasksForInput(obj.ActiveTrackID, obj.ActiveFrame, SegmentationCapture);
-                            
-                            TargetRow =                             obj.getTargetRowForFrameTrackID(obj.ActiveFrame, obj.ActiveTrackID);
-                             
-                            obj.TrackingCellForTime{obj.ActiveFrame, 1}(TargetRow, 1 : obj.NumberOfColumns) =              NewMask;
-                            obj.TrackingCellForTimeWithDrift{obj.ActiveFrame, 1}(TargetRow, 1 : obj.NumberOfColumns) =     NewMaskWithDrift;
+            if isnan(TrackID)
+                Segmentation =          obj.getEmptySegmentation;
 
-                             
-                          %  obj =
-                          %  obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
-                          %  % slows down because too many tracks: turn on only later;
-                            
-  
-                end
+            elseif size(obj.TrackInfoList, 1) < TrackID
+                error('Track id is not present in the TrackInfoList.')
 
-                        
-              
-          end
-          
+            else
+                    Address =           obj.TrackInfoList{TrackID,1}.getSegmentationAddress;
+
+                    Segmentation =      arrayfun(@(x, y) ...
+                                        obj.(MethodName)(x, y, NaN), ...
+                                        Address(:, 1), Address(:, 2), 'UniformOutput', false);
+
+                    Segmentation =      vertcat(Segmentation{:});
+            end
+
         end
+        
+    end
     
-    methods % SETTERS TRACKINGCELLFORTIME: ADD SEGMENTATION DELETE TRACKS;
+    methods % SETTERS TRACKINGCELLFORTIME: DELETE MASKS OR TRACKS (MATRIX);
+       
+        
+           function obj =          deleteAllTracks(obj)
+                obj.ActiveTrackID  =                     NaN;
+                obj.ActiveFrame =                       1;
 
-        
-        function obj = deleteAllTracks(obj)
-              obj.ActiveTrackID  =              NaN;
-              obj.ActiveFrame =                 1;
-        
-        obj.SelectedTrackIDs =            zeros(0,1);
+                obj.SelectedTrackIDs =                  zeros(0,1);
 
-        obj.TrackingCellForTime  = cell(0,1);% by far the most important data-piece; pretty much everything else can be reconstructed or is not that important;
-        obj.TrackingCellForTimeWithDrift = cell(0,1);
-            obj.TrackInfoList =               cell(0,1);
+                obj.TrackingCellForTime  =              cell(0,1);% by far the most important data-piece; pretty much everything else can be reconstructed or is not that important;
+                obj.TrackingCellForTimeWithDrift =      cell(0,1);
+                obj.TrackInfoList =                     cell(0,1);
         
+           end
+        
+        
+        
+      
+        
+    end
+        
+    methods % SETTERS TRACKINGCELLFORTIME: DELETE MASKS OR TRACKS (OBJECT)
+
+        function obj =          removeByObjectTrackWithFramesLessThan(obj, FrameNumberLimit)
+
+        NumberBeforeDeletion =      obj.getNumberOfTracks;
+        TrackIDsToRemove =          obj.getAllTrackIDsWithLessFramesThan(FrameNumberLimit);
+        for Index = 1: length(TrackIDsToRemove)
+            obj =       obj.removeTrack(TrackIDsToRemove(Index));
         end
-        
-        function obj =      addSegmentation(obj, SegmentationCapture)
-        % ADDSEGMENTATION: add new tracking content to object:
-        % takes one argument:
-        % 1: scalar of PMSegmentationCapture;
-        % Segmentation capture is added to active trackID
-        % methods also updates segmentation-address of active track ID
-            assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
-                           
-            obj =       obj.setEntryInTrackingCellForTime(SegmentationCapture);
+        fprintf('\nBefore deletion: %i tracks. After deletion: %i tracks\n\n', NumberBeforeDeletion, obj.getNumberOfTracks);
 
-            obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
-         
         end
 
-        function obj =      minimizeMasksOfActiveTrackAtFrame(obj, FrameNumber)
+        function TrackIDsToRemove =     getAllTrackIDsWithLessFramesThan(obj, FrameNumberLimit)
+        AllTrackIDs =               obj.getListWithAllUniqueTrackIDs;
+        FramesPerTrack =            obj.getListOfAllFramesForTrackIDs(AllTrackIDs);
+        NumberOfFramesPerTrack =    obj.getNumberOfFramesPerTrack(FramesPerTrack);
+        SelectedRows =              NumberOfFramesPerTrack < FrameNumberLimit;
+        TrackIDsToRemove =          AllTrackIDs(SelectedRows);
+        end
+
+        function obj =          removeTrack(obj, trackID)
+        % REMOVETRACK remove track with input;
+        assert(isnumeric(trackID) && isvector(trackID) , 'Wrong input.')
+
+        for Index = 1 : length(trackID)
+            TrackIDToDelete =                    trackID(Index);
+            AddressOfTargetTrack =          obj.TrackInfoList{TrackIDToDelete, 1}.getSegmentationAddress;
+            obj =                           obj.setTargetAddressWithTrackID(AddressOfTargetTrack, NaN);
+            obj =                           obj.updateSegmentationAddressInTrackInfoListForIDs(TrackIDToDelete);
+
+        end
+
+        obj =           obj.setActiveTrackID(obj.getIDOfFirstSelectedTrack);
+
+          end
+
+        function obj =          removeTracksIfPixelNumberLessThan(obj, PixelNumber)
+        % REMOVETRACKSIFPIXELNUMBERLESSTHAN removes all masks with pixels below limit;
+        % takes 1 argument:
+        % 1: numeric scalar
+
+         MyTrackingCellForTime         =    obj.getTrackingCellForTimeForFrames(obj.ActiveFrame);
+
+         Pixels =                   MyTrackingCellForTime(:, obj.PixelColumn);
+         IndicesToDelete =          cellfun(@(x) size(x, 1) < PixelNumber, Pixels);
+         AllTrackIDsInFrame =                 cell2mat(MyTrackingCellForTime(:, obj.TrackIDColumn));
+         TrackIDsToRemove =         AllTrackIDsInFrame(IndicesToDelete);
+
+           TrackIDsToRemove(isnan(TrackIDsToRemove)) = [];
+
+           obj =       obj.removeTrack(TrackIDsToRemove);
+
+
+
+        end
+
+        function obj =          deleteAllSelectedTracks(obj)
+        % DELETEALLSELECTEDTRACKS deletes all selected tracks
+        obj =                    obj.removeTrack(obj.getIdsOfSelectedTracks);
+        obj.SelectedTrackIDs =   zeros(0,1);
+        end
+
+        function obj =          deleteActiveMask(obj)
+        % DELETEACTIVEMASK remove active mask (active track ID and active Frame);
+        obj =           obj.removeMask(obj.ActiveTrackID, obj.ActiveFrame);
+        obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+
+        end
+
+        function obj =          removeMask(obj, TrackID, CurrentFrame)
+            obj =           obj.setTrackForFrameTrackIDWithMasks(CurrentFrame, TrackID, NaN, obj.getBlankSegmentation); 
+            obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(TrackID);
+        end
+
+    end
+    
+    methods % SETTERS: TRACKINGCELLFORTIME: coordinates of masks;
+       
+         function obj =          minimizeMasksOfActiveTrackAtFrame(obj, FrameNumber)
             % MINIMIZEACTIVETRACK "minimizes" masks of active track at specified frame to one point ;
             % takes 1 argument:
             % 1: number frame that should be minimized;
@@ -1334,87 +1201,25 @@ classdef PMTrackingNavigation
             obj =                    obj.replaceMaskInTrackingCellForTimeWith(MiniSeg, MiniSegWithDrift);
         end
         
-        function obj =      removeTracksIfPixelNumberLessThan(obj, PixelNumber)
-            % REMOVETRACKSIFPIXELNUMBERLESSTHAN removes all masks with pixels below limit;
-            % takes 1 argument:
-            % 1: numeric scalar
-
-             MyTrackingCellForTime         =    obj.getTrackingCellForTimeForFrames(obj.ActiveFrame);
-
-             Pixels =                   MyTrackingCellForTime(:, obj.PixelColumn);
-             IndicesToDelete =          cellfun(@(x) size(x, 1) < PixelNumber, Pixels);
-             TrackIDs =                 cell2mat(MyTrackingCellForTime(:, obj.TrackIDColumn));
-             TrackIDsToRemove =         TrackIDs(IndicesToDelete);
-
-               TrackIDsToRemove(isnan(TrackIDsToRemove)) = [];
-
-                for Index = 1: length(TrackIDsToRemove)
-                    obj =       obj.removeTrack(TrackIDsToRemove(Index));
-                end
-
+    end
+    
+    methods % SETTERS: TRACKINGCELLFORTIME: DEPRECATED;
+       
+         function obj =          addSegmentation(obj, SegmentationCapture)
+            % ADDSEGMENTATION: add new tracking content to object:
+            % takes one argument:
+            % 1: scalar of PMSegmentationCapture;
+            % Segmentation capture is added to active trackID
+            % methods also updates segmentation-address of active track ID
+            error('Use methods individually.')
+            assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
+            obj =       obj.setEntryInTrackingCellForTime(SegmentationCapture);
+            obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+         
         end
 
         
-        function obj = removeByObjectTrackWithFramesLessThan(obj, FrameLimit)
-              NumberBeforeDeletion =      obj.getNumberOfTracks;
-            TrackIDsToRemove =          obj.getAllTrackIDsWithLessFramesThan(FrameNumberLimit);
-            for Index = 1: length(TrackIDsToRemove)
-                obj =       obj.removeTrack(TrackIDsToRemove(Index));
-            end
-            fprintf('\nBefore deletion: %i tracks. After deletion: %i tracks\n\n', NumberBeforeDeletion, obj.getNumberOfTracks);
-
-        end
         
-        
-         function TrackIDsToRemove =     getAllTrackIDsWithLessFramesThan(obj, FrameNumberLimit)
-            AllTrackIDs =               obj.getListWithAllUniqueTrackIDs;
-            FramesPerTrack =            obj.getListOfAllFramesForTrackIDs(AllTrackIDs);
-            NumberOfFramesPerTrack =    obj.getNumberOfFramesPerTrack(FramesPerTrack);
-            SelectedRows =              NumberOfFramesPerTrack < FrameNumberLimit;
-            TrackIDsToRemove =          AllTrackIDs(SelectedRows);
-         end
-        
-
-        function obj =      deleteAllSelectedTracks(obj)
-            % DELETEALLSELECTEDTRACKS deletes all selected tracks
-            obj =                    obj.removeTrack(obj.getIdsOfSelectedTracks);
-
-            Selected = obj.getIdsOfSelectedTracks;
-            for index = 1 : length(Selected)
-                obj =               obj.updateSegmentationAddressInTrackInfoListForIDs(Selected(index));
-            end
-
-            obj.SelectedTrackIDs =   zeros(0,1);
-        end
-        
-        function obj =      removeTrack(obj, trackID)
-            % REMOVETRACK remove track with input;
-            assert(isnumeric(trackID) && isvector(trackID) , 'Wrong input.')
-
-            for Index = 1 : length(trackID)
-                OldTrackID =                    trackID(Index);
-                AddressOfTargetTrack =          obj.TrackInfoList{OldTrackID, 1}.getSegmentationAddress;
-                obj =                           obj.setTargetAddressWithTrackID(AddressOfTargetTrack, NaN);
-                obj =                           obj.updateSegmentationAddressInTrackInfoListForIDs(OldTrackID);
-
-            end
-
-            obj =           obj.setActiveTrackID(obj.getIDOfFirstSelectedTrack);
-
-        end
-
-        function obj =      deleteActiveMask(obj)
-        % DELETEACTIVEMASK remove active mask (active track ID and active Frame);
-        obj =          obj.removeMask(obj.ActiveTrackID, obj.ActiveFrame);
-        obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
-
-        end
-
-        function obj =      removeMask(obj, TrackID, CurrentFrame)
-                obj =       obj.setTrackForFrameTrackIDWithMasks(CurrentFrame, TrackID, NaN, obj.getBlankSegmentation); 
-                obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(TrackID);
-        end
-   
     end
     
     methods  % SETTERS TRACKINGCELLFORTIME: UNTRACK; 
@@ -1422,19 +1227,19 @@ classdef PMTrackingNavigation
        
         function obj =          unTrackByMatrix(obj)
 
-             [pooled, pooledWithDrift] =            obj.getPooledTrackingData;
-            
-             pooled(:, obj.TrackIDColumn) = num2cell( 1 : size(pooled, 1));
-            pooledWithDrift(:, obj.TrackIDColumn) = num2cell( 1 : size(pooled, 1));
-            
-            
+            [pooled, pooledWithDrift] =                 obj.getPooledTrackingData;
+
+            pooled(:, obj.TrackIDColumn) =              num2cell( 1 : size(pooled, 1));
+            pooledWithDrift(:, obj.TrackIDColumn) =     num2cell( 1 : size(pooled, 1));
+
+
             pooledWithDrift(:, obj.TimeColumn) =                pooled(:, obj.TimeColumn);
             pooledWithDrift(:, obj.PixelColumn) =               pooled(:, obj.PixelColumn);
             pooledWithDrift(:, obj.SegmentationTypeColumn) =    pooled(:, obj.SegmentationTypeColumn);
-            
-            
-            obj.TrackingCellForTime =               obj.convertPooledTrackingDataIntoTrackingCellForTime(pooled);
-            obj.TrackingCellForTimeWithDrift =      obj.convertPooledTrackingDataIntoTrackingCellForTime(pooledWithDrift);
+
+
+            obj.TrackingCellForTime =                           obj.convertPooledTrackingDataIntoTrackingCellForTime(pooled);
+            obj.TrackingCellForTimeWithDrift =                  obj.convertPooledTrackingDataIntoTrackingCellForTime(pooledWithDrift);
 
            
         end
@@ -1444,7 +1249,87 @@ classdef PMTrackingNavigation
     methods % SETTERS TRACKINGCELLFORTIME: 
         
         
-        function obj =      removeTracksWithFramesLessThan(obj, FrameNumberLimit)
+         
+           function obj =          addSegmentationCaptureList(obj, SegmentationCaptureList, NewTrackIDs, ListWithFrames, varargin)
+            
+               if isscalar(NewTrackIDs)
+                   NewTrackIDs = repmat(NewTrackIDs, length(SegmentationCaptureList), 1);
+                   
+               end
+               
+               switch length(varargin)
+                  
+                   case 0
+                       Update = true;
+                   case 1
+                       switch varargin{1}
+                          
+                           case 'updateTrackInfo'
+                           
+                           Update = false;
+                       end
+                       
+                   otherwise
+                       error('Wrong input.')
+                   
+               end
+               
+              
+                 for FrameIndex = 1 : length(ListWithFrames)
+                        obj.ActiveFrame =           ListWithFrames(FrameIndex);
+                        obj.ActiveTrackID =         NewTrackIDs(FrameIndex);
+                        
+                        SegmentationCapture =       SegmentationCaptureList{FrameIndex};
+                        obj =                       obj.setEntryInTrackingCellForTime(SegmentationCapture);
+                        
+                        if Update
+                            obj =                       obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+
+                        end
+
+
+                  end
+            
+            
+        end
+         
+            
+           function obj =              setEntryInTrackingCellForTime(obj, SegmentationCapture)
+
+                assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
+                assert(~isempty(obj.TrackingAnalysis), 'Tracking analysis needed.')
+                assert(obj.verifyTrackID(obj.ActiveTrackID), 'Could not add data because track ID was invalid.')
+
+              %  obj =       obj.removeDuplicatesFromActiveSegmentation; % slow, also, this should not be necessary; safety-mechanism: if current frame has duplicates, remove them;
+
+                if isempty(SegmentationCapture.getRawMaskCoordinateList) % when the pixels are empty: delete content:
+                          
+                          NewMask =             obj.getBlankSegmentation;
+                          NewMaskWithDrift =    obj.getBlankSegmentation;
+
+                else
+                    assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
+                    [NewMask, NewMaskWithDrift] =           obj.getMasksForInput(obj.ActiveTrackID, obj.ActiveFrame, SegmentationCapture);
+                   
+                   
+
+                end
+
+                
+                TargetRow =      obj.getTargetRowForFrameTrackID(obj.ActiveFrame, obj.ActiveTrackID);
+
+                obj.TrackingCellForTime{obj.ActiveFrame, 1}(TargetRow, 1 : obj.NumberOfColumns) =              NewMask;
+                obj.TrackingCellForTimeWithDrift{obj.ActiveFrame, 1}(TargetRow, 1 : obj.NumberOfColumns) =     NewMaskWithDrift;
+
+                            
+
+           end
+
+           
+   
+
+        
+        function obj =                      removeTracksWithFramesLessThan(obj, FrameNumberLimit)
             % REMOVETRACKWITHFRAMESLESSTHAN remove all tracks with less frames than input;
             % takes 1 argument:
             % 1: numeric scalar
@@ -1486,39 +1371,35 @@ classdef PMTrackingNavigation
             
         end
         
-        
-        function TrackingCellForTime = convertPooledTrackingDataIntoTrackingCellForTime(obj, pooled)
+        function TrackingCellForTime =      convertPooledTrackingDataIntoTrackingCellForTime(obj, pooled)
             
-            TimeFrames = cell2mat(pooled(:, obj.TimeColumn));
-            UniqueFrames = unique(TimeFrames);
+            TimeFrames =            cell2mat(pooled(:, obj.TimeColumn));
+            UniqueFrames =          unique(TimeFrames);
             
             TrackingCellForTime = cell(max(UniqueFrames), 1);
             for index = 1 : length(UniqueFrames)
                 
-                CurrentTimeFrame = UniqueFrames(index);
-                
-                Rows = TimeFrames == CurrentTimeFrame;
-                
-                TrackingCellForTime{CurrentTimeFrame, 1} = pooled(Rows, :);
+                CurrentTimeFrame =                              UniqueFrames(index);
+                Rows =                                          TimeFrames == CurrentTimeFrame;
+                TrackingCellForTime{CurrentTimeFrame, 1} =      pooled(Rows, :);
                 
             end
             
         end
         
-        function pooled = removeFromPooledMatrixTrackIDs(obj, pooled, TrackIDs)
+        function pooled =                   removeFromPooledMatrixTrackIDs(obj, pooled, TrackIDs)
             
             ReferenceTrackIDs = cell2mat(pooled(:, obj.TrackIDColumn));
             
             FilterMatrix = false(size(pooled, 1), length(TrackIDs));
             for index = 1 : length(TrackIDs)
-                
                 FilterMatrix(:, index) = TrackIDs(index) == ReferenceTrackIDs;
                 
             end
             
             PooledFilter = max(FilterMatrix, [], 2);
-            
             pooled(PooledFilter, :) = [];
+            
         end
         
         
@@ -1526,18 +1407,18 @@ classdef PMTrackingNavigation
     
     methods % SETTERS TRACKINGCELLFORTIME: setTrackingCellForTimeWithDriftByDriftCorrection;
        
-        function obj =              setTrackingCellForTimeWithDriftByDriftCorrection(obj, DriftCorrection)
+        function obj =                      setTrackingCellForTimeWithDriftByDriftCorrection(obj, DriftCorrection)
             % SETTRACKINGCELLFORTIMEWITHDRIFTBYDRIFTCORRECTION: it seems there is something wrong with this method: check;
             fprintf('Adding drift correction:')
-            NoDrift =  obj.getTrackingCellForTimeForFrames(NaN);
+            NoDrift =                               obj.getTrackingCellForTimeForFrames(NaN);
 
             MaximumTrackedFrame =               obj.getMaxFrame;
             assert(MaximumTrackedFrame <= DriftCorrection.getNumberOfFrames, 'Drift correction does not span tracking range.')
 
             tic
             Coordinates_NoDrift =                   obj.extractCoordinatesFromTrackingCell(NoDrift);
-            Coordinates_WithDrift =            obj.updateCoordinatesWithDriftCoorection(Coordinates_NoDrift, DriftCorrection);
-            obj =                           obj.applyCoordinatesToTrackingCellForTimeWithDrift(Coordinates_WithDrift);
+            Coordinates_WithDrift =                 obj.updateCoordinatesWithDriftCoorection(Coordinates_NoDrift, DriftCorrection);
+            obj =                                   obj.applyCoordinatesToTrackingCellForTimeWithDrift(Coordinates_WithDrift);
 
             fprintf(' %6.2f seconds.\n', toc)
         end
@@ -1554,10 +1435,7 @@ classdef PMTrackingNavigation
               coordinates{index}(:,2) = coordinates{index}(:,2) + planeShifts(index);
 
             end 
-            
-            
-          
-            
+             
         end
         
         
@@ -1570,14 +1448,14 @@ classdef PMTrackingNavigation
             % DELETEACTIVETRACKBEFOREFRAME deletes all frame of active track, when frame number is lower than split frame;
             % takes 1 argument:
             % 1: split-frame
-            obj = deleteActiveTrackBeforeFrameInternal(obj, SplitFrame);
+            obj =                   deleteActiveTrackBeforeFrameInternal(obj, SplitFrame);
         end
 
         function obj =          deleteActiveTrackAfterFrame(obj, SplitFrame)
             % DELETEACTIVETRACKAFTERFRAME deletes all frame of active track, when frame number is higher than split frame;
             % takes 1 argument:
             % 1: split-frame
-            obj = obj.deleteActiveTrackAfterFrameInternal(SplitFrame);
+            obj =                   obj.deleteActiveTrackAfterFrameInternal(SplitFrame);
         end
 
         function obj =          splitActiveTrackAtFrame(obj, Frame)
@@ -1595,18 +1473,20 @@ classdef PMTrackingNavigation
                 preMask =               PMMask(obj.getActiveSegmentationForFrames(Limits(1) - 1));
                 postMask =              PMMask(obj.getActiveSegmentationForFrames(Limits(2) + 1));
 
-                Results =     obj.AutoTracking.setSegmentationCaptureListBetweenMasks(preMask, postMask);
+                Results =               obj.AutoTracking.setSegmentationCaptureListBetweenMasks(preMask, postMask);
 
-                obj =                              obj.addSegmentationCaptureList(...
-                Results, ...
-                obj.AutoTracking.getFramesThatRequireClosing(preMask, postMask),  ...
-                obj.AutoTracking.getActiveTrackID);
+                obj =                   obj.addSegmentationCaptureList(...
+                                                Results, ...
+                                                obj.AutoTracking.getActiveTrackID,...
+                                                obj.AutoTracking.getFramesThatRequireClosing(preMask, postMask)  ...
+                                                );
 
-                obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
-
+                obj =                   obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+                
 
             catch ME
-               throw(ME) 
+               throw(ME)
+               
             end
         end
 
@@ -1628,7 +1508,7 @@ classdef PMTrackingNavigation
                 FrameNumbers = obj.extractFramesFromTrackList(Segmentation);
             end
             
-            function FrameNumbers =         extractFramesFromTrackList(obj, TrackList) 
+            function FrameNumbers =                     extractFramesFromTrackList(obj, TrackList) 
                 % EXTRACTFRAMESFROMTRACKLIST 
                 % takes 1 argument:
                 % 1: SegmentationList
@@ -1640,8 +1520,6 @@ classdef PMTrackingNavigation
                 end
 
             end
-
-        
 
             function Limits =                           getLimitsOfFirstGapOfActiveTrackForLimitValue(obj, Value)
                   % GETLIMITSOFFIRSTGAPOFACTIVETRACKFORLIMITVALUE returns limits of of first gap of active active tracks;
@@ -1783,6 +1661,141 @@ classdef PMTrackingNavigation
 
     end
   
+    methods % SETTERS: TRACKINGCELLFORTIME (AUTOCELLRECOGNITION)
+        
+          function obj =                                performIntensityAutoRecognition(obj, SourceSegmentationCaptures, ListWithFrameNumbers, varargin)
+              % PERFORMINTENSITYAUTORECOGNITION detects new masks by fluorescence intensity and adds to TrackingCellForTime;
+              % takes 2 or 4 arguments:
+              % 1: vector with PMSegmentationCapture objects; one for each time frame;
+              % 2: numerical vector: numbers indicate frames to which input 1 corresponds;
+              % 3: prevent double-tracking: logical scalar
+              % 4: maximum distance for double-tracking: numeric scalar
+               
+              
+          %    obj =     obj.addMissingTrackIdsToTrackInfoListForMaxTrack(1000000);
+              
+              switch length(varargin)
+                 
+                  case 0
+                        MyPreventDoubleTracking =         	false;
+                        MyPreventDoubleTrackingDistance =     NaN;
+                        SegmentationType =                    'Default';
+                      
+                  case 2
+                        MyPreventDoubleTracking =         varargin{1};
+                        MyPreventDoubleTrackingDistance =         varargin{2};
+                       SegmentationType =                    'Default';
+                       
+                  case 3
+                        MyPreventDoubleTracking =         varargin{1};
+                        MyPreventDoubleTrackingDistance =         varargin{2};
+                        SegmentationType =                    varargin{3};
+                       
+                  otherwise
+                      error('Wrong input.')
+                  
+              end
+              
+              
+                  for FrameIndex = 1 : length(ListWithFrameNumbers)
+                        
+                        CurrentFrameNumber =                            ListWithFrameNumbers(FrameIndex);
+                        tic
+                       fprintf('Cell detection: Frame %i: ', CurrentFrameNumber)
+                   
+
+                        SegmentationCaptureOfCurrentFrame =             SourceSegmentationCaptures(FrameIndex);
+                        
+                        switch SegmentationType
+                            case 'Default'
+                                ListWithSegmentationCaptures =         SegmentationCaptureOfCurrentFrame.getSegmentationCaptureListByIntensityRecognition;
+                                
+                            case 'Fast'
+                                ListWithSegmentationCaptures =         SegmentationCaptureOfCurrentFrame.getSegmentationCaptureListByNeighborMerging;
+                                
+                            otherwise
+                                error('Segmentation type not supported.')
+                                
+                        end
+                        
+                        
+                        ListWithSegmentationCaptures =                  obj.removeSegmentationCapturesByDoubleTrackingDistance(ListWithSegmentationCaptures, MyPreventDoubleTracking, MyPreventDoubleTrackingDistance);
+                        
+                        
+                        EndTime = toc;
+                        fprintf('%6.2f seconds.\n', EndTime)
+                   
+                        tic
+                        fprintf('Cell addition: Frame %i: ', CurrentFrameNumber)
+                        
+                        AllIds =    obj.getUniqueTrackIDsFromTrackingCell;
+                        if isempty(AllIds)
+                            
+                           TrackIDStart = 1;
+                        else
+                            TrackIDStart = max(AllIds) + 1 ;
+                        end
+                        
+                        NewTrackIDs =                                   TrackIDStart : TrackIDStart + (length(ListWithSegmentationCaptures)) - 1;
+                        
+                  
+                        MyFramesOfInterest =                            repmat(CurrentFrameNumber, length(ListWithSegmentationCaptures), 1);
+                        obj =                                           obj.addSegmentationCaptureList(ListWithSegmentationCaptures, NewTrackIDs, MyFramesOfInterest);
+
+                         EndTime = toc;
+                        fprintf('%6.2f seconds.\n', EndTime)
+                  end
+                
+               
+          end
+           
+          function ListWithSegmentationCaptures =       removeSegmentationCapturesByDoubleTrackingDistance(obj, ListWithSegmentationCaptures, MyPreventDoubleTracking, MyPreventDoubleTrackingDistance)
+              
+              
+                if MyPreventDoubleTracking && ~isnan(MyPreventDoubleTrackingDistance)
+
+                    indices =                               obj.getIndicesWithCloseNeighbors(ListWithSegmentationCaptures, MyPreventDoubleTrackingDistance);
+
+                    if ~isempty(indices)
+                        ListWithSegmentationCaptures(indices, :) = [];
+                        % fprintf('%i masks were removed because of double-tracking. %i cells remaining.\n', sum(indices), length(ListWithSegmentationCaptures))
+
+                    end
+
+                end
+
+
+          end
+          
+          function indices =                            getIndicesWithCloseNeighbors(~, ListWithSegmentationCaptures, myPreventDoubleTrackingDistance)
+               
+                Centroids = arrayfun(@(x) x.getActiveShape.getCentroid, ListWithSegmentationCaptures, 'UniformOutput', false);
+                a = repmat(Centroids, 1, length(Centroids));
+                StartRowIndex = 0;
+                distances = nan(size(a, 1), size(a, 2));
+                for index = 1 : size(a, 2)
+
+                    StartRowIndex = StartRowIndex + 1;
+                    for rowIndex = StartRowIndex + 1 : size(a, 1)
+
+                        MyDistance = pdist([a{StartRowIndex, index}; a{rowIndex, index}]);
+                        distances(rowIndex, index) = MyDistance;
+
+                    end
+
+                end
+
+                distances(isnan(distances)) =       myPreventDoubleTrackingDistance + 10;
+                indices =                           distances <= myPreventDoubleTrackingDistance;
+
+                indices =                           max(indices, [], 2);
+
+          end
+        
+      
+          
+    end
+    
     methods % SETTERS MANUAL TRACKING
    
         function obj =      truncateActiveTrackToFit(obj)
@@ -1838,7 +1851,7 @@ classdef PMTrackingNavigation
             obj =                               obj.autoconnectTracks;
         end
          
-          function obj =              autTrackingProcedure(obj, varargin)
+        function obj =           autTrackingProcedure(obj, varargin)
               % AUTTRACKINGPROCEDURE autotracking of all existing cells;
               % takes 3 arguments:
               % 1: PMDriftCorrection
@@ -1870,57 +1883,51 @@ classdef PMTrackingNavigation
                 obj =      obj.performSerialTrackReconnection;
           end
           
-             function obj =          trackByMinimizingDistancesOfTracks(obj, MyDriftCorrection, MySpaceCalibration, MyTimeCalibration)
+        function obj =          trackByMinimizingDistancesOfTracks(obj, MyDriftCorrection, MySpaceCalibration, MyTimeCalibration)
 
-                    NumberOfTracksBeforeDeletion =            length(obj.getUniqueTrackIDsFromTrackingCell);
+            NumberOfTracksBeforeDeletion =            length(obj.getUniqueTrackIDsFromTrackingCell);
 
-                    for FrameIndex = 1 : size(obj.TrackingCellForTime, 1) - 1
+            for FrameIndex = 1 : size(obj.TrackingCellForTime, 1) - 1
 
-                        tic
-                        fprintf('%i-%i: ', FrameIndex, FrameIndex+ 1);
+                tic
+                fprintf('%i-%i: ', FrameIndex, FrameIndex+ 1);
 
-                        TrackCellForTime_MetricSpace =                          obj.getTrackingCellForTimeForMetricSpace(MyDriftCorrection, MySpaceCalibration, MyTimeCalibration);
+                TrackCellForTime_MetricSpace =                          obj.getTrackingCellForTimeForMetricSpace(MyDriftCorrection, MySpaceCalibration, MyTimeCalibration);
 
-                        PreFrameSegmentationList =                              TrackCellForTime_MetricSpace{FrameIndex, 1};
-                        PostFrameSegmentationList =                             TrackCellForTime_MetricSpace{FrameIndex + 1, 1};
+                PreFrameSegmentationList =                              TrackCellForTime_MetricSpace{FrameIndex, 1};
+                PostFrameSegmentationList =                             TrackCellForTime_MetricSpace{FrameIndex + 1, 1};
 
-                        [CollectedPreTrackIDs, CollectedPostTrackIDs] =         obj.AutoTracking.findMatchingTrackIDsForSegmentationLists(...
-                                                                                    PreFrameSegmentationList, ...
-                                                                                    PostFrameSegmentationList...
-                                                                                    );
+                [CollectedPreTrackIDs, CollectedPostTrackIDs] =         obj.AutoTracking.findMatchingTrackIDsForSegmentationLists(...
+                                                                            PreFrameSegmentationList, ...
+                                                                            PostFrameSegmentationList...
+                                                                            );
 
-                        for index = 1: length(CollectedPreTrackIDs)
+                for index = 1: length(CollectedPreTrackIDs)
 
-                            PreTrackID =                    CollectedPreTrackIDs(index);
-                            OldPostTrackID =                CollectedPostTrackIDs(index);
+                    PreTrackID =                    CollectedPreTrackIDs(index);
+                    OldPostTrackID =                CollectedPostTrackIDs(index);
 
-                            obj =                           obj.setTrackForFrameTrackIDWithMasks(...
-                                                                FrameIndex + 1, ...
-                                                                OldPostTrackID, ...
-                                                                1, ...
-                                                                num2cell(PreTrackID)...
-                                                                );
-
-
-                        end
+                    obj =                           obj.setTrackForFrameTrackIDWithMasks(...
+                                                        FrameIndex + 1, ...
+                                                        OldPostTrackID, ...
+                                                        1, ...
+                                                        num2cell(PreTrackID)...
+                                                        );
 
 
-                         fprintf(' %6.5f seconds.\n', toc);
-                
+                end
+
+
+                 fprintf(' %6.5f seconds.\n', toc);
+
                 
 
             end
 
-           
-
             fprintf('\nBefore tracking: %i tracks. After tracking: %i tracks.\n', NumberOfTracksBeforeDeletion,  length(obj.getUniqueTrackIDsFromTrackingCell));
 
-
-             end
-
-        
-        
-  
+        end
+       
     end
 
     methods % SUMMARY
@@ -2089,7 +2096,7 @@ classdef PMTrackingNavigation
     
     methods (Access = private) % SETTERS AUTOCONNECT TRACKS
         
-         function obj =          performSerialTrackReconnection(obj)
+        function obj =          performSerialTrackReconnection(obj)
              MyGaps = obj.AutoTracking.getAutoTrackingConnectionGaps;
             NumberOfGaps =  length(MyGaps);
             for myGapIndex= 1 : NumberOfGaps
@@ -2125,8 +2132,7 @@ classdef PMTrackingNavigation
     
                     mySourceMask =                      obj.getLastMaskOfTrack( ListWithAllAvailableTrackIDs(TrackIndex));
                     MyTargetFrame =                     mySourceMask.getFrame + obj.AutoTrackingActiveGap + 1;
-                    
-                                                        
+                                                    
                     ListWithTargetSegmentations =       obj.AutoTracking.getCandidateTargetTracks(mySourceMask, obj.getSegmentationOfFrame(MyTargetFrame));
 
                     CandidateTrackIDs =                 cell2mat(ListWithTargetSegmentations(:,  obj.TrackIDColumn));
@@ -2144,8 +2150,10 @@ classdef PMTrackingNavigation
                         myTargetMask =                  PMMask(ListWithTargetSegmentations);
                         obj =                           obj.mergingInfoTextTwo(mySourceMask.getTrackID, myTargetMask.getTrackID);
                       
-                        obj =                           obj.repairTrackingCellForTimeToAllowMerginOfMasks(mySourceMask, myTargetMask);
+                        obj =                           obj.prepareTracksForMerging(mySourceMask, myTargetMask);
+                        
                         obj =                           obj.mergeTracks([mySourceMask.getTrackID, myTargetMask.getTrackID]);
+                        
                         NumberOfMergedTracks =          NumberOfMergedTracks + 1;
                         break % start from beginning because original track names have changed;
 
@@ -2165,81 +2173,19 @@ classdef PMTrackingNavigation
 
         end
         
-        function obj =          repairTrackingCellForTimeToAllowMerginOfMasks(obj, mySourceMask, myTargetMask)
-            
-              if obj.AutoTrackingActiveGap >= 1
-                           
-                             
-                Results =               obj.AutoTracking.getSegmentationCaptureListBetweenMasks(mySourceMask, myTargetMask);
+        function SourceMask  =              getLastMaskOfTrack(obj, MyTrackID)
+            SegmentationList =    obj.getSegmentationForTrackID(MyTrackID);
+            [~, RowOfLastFrame] =       max(obj.extractFramesFromTrackList(SegmentationList));     
+            SourceMask =                PMMask(  SegmentationList(RowOfLastFrame,:));
+        end
 
-                 obj =                              obj.addSegmentationCaptureList(...
-                 Results, ...
-                 obj.AutoTracking.getFramesThatRequireClosing(mySourceMask, myTargetMask),  ...
-                 obj.AutoTracking.getActiveTrackID);
-
-                obj =           obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
-
-
-
-                elseif obj.AutoTrackingActiveGap <= -1
-
-
-                    OverlappingFrames =         obj.getOverLappingFramesOfTracks([mySourceMask.getTrackID, myTargetMask.getTrackID]);
-                    for Index = 1 : length(OverlappingFrames)
-
-                            CurrentFrame =      OverlappingFrames(Index);
-                            TargetRow =         obj.getTargetRowForFrameTrackID(CurrentFrame, mySourceMask.getTrackID);
-                            obj =               obj.setTrackSegmentationForFrameRowColumn(CurrentFrame, TargetRow, NaN, obj.getBlankSegmentation);
-
-
-                    end
-
-                end
-
-            
-            
+        function SourceMask  =              getFirstMaskOfTrack(obj, MyTrackID)
+            SourceTrackInformation =    obj.getSegmentationForTrackID(MyTrackID);
+            [~, RowOfLastFrame] =       min(obj.extractFramesFromTrackList(SourceTrackInformation));     
+            SourceMask =                PMMask(  SourceTrackInformation(RowOfLastFrame,:));
         end
         
-        function obj =          mergingInfoText(obj, ListWithAllAvailableTrackIDs, TrackIndex)
-                if obj.AutoTracking.getShowDetailedMergeInformation== 1
-                    fprintf('\nTrack %i (%i of %i)', ListWithAllAvailableTrackIDs(TrackIndex), TrackIndex, size(ListWithAllAvailableTrackIDs,1))
-                end
-        end
-        
-        function obj =          mergingInfoTextTwo(obj, SourceTrackID, TargetTrackID)
-            FramesOfSource =             obj.getFrameNumbersForTrackID( SourceTrackID);
-            fprintf('Merge track %i (frame %i to %i)', SourceTrackID, min(FramesOfSource), max(FramesOfSource))
-
-            FramesTarget =                      obj.getFrameNumbersForTrackID( TargetTrackID);
-            fprintf(' with track %i (frame %i to %i).\n', TargetTrackID, min(FramesTarget), max(FramesTarget))
-
-        end
-
-        function obj =          addSegmentationCaptureList(obj, SegmentationCaptureList, varargin)
-            
-            switch length(varargin)
-               
-                case 2
-                    ListWithFrames =    varargin{1};
-                    TrackID =           varargin{2};
-                    
-                    
-                otherwise
-                    error('Wrong input.')
-                
-                
-            end
-            
-             for FrameIndex = 1 : length(ListWithFrames)
-                    obj.ActiveFrame =           ListWithFrames(FrameIndex);
-                    obj.ActiveTrackID =         TrackID;
-                    obj =                       obj.addSegmentation( SegmentationCaptureList{FrameIndex});
-                    
-              end
-            
-            
-        end
-         
+       
     end
     
     methods (Access = private) % initialize
@@ -2378,35 +2324,7 @@ classdef PMTrackingNavigation
     
     methods (Access = private) % SETTER: TRACKINGCELLFORTIME setEntryInTrackingCellForTime;
         
-        function obj =              setEntryInTrackingCellForTime(obj, SegmentationCapture)
-
-            assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
-            assert(~isempty(obj.TrackingAnalysis), 'Tracking analysis needed.')
-            assert(obj.verifyTrackID(obj.ActiveTrackID), 'Could not add data because track ID was invalid.')
-         
-          %  obj =       obj.removeDuplicatesFromActiveSegmentation; % slow, also, this should not be necessary; safety-mechanism: if current frame has duplicates, remove them;
-          
-            if isempty(SegmentationCapture.getRawMaskCoordinateList) % when the pixels are empty: delete content:
-                      obj =       obj.setTrackForFrameTrackIDWithMasks(obj.ActiveFrame, obj.ActiveTrackID, NaN, obj.getBlankSegmentation);
-
-            else
-                        obj = obj.addSegmentationCaptureToActiveSegmentation(SegmentationCapture);
-
-            end
-
-        end
-
-   
-
-        function obj =              addSegmentationCaptureToActiveSegmentation(obj, SegmentationCapture)
-            % ADDSEGMENTATIONCAPTURETOACTIVESEGMENTATION add new mask to TrackingCellForTime and TrackingCellForTimeWithDrift;
-            % takes 1 argument: PMSegementationCapture
-
-            assert(isscalar(SegmentationCapture) && isa(SegmentationCapture, 'PMSegmentationCapture'), 'Wrong input.')
-            [NewMask, NewMaskWithDrift] =           obj.getMasksForInput(obj.ActiveTrackID, obj.ActiveFrame, SegmentationCapture);
-            obj =                                   obj.setTrackForFrameTrackIDWithMasks(obj.ActiveFrame, obj.ActiveTrackID, NaN, NewMask, NewMaskWithDrift);
-
-        end
+      
 
         function minDistance =      getMinDistanceToOtherMasksInActiveFrameForMask(obj, Mask)
 
@@ -2430,28 +2348,12 @@ classdef PMTrackingNavigation
     methods (Access = private) % SETTERS: TRACKINGCELLFORMTIME: removeDuplicatesFromActiveSegmentation;
         
         function obj =              removeDuplicatesFromActiveSegmentation(obj)
-        RowsOfActiveTrack =      obj.getRowInSegmentationForFrameTrackID(obj.ActiveFrame, obj.ActiveTrackID);
-        if size(RowsOfActiveTrack,1) >= 2 % if more than one row is positive: delete all duplicate rows (this should not be the case):
-            RowsToDelete = RowsOfActiveTrack(2:end);
+            RowsOfActiveTrack =      obj.getRowInSegmentationForFrameTrackID(obj.ActiveFrame, obj.ActiveTrackID);
+            if size(RowsOfActiveTrack,1) >= 2 % if more than one row is positive: delete all duplicate rows (this should not be the case):
+                RowsToDelete = RowsOfActiveTrack(2:end);
 
-            obj = obj.deleteTrackSegmentationForFrameRows(obj.ActiveFrame, RowsToDelete);
-            warning('There was a duplicate row for the active track, which had to be removed.')
-        end
-        end
-
-        function Row =              getRowInSegmentationForFrameTrackID(obj, Frame, TrackID)
-        % GETROWINSEGMENTATIONFORFRAMETRACKID
-        MyTrackingCell =            obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
-        TrackIDsInWantedFrame =     obj.getTrackIDsFromSegmentationList(MyTrackingCell);
-        Row=                        find(TrackIDsInWantedFrame == TrackID);   
-
-        end
-
-        function trackIDs =         getTrackIDsFromSegmentationList(obj, SegmentationList)
-            if isempty(SegmentationList)
-                trackIDs =       zeros(0,1);
-            else
-                trackIDs =       cell2mat(SegmentationList(:, obj.TrackIDColumn));
+                obj = obj.deleteTrackSegmentationForFrameRows(obj.ActiveFrame, RowsToDelete);
+                warning('There was a duplicate row for the active track, which had to be removed.')
             end
         end
 
@@ -2599,16 +2501,7 @@ classdef PMTrackingNavigation
 
       
 
-          function obj = setTargetAddressWithTrackID(obj, AddressOfTargetTrack, NewTrackID)
-                
-                 if isnumeric(NewTrackID)
-                    assert(isscalar(NewTrackID), 'Wrong input.')
-                    NewTrackID = {NewTrackID};
-                end
-                
-                 obj =                           obj.setTargetColumnOfTrackingCellWithValueAddress(...
-                                                    obj.TrackIDColumn, NewTrackID, AddressOfTargetTrack);
-          end
+        
            
         function obj =          setTargetColumnOfTrackingCellWithValueAddress(obj, Column, Value, Address)
             for Index = 1: size(Address, 1)
@@ -2660,7 +2553,7 @@ classdef PMTrackingNavigation
     
     methods (Access = private) % setters TRACKINGCELLFORTIME old
         
-         function obj = removeMasksByMaxPlaneLimit(obj, Value)
+        function obj = removeMasksByMaxPlaneLimit(obj, Value)
                   error('Change without test. Verify before using.')
                   obj.TrackingCellForTime =     cellfun(@(x) obj.removeMasksByMaxPlaneLimitForList(x, Value), obj.TrackingCellForTime , 'UniformOutput', false);
                   obj =                         obj.selectAllTracks;
@@ -2827,23 +2720,81 @@ classdef PMTrackingNavigation
             number = size(obj.getTrackingCellForTimeForFrames(Frame), 1);
         end     
         
-        function SourceMask  =              getLastMaskOfTrack(obj, MyTrackID)
-            SourceTrackInformation =    obj.getSegmentationForTrackID(MyTrackID);
-            [~, RowOfLastFrame] =       max(obj.extractFramesFromTrackList(SourceTrackInformation));     
-            SourceMask =                PMMask(  SourceTrackInformation(RowOfLastFrame,:));
-        end
-
-        function SourceMask  =              getFirstMaskOfTrack(obj, MyTrackID)
-            SourceTrackInformation =    obj.getSegmentationForTrackID(MyTrackID);
-            [~, RowOfLastFrame] =       min(obj.extractFramesFromTrackList(SourceTrackInformation));     
-            SourceMask =                PMMask(  SourceTrackInformation(RowOfLastFrame,:));
-        end
+     
         
     end
     
     methods (Access = private) % PROCESS: process segmentation list input;
        
-        function selectedSegmentation =     filterSegmentationListForPlanes(obj, selectedSegmentation, Planes, varargin)
+         function trackIDs =                    getTrackIDsFromSegmentationList(obj, SegmentationList)
+            if isempty(SegmentationList)
+                trackIDs =       zeros(0,1);
+            else
+                trackIDs =       cell2mat(SegmentationList(:, obj.TrackIDColumn));
+            end
+          end
+        
+        function [SegmentationData] =           getMiniMask(obj, SegmentationData)
+        % GETMINIMASK converts segmentation data with "normal" masks into segmentation data with "mini-masks";
+        % mini masks have just one point;
+        % takes 1 argument:
+        % 1: segmentation list
+        % returns 1 value:
+        % 1: segmentation list
+        MiniCoordinateList(:,1) =    arrayfun(@(x) [round(SegmentationData{1,obj.CentroidXColumn}), round(SegmentationData{1,obj.CentroidXColumn}), x], min(SegmentationData{1,obj.PixelColumn}(:,3)):max(SegmentationData{1,obj.PixelColumn}(:,3)), 'UniformOutput',false); 
+        MiniCoordinateList =         vertcat(MiniCoordinateList{:});
+        assert(~isempty(MiniCoordinateList), 'Cannot corrupt database with empty coordinate list')
+        SegmentationData{1,obj.PixelColumn} =        MiniCoordinateList;
+        end
+
+        function [FrameNumber, RowNumber ] =    getFrameAndRowInTrackTimeCellForMask(obj, Mask)
+            % GETFRAMEANDROWINTRACKTIMECELLFORMASK gets location in tracking cell matrix for segmentation nput;
+            % takes 1 argument:
+            % 1: segmentation matrix
+            % returns 2 values:
+            % 1: frame-number
+            % 2: row-number
+
+            assert(size(Mask,1) == 1, 'This function only accepts a single mask as input.')
+            FrameNumber =                   Mask{1,obj.TimeColumn};
+            MyTrackingCellForTime  =        obj.getTrackingCellForTimeForFrames(FrameNumber);
+            RowNumber =                     cell2mat(MyTrackingCellForTime(:,obj.TrackIDColumn)) ==  Mask{1,obj.TrackIDColumn};
+            WarningText =                   sprintf('The data file or input is corrupt. There are %i repeats of track %i in frame %i. There should be 1 precisely', sum(RowNumber),  Mask{1,obj.TrackIDColumn}, FrameNumber);
+            assert(sum(RowNumber) == 1, WarningText)
+
+        end
+
+        function [filteredList]=                filterSegmentationListForFrames(obj, List, WantedFrames)
+        % FILTERSEGMENTATIONLISTFORFRAMES filters a segmentation list by specified frame-numbers;
+        % takes 2 arguments:
+        % 1: segmentation list
+        % 1: list with wanted frames
+        % returns 1 value:
+        % 1: segmentation list (after removal of unwanted frames);
+        AvailableFrames =       cell2mat(List(:, obj.TimeColumn));
+        MatchingRows =          ismember(AvailableFrames, WantedFrames);
+        filteredList =          List(MatchingRows,:);
+        end
+
+        function filteredList =                 filterMatrixByFirstColumnForValues(~, Matrix, Values)
+        % FILTERMATRIXBYFIRSTCOLUMNFORVALUES filters input matrix by specified values;
+        % takes 2 arguments:
+        % 1: matrix
+        % 2: list of values for which to filter
+        % returns 1 value:
+        % filtered matrix
+        MatchingRows =      ismember(Matrix(:, 1), Values);
+        filteredList =        Matrix(MatchingRows,:);
+        end
+
+        function coordinates =                  extractCoordinatesFromTrackingCell(obj, TrackingCell)
+           coordinates = cellfun(@(x) ...
+            cell2mat(x(:, [obj.CentroidYColumn, obj.CentroidXColumn, obj.CentroidZColumn])), TrackingCell,...
+            'UniformOutput', false);
+
+        end
+        
+        function selectedSegmentation =         filterSegmentationListForPlanes(obj, selectedSegmentation, Planes, varargin)
 
                 InputPixels =                                       selectedSegmentation(:,obj.CentroidZColumn);
 
@@ -2855,7 +2806,7 @@ classdef PMTrackingNavigation
 
         end
 
-        function FilteredList =             filterSegementationListForSelectedTracks(obj, List, TrackIDs)
+        function FilteredList =                 filterSegementationListForSelectedTracks(obj, List, TrackIDs)
             
             if isempty(List)
                 FilteredList = List;
@@ -2866,16 +2817,16 @@ classdef PMTrackingNavigation
        
         end
 
-        function list =                     filterPixelListForPlane(~, list, SelectedPlane)
+        function list =                         filterPixelListForPlane(~, list, SelectedPlane)
         NoMemberShip = ~ismember(list(:,3), SelectedPlane);  
         list(NoMemberShip, :) = [];
         end
 
-        function Masks =                    extractMasksFromTrackList(obj, List)
+        function Masks =                        extractMasksFromTrackList(obj, List)
                 Masks =   cell2mat(List(:,obj.PixelColumn));
         end
         
-        function [list] =                   filterPlaneListForPlane(~, list, SelectedPlane, varargin)
+        function [list] =                       filterPlaneListForPlane(~, list, SelectedPlane, varargin)
             % FILTERPLANELISTFORPLANE removes all Segmentation rows that do not match selected plane;
             % 3: optional 'OnlyCenter': in this case round all the coordinates and than filter for the mean;
 
@@ -2914,7 +2865,7 @@ classdef PMTrackingNavigation
 
             end 
 
-        function rowsWithEmptyPixels =      getRowsOfTracksWithEmptyPixels(obj, TrackList)
+        function rowsWithEmptyPixels =          getRowsOfTracksWithEmptyPixels(obj, TrackList)
             rowsWithEmptyPixels     =           cellfun(@(x) isempty(x),   TrackList(:,obj.PixelColumn));
         end
           
@@ -3169,7 +3120,7 @@ classdef PMTrackingNavigation
 
     end
     
-    methods (Access = private) % segmentation
+    methods (Access = private) % GETTERS: TRACKINGCELLFORTIME
         
        
         
@@ -3260,9 +3211,7 @@ classdef PMTrackingNavigation
     end
     
     methods (Access = private) % SPLIT and DELETE
-        
-     
-            
+         
         function obj =      deleteActiveTrackBeforeFrameInternal(obj, SplitFrame)
             obj =           obj.splitTrackAtFrameAndDeleteFirst(SplitFrame, obj.ActiveTrackID);
         end
@@ -3291,8 +3240,19 @@ classdef PMTrackingNavigation
                 obj =                      obj.setTargetAddressWithTrackID(AddressToDelete, NaN);
                 obj =                      obj.updateSegmentationAddressInTrackInfoListForIDs(SourceTrackID);
               
-              
         end
+        
+        function obj = setTargetAddressWithTrackID(obj, AddressOfTargetTrack, NewTrackID)
+                
+                if isnumeric(NewTrackID)
+                    assert(isscalar(NewTrackID), 'Wrong input.')
+                    NewTrackID = {NewTrackID};
+                end
+                
+                obj =                           obj.setTargetColumnOfTrackingCellWithValueAddress(...
+                                                obj.TrackIDColumn, NewTrackID, AddressOfTargetTrack);
+        end
+          
         
         function AddressOfTargetTrack = keepInSegmentationAddressFramesMoreThan(~, AddressOfTargetTrack, SplitFrame)    
             AddressOfTargetTrack(AddressOfTargetTrack(:, 1) < SplitFrame + 1, :) = [];
@@ -3403,6 +3363,43 @@ classdef PMTrackingNavigation
         end
             
     end
+
+    methods
+
+          function obj =          updateSegmentationAddressInTrackInfoListForIDs(obj, TrackID)
+            % UPDATESEGMENTATIONADDRESSINTRACKINFOLISTFORIDS sets TrackInfoList for input track-ID;
+            ListWithSegmentationAddresses =                                 obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
+            DuplicateAddressList =                                          obj.getSegmentationAddressesOfDuplicates(ListWithSegmentationAddresses);
+            obj =                                                           obj.removeFromTrackingCellByAddressList(DuplicateAddressList);
+            
+            ListWithSegmentationAddresses_AfterDuplicateRemoval =           obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
+            IsScalarList =                                                  cellfun(@(x) isscalar(x), ListWithSegmentationAddresses_AfterDuplicateRemoval(:, 2));
+            assert(min(IsScalarList) == 1, 'Something went wrong.')
+            
+            ListWithSegmentationAddresses_AfterDuplicateRemoval =            cell2mat(ListWithSegmentationAddresses_AfterDuplicateRemoval);
+            if isempty(ListWithSegmentationAddresses_AfterDuplicateRemoval)
+                obj.TrackInfoList{TrackID, 1} =                             obj.TrackInfoList{TrackID, 1}.resetDefaults;
+            else
+
+                try
+                obj.TrackInfoList{TrackID, 1} =                             obj.TrackInfoList{TrackID, 1}.setSegmentationAddress(ListWithSegmentationAddresses_AfterDuplicateRemoval);  
+            
+                catch
+
+
+                    obj.TrackInfoList{TrackID, 1} = PMTrackInfo(TrackID);
+                     obj.TrackInfoList{TrackID, 1} =                             obj.TrackInfoList{TrackID, 1}.setSegmentationAddress(ListWithSegmentationAddresses_AfterDuplicateRemoval);  
+            
+
+                end
+                
+                end
+
+        end
+
+
+
+    end
     
     methods (Access = private) % TRACKINFO-LIST: addSegmentationAddressToAllTrackInfos;
          
@@ -3413,39 +3410,8 @@ classdef PMTrackingNavigation
             end
         end
          
-        function obj =          updateSegmentationAddressInTrackInfoListForIDs(obj, TrackID)
-
-            WrongAddressList =                                  obj.getListOfCorruptAddressesForTrackID(TrackID);
-            obj =                                               obj.removeDuplicateAddressesFromTrackingCell(WrongAddressList);
-              FinalizedAddressListOfCurrentTrack =            obj.getFinalizedTrackingAddressesForTrackID(TrackID);
-
-            if isempty(FinalizedAddressListOfCurrentTrack)
-                obj.TrackInfoList{TrackID, 1} =                 obj.TrackInfoList{TrackID, 1}.resetDefaults;
-            else
-                obj.TrackInfoList{TrackID, 1} =                 obj.TrackInfoList{TrackID, 1}.setSegmentationAddress(FinalizedAddressListOfCurrentTrack);  
-            end
-
-        end
-
-        function FinalizedAddressListOfCurrentTrack = getFinalizedTrackingAddressesForTrackID(obj, TrackID)
-            % GETFINALIZEDTRACKINGADDRESSESFORTRACKID returns segmentation addresses for track ID;
-            % takes 1 argument: track ID
-            % returns 1 value:
-            % numerical matrix with 2 columns: first column: frame numbers; second column: row numbers in tracking cell for time;
-
-          FinalizedAddressListOfCurrentTrack =            obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
-
-            Results = cellfun(@(x) isscalar(x), FinalizedAddressListOfCurrentTrack(:, 2));
-            if min(Results) == 0
-                error('At least one address is not a scalar, which should not be the case.')
-            end
-
-            FinalizedAddressListOfCurrentTrack =            cell2mat(FinalizedAddressListOfCurrentTrack);
-
-        end
-
-    
-        function obj =                  removeDuplicateAddressesFromTrackingCell(obj, WrongAddresList)
+      
+        function obj =                  removeFromTrackingCellByAddressList(obj, WrongAddresList)
                 
                 for Index = 1 : size(WrongAddresList, 1)
                     
@@ -3453,10 +3419,8 @@ classdef PMTrackingNavigation
                     FrameNumberOfInspectedTrack =       WrongAddress{1, 1};
                     AllTargetRowsForCurrentFrame =      WrongAddress{1, 2};
 
-                    DuplicateRows =                         AllTargetRowsForCurrentFrame(2 : end);
-                    
-                    for InternalIndex = 1: length(DuplicateRows)
-                        RowThatShouldBeBlankedOut =     DuplicateRows(InternalIndex);
+                    for InternalIndex = 1: length(AllTargetRowsForCurrentFrame)
+                        RowThatShouldBeBlankedOut =     AllTargetRowsForCurrentFrame(InternalIndex);
                         obj =                           obj.setTrackSegmentationForFrameRowColumn(FrameNumberOfInspectedTrack, RowThatShouldBeBlankedOut, NaN, obj.getBlankSegmentation);
                     end
 
@@ -3471,26 +3435,26 @@ classdef PMTrackingNavigation
             
             for TrackID =  (obj.getUniqueTrackIDsFromTrackingCell)'
 
-                WrongAddressList =                      obj.getListOfCorruptAddressesForTrackID(TrackID);
+                ListWithSegmentationAddresses =         obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
+                WrongAddressList =                      obj.getSegmentationAddressesOfDuplicates(ListWithSegmentationAddresses);
 
                 if isempty(WrongAddressList)
                 else
                     fprintf('There are a problems with track %i. Take a look at the content of this track to find the mistake.\n', TrackID)
                     fprintf('To fix the problem you can call addSegmentationAddressToAllTrackInfos. This will start the address list of all tracks from scratch.\n')
-                   AddressList =            obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
-                   cellfun(@(x, y)  PMMask(obj.getTrackingSegmentationForFrameRowColumn(x, y, NaN)).showTable, AddressList(:, 1), AddressList(:, 2));
+                    AddressList =            obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
+                    cellfun(@(x, y)         PMMask(obj.getTrackingSegmentationForFrameRowColumn(x, y, NaN)).showTable, AddressList(:, 1), AddressList(:, 2));
                 end
 
             end
 
         end
 
-        function ListWithDuplicateSegmentationAddresses =           getListOfCorruptAddressesForTrackID(obj, TrackID)
-            ListWithSegmentationAddresses =                      obj.getRawSegmentationAddressFromTrackingMatrixForTrackID(TrackID);
-            ListWithDuplicateSegmentationAddresses =             obj.getListOfCorruptAddressList(ListWithSegmentationAddresses);
-        end
-
-        function  ListWithSegmentationAddresses =                   getRawSegmentationAddressFromTrackingMatrixForTrackID(obj, TrackID)
+    end
+    
+    methods (Access = private) % GETTERS: TRACKINFO-LIST;
+          
+        function  ListWithSegmentationAddresses =           getRawSegmentationAddressFromTrackingMatrixForTrackID(obj, TrackID)
             % GETRAWSEGMENTATIONADDRESSFROMTRACKINGMATRIXFORTRACKID returns raw segmentation addresses for track ID;
             % takes 1 argument: track ID
             % returns 1 value:
@@ -3498,8 +3462,8 @@ classdef PMTrackingNavigation
             assert(isnumeric(TrackID) && ~isnan(TrackID) && mod(TrackID, 	1) == 0, 'Wrong input.')
 
             TargetRowsForEachFrame =                                    arrayfun(@(x) ...
-                                    obj.getRowInSegmentationForFrameTrackID(x, TrackID), ...
-                                    1 : obj.getMaxFrame, 'UniformOutput', false);
+                                                                            obj.getRowInSegmentationForFrameTrackID(x, TrackID), ...
+                                                                            1 : obj.getMaxFrame, 'UniformOutput', false);
                                 
             ListWithSegmentationAddresses(1 : obj.getMaxFrame, 2) =     TargetRowsForEachFrame;
             ListWithSegmentationAddresses(:, 1) =                       num2cell(1 : obj.getMaxFrame);
@@ -3507,52 +3471,51 @@ classdef PMTrackingNavigation
             EmptyRows =                                                 cellfun(@(x) isempty(x), ListWithSegmentationAddresses(:, 2));
             ListWithSegmentationAddresses(EmptyRows, :) =               [];
 
-
+        end
+        
+        function Row =                                      getRowInSegmentationForFrameTrackID(obj, Frame, TrackID)
+            % GETROWINSEGMENTATIONFORFRAMETRACKID
+            MyTrackingCell =            obj.getTrackingSegmentationForFrameRowColumn(Frame, NaN, NaN);
+            TrackIDsInWantedFrame =     obj.getTrackIDsFromSegmentationList(MyTrackingCell);
+            Row=                        find(TrackIDsInWantedFrame == TrackID);   
 
         end
+        
 
-        function WrongAddressList =                                 getListOfCorruptAddressList(obj, ListWithSegmentationAddresses)
+    end
+    
+    methods (Access = private) % GETTERS: TRACKINFO-LIST: getSegmentationAddressesOfDuplicates;
+       
+       
+
+        function ListWithDuplicatedAddresses =                                 getSegmentationAddressesOfDuplicates(obj, ListWithSegmentationAddresses)
 
             IndicesWithMultipleTargetRows =     cellfun(@(x) length(x) > 1, ListWithSegmentationAddresses(:, 2));
             WrongAddressList =                  ListWithSegmentationAddresses(IndicesWithMultipleTargetRows, :);
 
+            ListWithDuplicatedAddresses =       cellfun(@(x) x(2 : end, :), WrongAddressList, 'UniformOutput', false);
+            
         end
   
+        
+        
     end
     
     methods (Access = private) % SETTERS: TRUNCATE TRACKS
        
         function obj =                  truncateActiveTrackToFitInternal(obj)
-        assert(length(obj.getIdsOfSelectedTracks) == 1, 'Can only truncate with one track selected.')
+            assert(length(obj.getIdsOfSelectedTracks) == 1, 'Can only truncate with one track selected.')
 
 
-        obj =                   obj.truncateTrackToFitMask([obj.ActiveTrackID,   obj.SelectedTrackIDs]);
-        obj =                   obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID); 
+            obj =                   obj.truncateTrackToFitMask([obj.ActiveTrackID,   obj.SelectedTrackIDs]);
+            obj =                   obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID); 
         end
 
-        function obj =                  truncateTrackToFitMask(obj, mySelectedTrackIDs)
-        OverlappingFrames =         obj.getOverLappingFramesOfTracks(mySelectedTrackIDs);
-        for Index = 1 : length(OverlappingFrames)
-
-            TargetRow =      obj.getTargetRowForFrameTrackID(OverlappingFrames(Index), mySelectedTrackIDs(1));
-            obj =            obj.setTrackSegmentationForFrameRowColumn(OverlappingFrames(Index), TargetRow, NaN, obj.getBlankSegmentation);
-
-
-        end
-
-        end
-
-        function [OverlappingFrames] =  getOverLappingFramesOfTracks(obj, mySelectedTrackIDs)
-           assert(length(mySelectedTrackIDs)==2, 'Overlapping frames can be only detected for two tracks')
-           FramesOfTrackOne =         obj.getFrameNumbersForTrackID(mySelectedTrackIDs(1));  
-           FramesOfTrackTwo =         obj.getFrameNumbersForTrackID(mySelectedTrackIDs(2));  
-           OverlappingFrames =        intersect(FramesOfTrackOne, FramesOfTrackTwo);
-
-        end
+      
 
     end
     
-    methods (Access = private) % SETTERS: MERGE TRACKS
+    methods (Access = private) % SETTERS: TRACKINGCELLFORTIME: MERGE TRACKS;
        
           function obj = mergeTracksInternal(obj, mySelectedTrackIDs)
 
@@ -3565,16 +3528,16 @@ classdef PMTrackingNavigation
                 
                 if isempty(OverlappingFrames)
                     
-                    OldTrackID =    max(mySelectedTrackIDs);
-                    NewTrackID =    min(mySelectedTrackIDs);
+                    OldTrackID =                    max(mySelectedTrackIDs);
+                    NewTrackID =                    min(mySelectedTrackIDs);
 
                     AddressOfTargetTrack =          obj.TrackInfoList{OldTrackID, 1}.getSegmentationAddress;
                 
                     obj =                           obj.setTargetAddressWithTrackID(AddressOfTargetTrack, NewTrackID);
                
-                    obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(NewTrackID);
-                    obj =       obj.updateSegmentationAddressInTrackInfoListForIDs(OldTrackID);
-                    obj =       obj.setActiveTrackIDTo(NewTrackID);
+                    obj =                           obj.updateSegmentationAddressInTrackInfoListForIDs(NewTrackID);
+                    obj =                           obj.updateSegmentationAddressInTrackInfoListForIDs(OldTrackID);
+                    obj =                           obj.setActiveTrackIDTo(NewTrackID);
 
                 else
                     
@@ -3594,6 +3557,79 @@ classdef PMTrackingNavigation
             
 
         
+    end
+    
+    methods (Access = private) % SETTERS: TRACKINGCELLFORTIME: prepareTracksForMerging;
+       
+        function obj =          prepareTracksForMerging(obj, mySourceMask, myTargetMask)
+            
+            
+            StartFrame =    mySourceMask.getFrame;
+            EndFrame =      myTargetMask.getFrame;
+            
+            Difference  =   EndFrame - StartFrame;
+            
+                if Difference >= 1
+                           
+                    Results =                       obj.AutoTracking.getSegmentationCaptureListBetweenMasks(mySourceMask, myTargetMask);
+
+                    obj =                          obj.addSegmentationCaptureList(...
+                                                         Results, ...
+                                                         obj.AutoTracking.getActiveTrackID, ...
+                                                         obj.AutoTracking.getFramesThatRequireClosing(mySourceMask, myTargetMask)  ...
+                                                         );
+
+                    obj =                           obj.updateSegmentationAddressInTrackInfoListForIDs(obj.ActiveTrackID);
+
+                elseif Difference <= -1
+                    mySelectedTrackIDs =          [mySourceMask.getTrackID, myTargetMask.getTrackID];
+                    obj =                        obj.truncateTrackToFitMask(mySelectedTrackIDs);
+                    
+                   
+                end
+
+            
+            
+        end
+        
+          function obj =                  truncateTrackToFitMask(obj, mySelectedTrackIDs)
+            OverlappingFrames =         obj.getOverLappingFramesOfTracks(mySelectedTrackIDs);
+            myTrackIDToSet =            mySelectedTrackIDs(1);
+            for Index = 1 : length(OverlappingFrames)
+
+                CurrentFrameToFix =     OverlappingFrames(Index);
+                TargetRow =      obj.getTargetRowForFrameTrackID(OverlappingFrames(Index), myTrackIDToSet);
+                obj =            obj.setTrackSegmentationForFrameRowColumn(CurrentFrameToFix, TargetRow, NaN, obj.getBlankSegmentation);
+
+
+            end
+
+        end
+
+        function [OverlappingFrames] =  getOverLappingFramesOfTracks(obj, mySelectedTrackIDs)
+           assert(length(mySelectedTrackIDs)==2, 'Overlapping frames can be only detected for two tracks')
+           FramesOfTrackOne =         obj.getFrameNumbersForTrackID(mySelectedTrackIDs(1));  
+           FramesOfTrackTwo =         obj.getFrameNumbersForTrackID(mySelectedTrackIDs(2));  
+           OverlappingFrames =        intersect(FramesOfTrackOne, FramesOfTrackTwo);
+
+        end
+        
+        
+        function obj =          mergingInfoText(obj, ListWithAllAvailableTrackIDs, TrackIndex)
+                if obj.AutoTracking.getShowDetailedMergeInformation== 1
+                    fprintf('\nTrack %i (%i of %i)', ListWithAllAvailableTrackIDs(TrackIndex), TrackIndex, size(ListWithAllAvailableTrackIDs,1))
+                end
+        end
+        
+        function obj =          mergingInfoTextTwo(obj, SourceTrackID, TargetTrackID)
+            FramesOfSource =             obj.getFrameNumbersForTrackID( SourceTrackID);
+            fprintf('Merge track %i (frame %i to %i)', SourceTrackID, min(FramesOfSource), max(FramesOfSource))
+
+            FramesTarget =                      obj.getFrameNumbersForTrackID( TargetTrackID);
+            fprintf(' with track %i (frame %i to %i).\n', TargetTrackID, min(FramesTarget), max(FramesTarget))
+
+        end
+
     end
     
     methods (Access = private) % SETTERS: CONVERT FORMAT:
@@ -3748,9 +3784,11 @@ classdef PMTrackingNavigation
            if MaxOne < MinTwo
                SourceMask = obj.getLastMaskOfTrack(mySelectedTrackIDs(1));
                TargetMask =  obj.getFirstMaskOfTrack(mySelectedTrackIDs(2));
+               
            elseif  MaxTwo < MinOne
                 SourceMask = obj.getLastMaskOfTrack(mySelectedTrackIDs(2));
                TargetMask =  obj.getFirstMaskOfTrack(mySelectedTrackIDs(1));
+               
            else
                SourceMask = '';
                TargetMask = '';

@@ -884,7 +884,7 @@ classdef PMSegmentationCapture
                
                
                
-               Sizes =                                      cellfun(@(x) length(x), row);
+               Sizes =                                      cellfun(@(x) length(x), row');
                myRefShape =                                obj.getShapeForCoordinateList('');
 
                 MinimumSizeForPreClear =                    myRefShape.getMinimumSize;
@@ -893,8 +893,12 @@ classdef PMSegmentationCapture
                DeleteSmall = Sizes < MinimumSizeForPreClear;
                DeleteLarge = Sizes > MaximumSizeForPreClear;
                
-               Delete = max([DeleteSmall, DeleteLarge]);
+               Delete = max([DeleteSmall, DeleteLarge], [], 2);
                
+               row(Delete) = [];
+                col(Delete) = [];
+                
+                fprintf('(%i cells)', length(col))
                
                 ListWithSegmentationCaptures =              cellfun(@(row, col) PMSegmentationCapture([row, col]), row, col); %slow;
            %     ListWithSegmentationCaptures =              obj.cleanupListWithSegmentationCaptures(ListWithSegmentationCaptures);
@@ -1074,6 +1078,70 @@ classdef PMSegmentationCapture
         
     end
     
+
+    methods % PROCESSING: GET PIXELS FROM IMAGE
+
+           function CoordinatesOfAllPlanes =       convertConnectedPixelsIntoCoordinateList(obj, myCroppedImageVolumeMask)
+            % CONVERTCONNECTEDPIXELSINTOCOORDINATELISTINTERNAL returns list of coordinates that coorespond to "positive" pixels of input image;
+
+
+            [CentralPlane, PlanesAbove, PlanesBelow, NumberOfPlanesAnalyzed] = obj.getConnectedPlaneSpecification(myCroppedImageVolumeMask);
+
+            coordinatesPerPlane =                   cell(NumberOfPlanesAnalyzed,1);
+            coordinatesPerPlane{CentralPlane,1} =   obj.getConnectedPixelsForImage(myCroppedImageVolumeMask(:,:,CentralPlane), CentralPlane);
+
+            
+            
+            for planeIndex = PlanesAbove
+                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex+1}, planeIndex);
+            end
+
+            for planeIndex = PlanesBelow
+                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex-1}, planeIndex);
+            end
+
+            CoordinatesOfAllPlanes =        vertcat(coordinatesPerPlane{:});
+            CoordinatesOfAllPlanes =        obj.removeNegativeCoordinates(CoordinatesOfAllPlanes);
+
+
+
+
+
+           end
+
+
+        
+
+    end
+
+    methods (Access = private)
+
+          function [ListWithPixels] =             getConnectedPixelsForImage(obj, MaskImage, Plane)
+            % GETCONNECTEDPIXELS returns list of connected pixels:
+            % takes 2 arguments:
+            % 1: binary image matrix
+            % 2: target plane;
+            % the method uses getClosestFullPixelToSeedInImage to get seed, only pixels that are overlapping this seed will be considered;
+            [Row, Column] =                 obj.getClosestFullPixelToSeedInImage(MaskImage);
+            if isnan(Row) || isnan(Column)
+                ListWithPixels =    zeros(0,3);
+            else
+                MaskImage(MaskImage==1) =                                       255; % need to do that; otherwise grayconnected doesn't work;
+                BW =                                                            grayconnected(MaskImage, Row, Column);
+                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=       find(BW); 
+
+                ListWithPixels =                                                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage];
+
+
+                ListWithPixels(:,3)=                                            Plane;   
+            end
+
+        end
+
+
+    end
+
+
     methods % SETTERS BLACKED-OUT PIXELS
         
         function obj =      blackoutAllPreviouslyTrackedPixels(obj)
@@ -1121,7 +1189,7 @@ classdef PMSegmentationCapture
             
             h =                             fspecial('disk', 2);
             %    SourceImage = imerode(SourceImage, h);
-            SourceImage =                   imdilate(SourceImage, h);
+         %   SourceImage =                   imdilate(SourceImage, h);
     
             SourceThresholdImage =          uint8(PMImage(SourceImage).threshold(obj.getIntensityOfClickedPixel).getImage);                                   
                                                     
@@ -1165,7 +1233,7 @@ classdef PMSegmentationCapture
 
     end
 
-    methods  (Access = private) % SETTERS: "active state"
+    methods   % SETTERS: "active state"
 
         function obj = setActiveStateBySegmentationCell(obj, SegmentationOfActiveTrack)
             %SETACTIVESTATEBYSEGMENTATIONCELL takes one argument
@@ -1771,7 +1839,8 @@ classdef PMSegmentationCapture
                 Image =            obj.filterPlanesOfCroppedImage(image);
            
             Image(:, :) =               0;
-            PreviouslyTrackedPixels =   obj.removeCroppingFromCoordinateList(obj.getAllPreviouslyTrackedPixels);
+            PrevsiouslyTrackedPixels_Nocrop =   obj.getAllPreviouslyTrackedPixels;
+            PreviouslyTrackedPixels =   obj.removeCroppingFromCoordinateList(PrevsiouslyTrackedPixels_Nocrop);
             
             myImage =                     PMImage(Image).addCoordinatesWithIntensity(PreviouslyTrackedPixels, 255);
 
@@ -1945,33 +2014,7 @@ classdef PMSegmentationCapture
     
     methods (Access = private) % GET CONNECTED PIXELS
         
-        function CoordinatesOfAllPlanes =       convertConnectedPixelsIntoCoordinateList(obj, myCroppedImageVolumeMask)
-            % CONVERTCONNECTEDPIXELSINTOCOORDINATELISTINTERNAL returns list of coordinates that coorespond to "positive" pixels of input image;
-
-
-            [CentralPlane, PlanesAbove, PlanesBelow, NumberOfPlanesAnalyzed] = obj.getConnectedPlaneSpecification(myCroppedImageVolumeMask);
-
-            coordinatesPerPlane =                   cell(NumberOfPlanesAnalyzed,1);
-            coordinatesPerPlane{CentralPlane,1} =   obj.getConnectedPixels(myCroppedImageVolumeMask(:,:,CentralPlane), CentralPlane);
-
-            
-            
-            for planeIndex = PlanesAbove
-                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex+1}, planeIndex);
-            end
-
-            for planeIndex = PlanesBelow
-                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex-1}, planeIndex);
-            end
-
-            CoordinatesOfAllPlanes =       vertcat(coordinatesPerPlane{:});
-            CoordinatesOfAllPlanes =        obj.removeNegativeCoordinates(CoordinatesOfAllPlanes);
-
-
-
-
-
-        end
+     
 
         function CoordinatesOfAllPlanes =       removeNegativeCoordinates(~, CoordinatesOfAllPlanes)
             NegativeValuesOne =            CoordinatesOfAllPlanes(:,1) < 0;
@@ -2039,27 +2082,7 @@ classdef PMSegmentationCapture
 
         end    
 
-        function [ListWithPixels] =             getConnectedPixels(obj, MaskImage, Plane)
-            % GETCONNECTEDPIXELS returns list of connected pixels:
-            % takes 2 arguments:
-            % 1: binary image matrix
-            % 2: target plane;
-            % the method uses getClosestFullPixelToSeedInImage to get seed, only pixels that are overlapping this seed will be considered;
-            [Row, Column] =                 obj.getClosestFullPixelToSeedInImage(MaskImage);
-            if isnan(Row) || isnan(Column)
-                ListWithPixels =    zeros(0,3);
-            else
-                MaskImage(MaskImage==1) = 255; % need to do that; otherwise grayconnected doesn't work;
-                BW =                                                            grayconnected(MaskImage, Row, Column);
-                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=       find(BW); 
-
-                ListWithPixels =                                                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage];
-
-
-                ListWithPixels(:,3)=                                            Plane;   
-            end
-
-        end
+      
 
         function [Row, Column] =                getClosestFullPixelToSeedInImage(obj, Image)
 

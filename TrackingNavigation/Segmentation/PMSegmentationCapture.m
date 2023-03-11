@@ -955,9 +955,9 @@ classdef PMSegmentationCapture
 
                             obj =                                   obj.addPixelsToBlackedOutPixels(obj.MaskCoordinateList);
                             
-                            OriginalBlackOutImageModel =            OriginalBlackOutImageModel.addCoordinatesWithIntensity(obj.MaskCoordinateList, 0);
+                            OriginalBlackOutImageModel =            OriginalBlackOutImageModel.addCoordinatesWithIntensityPrecise(obj.MaskCoordinateList, 0);
 
-                            FilteredBlackOutImageModel =            FilteredBlackOutImageModel.addCoordinatesWithIntensity(obj.MaskCoordinateList, 0);
+                            FilteredBlackOutImageModel =            FilteredBlackOutImageModel.addCoordinatesWithIntensityPrecise(obj.MaskCoordinateList, 0);
 
                             obj =                                   obj.showMasksDetectionByEdgeThreshold(ThresholdedImage);
                         
@@ -1010,7 +1010,7 @@ classdef PMSegmentationCapture
 
                 CoordinatesToZeroOut =              obj.removeCroppingFromCoordinateList(obj.BlackedOutPixels);
 
-                BlackedOutCroppedImage =            PMImage(CroppedImageAtCentralPlane).addCoordinatesWithIntensity(CoordinatesToZeroOut, 0).getImage;
+                BlackedOutCroppedImage =            PMImage(CroppedImageAtCentralPlane).addCoordinatesWithIntensityPrecise(CoordinatesToZeroOut, 0).getImage;
 
                 Threshold           =               obj.calculateThresholdFormImageByEdgeDetection(BlackedOutCroppedImage);
                 ThresholdedImage =                  uint8(PMImage(BlackedOutCroppedImage).threshold(Threshold).getImage);
@@ -1055,7 +1055,7 @@ classdef PMSegmentationCapture
         function BlackedOutCroppedImage = convertCroppedImageVolumeIntoBlackedOutImage(obj, myCroppedImageVolume)
              CoordinatesToZeroOut =           obj.removeCroppingFromCoordinateList(obj.BlackedOutPixels);
             CroppedImageAtCentralPlane =      myCroppedImageVolume(:, :, obj.ActiveZCoordinate);
-            BlackedOutCroppedImage =        PMImage(CroppedImageAtCentralPlane).addCoordinatesWithIntensity(CoordinatesToZeroOut, 0).getImage;
+            BlackedOutCroppedImage =        PMImage(CroppedImageAtCentralPlane).addCoordinatesWithIntensityPrecise(CoordinatesToZeroOut, 0).getImage;
         end
         
         
@@ -1078,6 +1078,70 @@ classdef PMSegmentationCapture
         
     end
     
+
+    methods % PROCESSING: GET PIXELS FROM IMAGE
+
+           function CoordinatesOfAllPlanes =       convertConnectedPixelsIntoCoordinateList(obj, myCroppedImageVolumeMask)
+            % CONVERTCONNECTEDPIXELSINTOCOORDINATELISTINTERNAL returns list of coordinates that coorespond to "positive" pixels of input image;
+
+
+            [CentralPlane, PlanesAbove, PlanesBelow, NumberOfPlanesAnalyzed] = obj.getConnectedPlaneSpecification(myCroppedImageVolumeMask);
+
+            coordinatesPerPlane =                   cell(NumberOfPlanesAnalyzed,1);
+            coordinatesPerPlane{CentralPlane,1} =   obj.getConnectedPixelsForImage(myCroppedImageVolumeMask(:,:,CentralPlane), CentralPlane);
+
+            
+            
+            for planeIndex = PlanesAbove
+                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex+1}, planeIndex);
+            end
+
+            for planeIndex = PlanesBelow
+                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex-1}, planeIndex);
+            end
+
+            CoordinatesOfAllPlanes =        vertcat(coordinatesPerPlane{:});
+            CoordinatesOfAllPlanes =        obj.removeNegativeCoordinates(CoordinatesOfAllPlanes);
+
+
+
+
+
+           end
+
+
+        
+
+    end
+
+    methods (Access = private)
+
+          function [ListWithPixels] =             getConnectedPixelsForImage(obj, MaskImage, Plane)
+            % GETCONNECTEDPIXELS returns list of connected pixels:
+            % takes 2 arguments:
+            % 1: binary image matrix
+            % 2: target plane;
+            % the method uses getClosestFullPixelToSeedInImage to get seed, only pixels that are overlapping this seed will be considered;
+            [Row, Column] =                 obj.getClosestFullPixelToSeedInImage(MaskImage);
+            if isnan(Row) || isnan(Column)
+                ListWithPixels =    zeros(0,3);
+            else
+                MaskImage(MaskImage==1) =                                       255; % need to do that; otherwise grayconnected doesn't work;
+                BW =                                                            grayconnected(MaskImage, Row, Column);
+                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=       find(BW); 
+
+                ListWithPixels =                                                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage];
+
+
+                ListWithPixels(:,3)=                                            Plane;   
+            end
+
+        end
+
+
+    end
+
+
     methods % SETTERS BLACKED-OUT PIXELS
         
         function obj =      blackoutAllPreviouslyTrackedPixels(obj)
@@ -1108,6 +1172,21 @@ classdef PMSegmentationCapture
     
     methods % SETTERS THRESHOLDING
        
+
+
+        function obj =                     generateMaskByClick(obj)
+
+              obj.SegmentationType =          'Manual';
+            
+              
+          
+          
+            obj.MaskCoordinateList =        [obj.ActiveYCoordinate, obj.ActiveXCoordinate, obj.ActiveZCoordinate];
+            
+
+      
+        end
+
         function obj =                     generateMaskByClickingThreshold(obj)
             % GENERATEMASKBYCLICKINGTHRESHOLD
             obj.SegmentationType =          'Manual';
@@ -1125,7 +1204,7 @@ classdef PMSegmentationCapture
             
             h =                             fspecial('disk', 2);
             %    SourceImage = imerode(SourceImage, h);
-            SourceImage =                   imdilate(SourceImage, h);
+         %   SourceImage =                   imdilate(SourceImage, h);
     
             SourceThresholdImage =          uint8(PMImage(SourceImage).threshold(obj.getIntensityOfClickedPixel).getImage);                                   
                                                     
@@ -1169,7 +1248,7 @@ classdef PMSegmentationCapture
 
     end
 
-    methods  (Access = private) % SETTERS: "active state"
+    methods   % SETTERS: "active state"
 
         function obj = setActiveStateBySegmentationCell(obj, SegmentationOfActiveTrack)
             %SETACTIVESTATEBYSEGMENTATIONCELL takes one argument
@@ -1222,7 +1301,7 @@ classdef PMSegmentationCapture
             BlackedOutPixelsInCurrentPlane(:, 3) =      1;
 
             OriginalImage =                             obj.ImageVolume(:, :, MyPlane);
-            BlackedOutImage =                           PMImage(OriginalImage).addCoordinatesWithIntensity(BlackedOutPixelsInCurrentPlane, 0).getImage;
+            BlackedOutImage =                           PMImage(OriginalImage).addCoordinatesWithIntensityPrecise(BlackedOutPixelsInCurrentPlane, 0).getImage;
 
         end
         
@@ -1246,6 +1325,13 @@ classdef PMSegmentationCapture
                 Pixels = zeros(0,3);
 
             else
+
+           %     LargeImage(1000, 1000 ) = 0;
+
+             %      myImageOne =                     PMImage(LargeImage);
+
+
+            %       outImage =       myImageOne.addCoordinatesWithIntensityPrecise(Masks{1, 6}, 255).getImage;
 
                 Masks =       obj.SegmentationOfCurrentFrame;
                 Masks =       obj.removeActiveTrackFromPixelList(Masks);
@@ -1710,7 +1796,11 @@ classdef PMSegmentationCapture
                 
                 currentAxesOne=             subplot(3, 3, 2);
                 currentAxesOne.Visible =    'off';
-                imagesc(max(obj.getImageOfPreviouslyTrackedPixels, [], 3))
+
+
+                MyPreviousTrackedPixels = obj.getImageOfPreviouslyTrackedPixels;
+
+                imagesc(max(MyPreviousTrackedPixels, [], 3))
                 title('Pixels from other tracked cells')
                 
                 currentAxesOne=             subplot(3, 3, 3);
@@ -1773,11 +1863,17 @@ classdef PMSegmentationCapture
          function Image =               getImageOfPreviouslyTrackedPixels(obj) 
               image =                 obj.convertImageVolumeIntoCroppedVolume(obj.ImageVolume); % get cropped image
                 Image =            obj.filterPlanesOfCroppedImage(image);
-           
-            Image(:, :) =               0;
-            PreviouslyTrackedPixels =   obj.removeCroppingFromCoordinateList(obj.getAllPreviouslyTrackedPixels);
+
+                Image(:,: ) = 0;           
+          
+            PrevsiouslyTrackedPixels_Nocrop =   obj.getAllPreviouslyTrackedPixels;
+
+             
+
+
+            PreviouslyTrackedPixels =   obj.removeCroppingFromCoordinateList(PrevsiouslyTrackedPixels_Nocrop);
             
-            myImage =                     PMImage(Image).addCoordinatesWithIntensity(PreviouslyTrackedPixels, 255);
+            myImage =                     PMImage(Image).addCoordinatesWithIntensityPrecise(PreviouslyTrackedPixels, 255);
 
             Image  =                    myImage.getImage;
 
@@ -1875,7 +1971,7 @@ classdef PMSegmentationCapture
              image =                 obj.convertImageVolumeIntoCroppedVolume(obj.ImageVolume); % get cropped image
                 MyVolume =            obj.filterPlanesOfCroppedImage(image);
              
-             Image =                     PMImage(MyVolume ).addCoordinatesWithIntensity(CoordinatesToZeroOut, 0).getImage;
+             Image =                     PMImage(MyVolume ).addCoordinatesWithIntensityPrecise(CoordinatesToZeroOut, 0).getImage;
             
             
           end
@@ -1886,7 +1982,7 @@ classdef PMSegmentationCapture
                  image =                 obj.convertImageVolumeIntoCroppedVolume(obj.ImageVolume); % get cropped image
                 MyVolume =            obj.filterPlanesOfCroppedImage(image);
            
-                Image =                            PMImage(MyVolume).addCoordinatesWithIntensity(CoordinatesToZeroOut, 0).getImage;
+                Image =                            PMImage(MyVolume).addCoordinatesWithIntensityPrecise(CoordinatesToZeroOut, 0).getImage;
             
           end
           
@@ -1949,33 +2045,7 @@ classdef PMSegmentationCapture
     
     methods (Access = private) % GET CONNECTED PIXELS
         
-        function CoordinatesOfAllPlanes =       convertConnectedPixelsIntoCoordinateList(obj, myCroppedImageVolumeMask)
-            % CONVERTCONNECTEDPIXELSINTOCOORDINATELISTINTERNAL returns list of coordinates that coorespond to "positive" pixels of input image;
-
-
-            [CentralPlane, PlanesAbove, PlanesBelow, NumberOfPlanesAnalyzed] = obj.getConnectedPlaneSpecification(myCroppedImageVolumeMask);
-
-            coordinatesPerPlane =                   cell(NumberOfPlanesAnalyzed,1);
-            coordinatesPerPlane{CentralPlane,1} =   obj.getConnectedPixels(myCroppedImageVolumeMask(:,:,CentralPlane), CentralPlane);
-
-            
-            
-            for planeIndex = PlanesAbove
-                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex+1}, planeIndex);
-            end
-
-            for planeIndex = PlanesBelow
-                coordinatesPerPlane{planeIndex,1}=   obj.FindContactAreasInNeighborPlane(bwconncomp(myCroppedImageVolumeMask(:,:,planeIndex)), coordinatesPerPlane{planeIndex-1}, planeIndex);
-            end
-
-            CoordinatesOfAllPlanes =       vertcat(coordinatesPerPlane{:});
-            CoordinatesOfAllPlanes =        obj.removeNegativeCoordinates(CoordinatesOfAllPlanes);
-
-
-
-
-
-        end
+     
 
         function CoordinatesOfAllPlanes =       removeNegativeCoordinates(~, CoordinatesOfAllPlanes)
             NegativeValuesOne =            CoordinatesOfAllPlanes(:,1) < 0;
@@ -2043,27 +2113,7 @@ classdef PMSegmentationCapture
 
         end    
 
-        function [ListWithPixels] =             getConnectedPixels(obj, MaskImage, Plane)
-            % GETCONNECTEDPIXELS returns list of connected pixels:
-            % takes 2 arguments:
-            % 1: binary image matrix
-            % 2: target plane;
-            % the method uses getClosestFullPixelToSeedInImage to get seed, only pixels that are overlapping this seed will be considered;
-            [Row, Column] =                 obj.getClosestFullPixelToSeedInImage(MaskImage);
-            if isnan(Row) || isnan(Column)
-                ListWithPixels =    zeros(0,3);
-            else
-                MaskImage(MaskImage==1) = 255; % need to do that; otherwise grayconnected doesn't work;
-                BW =                                                            grayconnected(MaskImage, Row, Column);
-                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage]=       find(BW); 
-
-                ListWithPixels =                                                [YCoordinatesInCroppedImage, XCoordinatesInCroppedImage];
-
-
-                ListWithPixels(:,3)=                                            Plane;   
-            end
-
-        end
+      
 
         function [Row, Column] =                getClosestFullPixelToSeedInImage(obj, Image)
 
@@ -2401,7 +2451,7 @@ classdef PMSegmentationCapture
                         Count =                                         Count + 1;
                         ListWithPostSplitCoordinates{Count,  1} =       CoordinateList;
 
-                        ImageWithDeletedEdges =                     PMImage(ImageWithDeletedEdges).addCoordinatesWithIntensity(CoordinateListAfterEdgeRemoval, 0).getImage;
+                        ImageWithDeletedEdges =                     PMImage(ImageWithDeletedEdges).addCoordinatesWithIntensityPrecise(CoordinateListAfterEdgeRemoval, 0).getImage;
                         figure(1000 + Count)
 
                         imagesc(ImageWithDeletedEdges)

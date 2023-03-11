@@ -37,6 +37,8 @@ classdef PMMovieController < handle
         MouseUpColumn =           NaN
         
         ShowLog =                false;
+
+        TemporaryLine
         
     end
     
@@ -282,8 +284,6 @@ classdef PMMovieController < handle
 
     end
     
-    
-    
     methods % SETTERS mouse action
         
         function set.MouseDownRow(obj, Value)
@@ -470,7 +470,8 @@ classdef PMMovieController < handle
         function obj =      setMouseAction(obj, Value)
             % SETMOUSEACTION set a descriptor for a mouse action type;
             % takes 1 argument
-             obj.MouseAction = Value;
+             obj.MouseAction =      Value;
+             obj.TemporaryLine = zeros(0, 2);
         end
           
         function obj =      resetNumberOfExtraLoadedFrames(obj,Number)
@@ -1062,12 +1063,8 @@ classdef PMMovieController < handle
             % 2: current modifier
             obj =                   obj.setMouseEndPosition;
             
-            if strcmp(obj.getMouseAction, 'No action')
-            
-            else
-                    mouseController =       PMMovieController_MouseAction(obj, PressedKey, Modifier);  
+            mouseController =       PMMovieController_MouseAction(obj, PressedKey, Modifier);  
                     obj =                   mouseController.mouseMoved;
-            end
         end
 
         function obj = mouseButtonReleased(obj, PressedKey, Modifier)    
@@ -1290,6 +1287,44 @@ classdef PMMovieController < handle
             obj.Views =         obj.Views.setLimitsOfMovieViewWith(obj.LoadedMovie);
         end
         
+
+        function obj =          addCoordinatesToLine(obj)
+
+            MyRow = obj.getCurrentMouseRow;
+            MyColumn = obj.getCurrentMouseColumn;
+
+            if size(obj.TemporaryLine, 1) == 0
+                 obj.TemporaryLine = [MyRow, MyColumn];
+
+
+            else
+
+                PreviousRow = obj.TemporaryLine(end, 1);
+                PreviousColumn = obj.TemporaryLine(end, 2);
+
+                DiffRow = round(abs(PreviousRow - MyRow));
+                DiffColumn = round(abs(PreviousColumn - MyColumn));
+
+                if DiffRow <= DiffColumn
+                    NumberOfPoints = DiffColumn;
+
+                else
+                    NumberOfPoints = DiffRow;
+
+                end
+
+
+
+                MyColumns =     linspace(PreviousColumn, MyColumn, NumberOfPoints);
+
+                MyRows =        linspace(PreviousRow, MyRow, NumberOfPoints);
+
+                obj.TemporaryLine = [obj.TemporaryLine; [MyRows', MyColumns']];
+
+            end
+
+        end
+
         function obj =          highLightRectanglePixelsByMouse(obj)
 
                 if ~isempty(obj.Views) && isvalid(obj.Views.getFigure)
@@ -1314,8 +1349,28 @@ classdef PMMovieController < handle
             obj.Views = obj.Views.shiftAxes(xShift, yShift);
             
         end
+
+        
                    
     end
+
+
+    methods % EXPORT LINE
+
+        function obj = exportLine(obj)
+
+                MyLine = obj.TemporaryLine;
+
+
+                save([obj.ExportFolder, '/',obj.LoadedMovie.getNickName, '_MyLine.mat'], 'MyLine')
+
+
+                obj.TemporaryLine = zeros(0, 2);
+        end
+
+
+    end
+
 
     methods % SETTERS AUTOTRACKING
 
@@ -1363,14 +1418,7 @@ classdef PMMovieController < handle
         end
         
            
-       
-   
-        
-   
-            
-        
-     
-     
+
       
 
     end
@@ -1494,7 +1542,10 @@ classdef PMMovieController < handle
         end
 
         function [obj] =            channelHighIntensityClicked(obj,~,~)
-            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(getMaximumIntensityOfSelectedChannel(obj.Views), 'ChannelTransformsHighIn');
+
+            MyIntensity =           getMaximumIntensityOfSelectedChannel(obj.Views);
+
+            obj.LoadedMovie  =      obj.LoadedMovie.resetChannelSettings(MyIntensity, 'ChannelTransformsHighIn');
             obj =                   obj.updateMovieView;
             obj =                   obj.updateControlElements;
         end
@@ -1887,6 +1938,15 @@ classdef PMMovieController < handle
    
     methods (Access = private) % SETTERS trakcking_- functions
           
+
+        function [obj] =     tracking_addHighlightedPixelsFromMask(obj)  
+            
+            [UserSelectedY, UserSelectedX] =    obj.findUserEnteredCoordinatesFromImage;
+            obj.LoadedMovie =                   obj.LoadedMovie.updateMaskOfActiveTrackByAdding(UserSelectedY, UserSelectedX, 1);
+            obj =                               obj.updateAllViewsThatDependOnActiveTrack;
+        end
+
+
         function [obj] =     tracking_removeHighlightedPixelsFromActiveMask(obj)  
             
             [UserSelectedY, UserSelectedX] =    obj.findUserEnteredCoordinatesFromImage;
@@ -1953,13 +2013,32 @@ classdef PMMovieController < handle
                        warning('No active track selected. No action taken.\n')
                   else
                       
+                      tic
                         [rowPos, columnPos, planePos, ~] =   obj.LoadedMovie.removeAppliedDriftCorrectionFromFrames(obj.MouseDownColumn, obj.MouseDownRow);
 
+                        toc
                         if ~isnan(rowPos)
-                            obj =                           obj.highlightMousePositionInImage; 
-                            obj.LoadedMovie =               obj.LoadedMovie.addMaskByClickedCoordiante([rowPos, columnPos, planePos]);              
-                            obj =                           obj.updateAllViewsThatDependOnActiveTrack;
 
+                             
+                            tic
+                            obj =                           obj.highlightMousePositionInImage; 
+                            
+                            toc
+
+                            tic
+                            obj.LoadedMovie =               obj.LoadedMovie.addMaskByClickedCoordiante([rowPos, columnPos, planePos]); 
+
+                            
+                            toc
+
+                            
+                          %  obj =
+                            obj.updateAllViewsThatDependOnActiveTrack; %
+                          %  slow
+
+                            
+
+                        %% 
                         end
 
                         figure(obj.Views.getFigure)

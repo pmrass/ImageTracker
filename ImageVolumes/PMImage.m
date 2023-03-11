@@ -19,11 +19,7 @@ classdef PMImage
                     error('Wrong input.')
             end
         end
-        
-        function obj = set.Image(obj, Value)
-             assert((isnumeric(Value) || islogical(Value)) && ismatrix(Value), 'Wrong input') 
-           obj.Image = Value; 
-        end
+     
            
     end
     
@@ -34,9 +30,49 @@ classdef PMImage
         
         
     end
+
+    methods % PROCESSING
+
+
+        function BorderImage = getImageWithBorderForCoordinates(obj, YCoordinates, XCoordinates, SizeOfCircle)
+
+                BorderImage =                   obj.Image;
+                XCoordinates(XCoordinates > size(BorderImage, 2)) = size(BorderImage, 2);
+
+                YCoordinates(YCoordinates > size(BorderImage, 1)) = size(BorderImage, 1);
+
+                MYIndices =                         sub2ind(size(BorderImage),YCoordinates , XCoordinates);
+                BorderImage(MYIndices) =            255;
+
+                
+
+                SE =                                strel("disk", SizeOfCircle);
+                BorderImage =                       imdilate(BorderImage,SE);
+
+        end
+
+        function Filled = getImageFilledWithinCoordinates(obj, YCoordinates, XCoordinates, SizeOfCircle)
+
+
+            BorderImage =       obj.getImageWithBorderForCoordinates(YCoordinates, XCoordinates, SizeOfCircle);
+
+
+            MiddleY = round(size(BorderImage, 1) / 2);
+            MiddleX =  round(size(BorderImage, 2) / 2);
+
+             Filled =            imfill(logical(BorderImage), [MiddleY, MiddleX], 8);
+            
+
+
+        end
+
+
+    end
     
     methods % GETTERS
        
+     
+
          function Image =   getImage(obj)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
@@ -63,6 +99,15 @@ classdef PMImage
     
     methods % SETTERS
         
+        function obj = clear(obj)
+
+            obj.Image(:, :) = 0;
+
+
+        end
+
+
+
         function obj =      threshold(obj, Threshold)
             
            if ~ (isnumeric(Threshold) && isscalar(Threshold))
@@ -117,30 +162,50 @@ classdef PMImage
 
         end
 
+
+
+        function obj = addCoordinatesWithIntensitySingle(obj, PixelList, Intensity)
+
+             obj.Image(PixelList) = Intensity;
+
+        end
+
+        function obj = addCoordinatesWithIntensityPrecise(obj, PixelList, Intensity)
+
+             PixelList =      obj.removeOutOfRangeCoordinates(PixelList); % necessary?
+           
+
+                             NumberOfPixels = size(PixelList,1);
+                for PixelIndex = 1 : NumberOfPixels % there should be a more efficient way to do this:
+                     obj.Image(PixelList(PixelIndex, 1), PixelList(PixelIndex, 2), PixelList(PixelIndex, 3)) = Intensity;
+                end
+
+
+        end
+
          function obj = addCoordinatesWithIntensity(obj, PixelList, Intensity)
-             
              
              PixelList =      obj.removeOutOfRangeCoordinates(PixelList); % necessary?
              
              if length(PixelList) < 100
-                MinY = min(PixelList(:, 1)) - 10;
-                MaxY = max(PixelList(:, 1)) + 10;
-
-                MinX = min(PixelList(:, 2)) - 10;
-                MaxX = max(PixelList(:, 2)) + 10;
-                
-                 MinX = max([1, MinX]);
-                 MaxX = max([1, MaxX]);
-                
-                MinY = max([1, MinY]);
-                 MaxY = max([1, MaxY]);
+                    MinY =      min(PixelList(:, 1)) - 10;
+                    MaxY =      max(PixelList(:, 1)) + 10;
+                    
+                    MinX =      min(PixelList(:, 2)) - 10;
+                    MaxX =      max(PixelList(:, 2)) + 10;
+                    
+                    MinX =      max([1, MinX]);
+                    MaxX =      max([1, MaxX]);
+                    
+                    MinY =      max([1, MinY]);
+                    MaxY =      max([1, MaxY]);
              
              else
-                      MinY = min(PixelList(:, 1));
-             MaxY = max(PixelList(:, 1));
-             
-              MinX = min(PixelList(:, 2));
-             MaxX = max(PixelList(:, 2));
+                    MinY =      min(PixelList(:, 1));
+                    MaxY =      max(PixelList(:, 1));
+                    
+                    MinX =      min(PixelList(:, 2));
+                    MaxX =      max(PixelList(:, 2));
              
                  
              end
@@ -155,10 +220,7 @@ classdef PMImage
         end
              
 %              too slow:
-%                 NumberOfPixels = size(PixelList,1);
-%                 for PixelIndex = 1 : NumberOfPixels % there should be a more efficient way to do this:
-%                     obj.Image(PixelList(PixelIndex, 1), PixelList(PixelIndex, 2), PixelList(PixelIndex, 3)) = Intensity;
-%                 end
+
                 
                
                 

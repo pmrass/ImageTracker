@@ -62,25 +62,62 @@ classdef PMMovieLibraryManager < handle
         function obj =      PMMovieLibraryManager(varargin)
             % PMMOVIELIBRARYMANAGER create instance of this class
             % takes 0 or 1 arguments:
-            % with zero arguments: tries to retrieve file-name of previously used library stored in file;
-            % 1: character string: complete path of library
+            % 0: empty library
+            % 1: character string: complete path of library or 'Previous': tries to load previous library;
         
            
             obj.Viewer =                PMImagingProjectViewer;
             
             switch length(varargin)
                 
+                case 0
+                     Library =   PMMovieLibrary();
                     
-                case {0, 1}
-                    MyMovieLibrary =       obj.getMovieLibraryForInput( varargin{:});
-                    obj =                  obj.setMovieLibrary(MyMovieLibrary);
+
                     
-                otherwise
-                    error('Wrong input.')
-                  
-                
-            end
+                case  1
+
+
+                    Type = class(varargin{1});
+                    
+                    switch Type
+                    
+                        case 'char'
+                        
+                        switch varargin{1}
+                            case 'Previous'
+                            
+                                 PreviouslyUsedFileName = obj.getPreviouslyUsedFileName;
+                                    if isempty(PreviouslyUsedFileName)
+                                        Library =   PMMovieLibrary();
+                                    else
+                                        Library =   PMMovieLibrary(PreviouslyUsedFileName);
+                                    end
+                                    
+                            
+                            
+                            otherwise
+                            
+                               Library =              PMMovieLibrary(varargin{1});
+                                     obj =                  obj.setMovieLibrary(Library);
+                                     
+                        
+                        end
+                        
+                        case 'PMMovieLibrary'
+                                        Library = varargin{1};
+                                       
+                        otherwise
+                            error('Wrong input.')
+
+                    end
+
+   
+                    end
             
+
+             obj =                                  obj.setMovieLibrary(Library);
+
             obj.MovieTrackingFileView =             PMMovieTrackingFileView;
 
             obj.TrackingNavigationView =            PMTrackingNavigationView;
@@ -120,13 +157,7 @@ classdef PMMovieLibraryManager < handle
 
         end
          
-        
-        
-        
-        
-        
-        
-        
+   
         
     end
     
@@ -324,6 +355,16 @@ classdef PMMovieLibraryManager < handle
             end
             
          end
+
+
+         function obj = deleteAllSelectedMovies(obj, ~, ~)
+
+              SelectedNicknames =     obj.Viewer.getSelectedNicknames;
+              for index = 1:length(SelectedNicknames)
+                obj = obj.removeEntryWithNickName(SelectedNicknames{index});
+            end
+
+         end
         
          function obj =         performMovieLibraryMethod(obj, varargin)
             % PERFORMMOVIELIBRARYMETHOD allows usage of method from movie-library;
@@ -361,11 +402,10 @@ classdef PMMovieLibraryManager < handle
           function library =        getMovieLibrary(obj)
               % GETMOVIELIBRARY returns movie-library
                 library = obj.MovieLibrary;
-           end
-       
+          end
+
          
-         
-            
+        
      end
     
     methods % SETTERS BATCH-PROCESSING
@@ -746,31 +786,15 @@ classdef PMMovieLibraryManager < handle
                     else
 
                         obj =                   obj.saveActiveMovieAndLibrary;
-                        [~, ~, Extension] =     fileparts(AttachedFiles{1});
+ 
+                        NewMovieTrackingList = obj.MovieLibrary.getListOfMovieTrackingsForNickNameAttachedFilesPositions(Nickname, AttachedFiles);
 
-                        switch Extension
-
-                            case '.czi'
-
-                                NumberOfPositions = PMCZIDocument([obj.MovieLibrary.getMovieFolder, '/', AttachedFiles{1}]).getNumberOfScences;
-                                if NumberOfPositions > 1
-                                   assert( length(AttachedFiles) == 1, 'When using multiple positions, only one attached file allowed.')
-                                end
-
-                            otherwise
-                                NumberOfPositions = 1;
-
-                        end
-
-                        if NumberOfPositions == 1
-                            obj =       obj.addMovieWithOnePosition(Nickname, AttachedFiles);
-
-                        else
-                            obj =      obj.addMovieWithMultiplePositions(NumberOfPositions, Nickname, AttachedFiles);
-
-
-                        end
-
+                    
+                         for sceneIndex = 1 : length(NewMovieTrackingList)
+                           
+                                 obj =                                  obj.addNewMovieByMovieTracking(NewMovieTrackingList(sceneIndex));
+            
+                         end
                     end
                 
                 catch
@@ -782,44 +806,16 @@ classdef PMMovieLibraryManager < handle
 
         end
         
-        function obj =      addMovieWithOnePosition(obj, MyNickName, AttachedFiles)
+    
+     
 
-               NewMovieTracking =                   PMMovieTracking(...
-                                                            MyNickName, ...
-                                                            obj.MovieLibrary.getMovieFolder, ...
-                                                            AttachedFiles, ...
-                                                            obj.MovieLibrary.getPathForImageAnalysis ...
-                                                            );
-                     
-              obj =                                     obj.addNewMovieByMovieTracking(NewMovieTracking);
+      
 
-        end
-        
-        function obj =      addMovieWithMultiplePositions(obj, NumberOfPositions, Nickname, AttachedFiles)
-            
-             for index = 1 : NumberOfPositions
-                        
-                     MyNickName =           [Nickname, '_Scene', num2str(index)];
+       
 
-                     NewMovieTracking =      PMMovieTracking(...
-                                                    MyNickName, ...
-                                                    obj.MovieLibrary.getMovieFolder, ...
-                                                    AttachedFiles, ...
-                                                    obj.MovieLibrary.getPathForImageAnalysis ...
-                                                    );
-                                                
-                    NewMovieTracking =          NewMovieTracking.setWantedScene(index);
-
-                    
-                    
-                    obj =                       obj.addNewMovieByMovieTracking(NewMovieTracking);
- 
-             end
-
-        end
         
         function obj = addNewMovieByMovieTracking(obj, NewMovieTracking)
-              NewMovieTracking =                  NewMovieTracking.setPropertiesFromImageMetaData;
+               NewMovieTracking =                  NewMovieTracking.setPropertiesFromImageMetaData;
 
                NewMovieController =                 PMMovieController(...
                                                                     NewMovieTracking ...
@@ -997,6 +993,7 @@ classdef PMMovieLibraryManager < handle
                     'Movie sources: Add single new entry'; ...
                     'Add entries for all images/movies in movie directory'; ...
                     'Delete entry of active movie'; ...
+                    'Delete all selected movies'; ...
                     'Delete all entries in library'; ...
                     'Batch: Remap all movies'; ...
                     'Replace keywords'; ...
@@ -1016,6 +1013,7 @@ classdef PMMovieLibraryManager < handle
                             @obj.addMovieClicked,...
                             @obj.addAllMissingCaptures,...
                             @obj.removeMovieClicked,...
+                            @obj.deleteAllSelectedMovies,...
                             @obj.removeAllMoviesClicked,...
                             @obj.mapUnMappedMovies,...
                             @obj.replaceKeywords,...
@@ -1028,7 +1026,7 @@ classdef PMMovieLibraryManager < handle
                     };
 
                 SeparatorList = {'off', 'off', 'off', ...
-                                  'on', 'off', 'off', 'off', ...
+                                  'on', 'off', 'off', 'off', 'off', ...
                                   'on', 'off', 'off', 'off', 'off', ...
                                   'on', 'off', 'off'};
 
@@ -1039,7 +1037,6 @@ classdef PMMovieLibraryManager < handle
 
         function obj =          setPathForImageAnalysis(obj, ~, ~)
              obj.MovieLibrary =         obj.MovieLibrary.letUserSetAnnotationPath;
-             
              obj =                      obj.updateAfterAnnotationPathChange;
 
         end
@@ -1730,39 +1727,7 @@ classdef PMMovieLibraryManager < handle
           
     end
     
-    methods (Access = private) % GETTERS MOVIE-LIBRARY
-        
-           function Library = getMovieLibraryForInput(obj, varargin)
-            
-            NumberOfArguments = length(varargin);
-            switch NumberOfArguments
-                case 0
-                    PreviouslyUsedFileName = obj.getPreviouslyUsedFileName;
-                    if isempty(PreviouslyUsedFileName)
-                        Library =   PMMovieLibrary();
-                    else
-                        Library =   PMMovieLibrary(PreviouslyUsedFileName);
-                    end
-                    
-                case 1
-                    Type = class(varargin{1});
-                    switch Type
-                        case 'char'
-                            Library = PMMovieLibrary(varargin{1});
-                        case 'PMMovieLibrary'
-                            Library = varargin{1};
-                        otherwise
-                            error('Wrong input.')
-                    end
-                    
-                otherwise
-                    error('Wrong number of arguments.')
 
-            end
-            
-           end
-        
-    end
     
     methods (Access = private)
         

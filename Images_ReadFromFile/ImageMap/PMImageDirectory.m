@@ -33,6 +33,22 @@ classdef PMImageDirectory
     
     methods % GETTERS
         
+
+        function Image = getImage(obj)
+
+            assert(obj.getNumberOfStrips == 1, 'Wrong content.')
+
+              StripData =         obj.readStripsFromFile;
+            StripData =         obj.deCompressStripData(StripData);
+            StripData =         obj.reshapeStripData(StripData) ; 
+             
+         
+            Image  = StripData{1};
+
+
+
+        end
+
          function ImageVolume = drawOnImageVolume(obj, ImageVolume)
             % DRAWONIMAGEVOLUME adds image data to input volume of all strips of directory;
             % input 5D-image volume
@@ -93,7 +109,11 @@ classdef PMImageDirectory
          end
         
         function fileID =           getFileID(obj)
-            fileID =                fopen(obj.RawData{3});    
+            try
+                fileID =                fopen(obj.RawData{3});    
+            catch
+                error('Something went wrong.')
+            end
         end
         
     end

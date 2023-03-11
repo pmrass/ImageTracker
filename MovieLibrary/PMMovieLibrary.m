@@ -56,18 +56,25 @@ classdef PMMovieLibrary
                     case 0
 
                     case 1
-                        obj.FileName =      varargin{1};
+                            obj.FileName =      varargin{1};
                         
-                            [a,~,~]= fileparts(varargin{1});
-                        
-                            obj.PathForImageAnalysis =  a;
-                            obj.PathOfMovieFolder =    a;
-                            obj.PathForExport=         a;
+                          
                         
                         if  exist(obj.FileName) == 2
                             obj =               obj.load;
                             obj =               obj.ensureAllMovieTrackingFilesCanConnect;
                             obj =               obj.loadAllMoviesFromFile;
+
+
+                        else
+
+                            [a,~,~]=                        fileparts(varargin{1});
+                        
+                            obj.PathForImageAnalysis =      a;
+                            obj.PathOfMovieFolder =         a;
+                            obj.PathForExport=              a;
+
+
                         end
                         
                     case 2
@@ -88,10 +95,14 @@ classdef PMMovieLibrary
                             
                             
                         end
+
+                 
+                    
+
                         
                     case 4
                         
-                        error('Not supported. Verify approach or start with just one argument.') 
+                     
                             obj.FileName =              varargin{1};
                             obj.PathForImageAnalysis =  varargin{2};
                             obj.PathOfMovieFolder =     varargin{3};
@@ -328,10 +339,11 @@ classdef PMMovieLibrary
             end
 
             function folder =               getMovieFolder(obj)
+
                 if ischar(obj.PathOfMovieFolder)
                     folder =          obj.PathOfMovieFolder;
 
-                    elseif iscellstr(obj.PathOfMovieFolder)
+                elseif iscellstr(obj.PathOfMovieFolder)
                     folder =      PMFolderManagement(obj.PathOfMovieFolder).getFirstValidFolder;
 
                 else
@@ -656,6 +668,73 @@ classdef PMMovieLibrary
         
     end
     
+
+    methods % GETTERS IMAGE-FILES
+
+          function NewMovieTrackingList = getListOfMovieTrackingsForNickNameAttachedFilesPositions(obj, Nickname, AttachedFiles)
+
+                 NumberOfPositions =            obj.getNumberOfPositionsForFiles(AttachedFiles);
+        
+                 BasicMovieTracking =           obj.getBasicMovieTrackingForNickNameAttachedFiles(Nickname, AttachedFiles);        
+    
+                 NewMovieTrackingList =         cell(NumberOfPositions, 1);
+    
+                 for sceneIndex = 1 : NumberOfPositions                       
+                        NewMovieTrackingList{sceneIndex, 1} =                   BasicMovieTracking.setWantedScene(sceneIndex);
+
+
+                        NewMovieTrackingList{sceneIndex, 1}  =                  NewMovieTrackingList{sceneIndex, 1}.setNickName([Nickname, '_Scene', sprintf('%05i', sceneIndex)]);
+
+    
+                 end
+
+                 NewMovieTrackingList = cellfun(@(x) x, NewMovieTrackingList);
+
+          end
+
+
+            function NumberOfPositions =            getNumberOfPositionsForFiles(obj, AttachedFiles)
+
+                        [~, ~, Extension] =     fileparts(AttachedFiles{1});
+
+                        switch Extension
+
+                            case '.czi'
+
+                                NumberOfPositions = PMCZIDocument([obj.getMovieFolder, '/', AttachedFiles{1}]).getNumberOfScences;
+                                
+                                if NumberOfPositions > 1
+                                   assert( length(AttachedFiles) == 1, 'When using multiple positions, only one attached file allowed.')
+                                end
+
+                            otherwise
+                                NumberOfPositions = 1;
+
+                        end
+
+                        
+
+
+            end
+
+
+        function myMovieTracking = getBasicMovieTrackingForNickNameAttachedFiles(obj, MyNickName, AttachedFiles)
+
+             myMovieTracking =                   PMMovieTracking(...
+                                                            MyNickName, ...
+                                                            obj.getMovieFolder, ...
+                                                            AttachedFiles, ...
+                                                            obj.getPathForImageAnalysis ...
+                                                            );
+
+
+        end
+        
+
+
+
+    end
+
     methods % GETTERS MOVIELIST
 
         function list =             getListhWithMovieObjects(obj)
@@ -703,7 +782,7 @@ classdef PMMovieLibrary
 
             function names =        getFileNamesOfUnincorporatedMovies(obj)
 
-                names =     PMFileManagement(obj.getMovieFolder).getFileNames;
+                names =                     PMFileManagement(obj.getMovieFolder).getFileNames;
                 ListWithPaths =             cellfun(@(x) [ obj.getMovieFolder, '/', x], names, 'UniformOutput', false);
 
                 for index = 1 : length(ListWithPaths)
@@ -715,7 +794,7 @@ classdef PMMovieLibrary
                     end
                 end
 
-                names(~ImageFileIndices) = [];
+            
 
                 alreadyAddedFileNames =     obj.getAllAttachedMovieFileNames;
                 if isempty(alreadyAddedFileNames)
@@ -1058,13 +1137,13 @@ classdef PMMovieLibrary
 
              function obj =      loadAllMoviesFromFile(obj, varargin)
             
-            ListWithNickNames =      obj.getAllNicknames;   
-            for index = 1 : length(ListWithNickNames)
-                fprintf('\nLoading movie %s. (%i of %i)\n', ListWithNickNames{index}, index, length(ListWithNickNames));
-                obj =                   obj.setNewNickname(ListWithNickNames{index});
-                myMovieTracking =       obj.getActiveMovieTrackingFromFile(varargin{:});
-                obj =                   obj.setLibraryWithActiveMovie(myMovieTracking);
-            end 
+                ListWithNickNames =      obj.getAllNicknames;   
+                for index = 1 : length(ListWithNickNames)
+                    fprintf('\nLoading movie %s. (%i of %i)\n', ListWithNickNames{index}, index, length(ListWithNickNames));
+                    obj =                   obj.setNewNickname(ListWithNickNames{index});
+                    myMovieTracking =       obj.getActiveMovieTrackingFromFile(varargin{:});
+                    obj =                   obj.setLibraryWithActiveMovie(myMovieTracking);
+                end 
             
              end
              

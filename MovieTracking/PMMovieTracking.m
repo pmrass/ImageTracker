@@ -12,10 +12,8 @@ classdef PMMovieTracking < PMChannels
         AttachedFiles =                         cell(0,1) % list files that contain movie-information;
         WantedScene
        
-
         DriftCorrection =                       PMDriftCorrection
               
-        
         CurrentVersion =                        'AfterAugust2021';
         
         LoadedImageVolumes
@@ -23,8 +21,8 @@ classdef PMMovieTracking < PMChannels
               
         MaskColor =                             [NaN NaN 150]; % some settings for how 
          
-        
         SegmentationCapture
+        ActiveImage
         
     end
     
@@ -43,10 +41,9 @@ classdef PMMovieTracking < PMChannels
 
         Tracking =                          PMTrackingNavigationController
         
-        
-        
         AutoCellRecognition
 
+        GenerateMaskOnClick = true
 
     end
 
@@ -109,6 +106,7 @@ classdef PMMovieTracking < PMChannels
             % 4: 1: nickname; 2: movie-folder; 3: attached movie files; 4: annotation folder;
            
             
+            obj.GenerateMaskOnClick = false;
           
             NumberOfInputArguments = length(varargin);
             switch NumberOfInputArguments
@@ -870,20 +868,31 @@ classdef PMMovieTracking < PMChannels
             % shown is signal of active channel, pixels outside of crop are blacked out;
             
               
-           imageVolumeWithFilteredInt =               obj.getActiveImageVolumeWithProcessedIntensity(varargin{:});
-            
+            tic
+           imageVolumeWithFilteredInt =         obj.getActiveImageVolumeWithProcessedIntensity(varargin{:});
+           
+           toc
+
+           tic
             imageVolumeWithFilteredPlanes =      obj.filterImageVolumeByActivePlanes(imageVolumeWithFilteredInt);
             
-            obj =                       obj.setVisibilityToActiveChannel;
-            obj =                       obj.setColor('Red');
-            
-            rgbImageObject =            obj.getRgbImageObjectForVolume(imageVolumeWithFilteredPlanes);
-            
-            rgbImage =                  rgbImageObject.getRgbImageFromImageVolume(imageVolumeWithFilteredPlanes);
-            MyImageMatrix =             rgbImage(:,:,1);
+            toc
 
-            CleanedUpVolume =           obj.blackOutOutOfRangePixelsInMatrix(MyImageMatrix);
+            tic
+            obj =                               obj.setVisibilityToActiveChannel;
+            obj =                               obj.setColor('Red');
+            
+            toc
+
+            tic
+            rgbImageObject =                    obj.getRgbImageObjectForVolume(imageVolumeWithFilteredPlanes);
+            
+            rgbImage =                          rgbImageObject.getRgbImageFromImageVolume(imageVolumeWithFilteredPlanes);
+            MyImageMatrix =                     rgbImage(:,:,1);
+
+            CleanedUpVolume =                   obj.blackOutOutOfRangePixelsInMatrix(MyImageMatrix);
            
+            toc
 
         end
         
@@ -897,11 +906,18 @@ classdef PMMovieTracking < PMChannels
         
         
         function imageVolumeWithFilteredPlanes =               getActiveImageVolumeWithProcessedIntensity(obj, varargin)
-            activeVolume =                          obj.getActiveImageVolume(varargin{:});        
-            rgbImageObject =                        obj.getRgbImageObjectForVolume(activeVolume);
-            imageVolumeWithFilteredPlanes =         rgbImageObject.getImageVolumeWithAdjustedIntensities;
+            activeVolume =                              obj.getActiveImageVolume(varargin{:});        
+          imageVolumeWithFilteredPlanes =               obj.adjustIntensitiesForImage(activeVolume);
             
         end
+
+
+        function imageVolumeWithFilteredPlanes = adjustIntensitiesForImage(obj, activeVolume)
+            rgbImageObject =                        obj.getRgbImageObjectForVolume(activeVolume);
+            imageVolumeWithFilteredPlanes =         rgbImageObject.getImageVolumeWithAdjustedIntensities;
+
+        end
+
         
         
         function activeVolume =         getActiveImageVolume(obj, varargin)
@@ -990,7 +1006,7 @@ classdef PMMovieTracking < PMChannels
 
             MySegmentationCapture =             MySegmentationCapture.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
             MySegmentationCapture =             MySegmentationCapture.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
-            MySegmentationCapture =             MySegmentationCapture.setBlackedOutPixelsByPreviousTrackedPixels;
+            MySegmentationCapture =             MySegmentationCapture.blackoutAllPreviouslyTrackedPixels;
 
             MySegmentationCapture =             MySegmentationCapture.setActiveZCoordinate(obj.getActivePlanesWithoutDriftCorrection);
             MySegmentationCapture =             MySegmentationCapture.setSegmentationType('Manual');
@@ -1018,16 +1034,30 @@ classdef PMMovieTracking < PMChannels
 
             if isempty(obj.SegmentationCapture)
 
+                
                 SegementationOfReference =      PMSegmentationCapture(obj);
+                
+
+                
                 SegementationOfReference =      SegementationOfReference.setPixelShiftForEdgeDetection(4);
+                
+
+                
                 SegementationOfReference =      SegementationOfReference.setMaximumCellRadius(80);
+                
+
+                
                 SegementationOfReference =      SegementationOfReference.setMaximumDisplacement(120);
+                
+
                 SegementationOfReference =      SegementationOfReference.setAllowedExcessSizeFactor(1.3);
                 SegementationOfReference =      SegementationOfReference.setFactorForThreshold(1);  
                 SegementationOfReference =      SegementationOfReference.setNumberOfPixelsForBackground(30);  
 
                 SegementationOfReference =      SegementationOfReference.setSizeForFindingCellsByIntensity(5);
                 SegementationOfReference =      SegementationOfReference.setShowSegmentationProgress(false);
+
+                
 
 
             else
@@ -1180,10 +1210,8 @@ classdef PMMovieTracking < PMChannels
             assert(~isempty(obj.getPathsOfImageFiles), 'Could not get paths.')
             
             fprintf('\nPMMovieTracking:@setPropertiesFromImageMetaData.\n')
-            myImageFiles =                      PMImageFiles(...
-                                                    obj.getPathsOfImageFiles, ...
-                                                    obj.WantedScene...
-                                                    );
+            myImageFiles =                   obj.getImageFileObjects;
+
             assert(~myImageFiles.notAllFilesCouldBeRead, 'Could not connect to all movie-files.')
             
             fprintf('All source files could be accessed. Retrieving MetaData and ImageMaps.\n')
@@ -1821,7 +1849,7 @@ classdef PMMovieTracking < PMChannels
             
             fprintf('\nAnother important feature is support for interaction analysis.\n')
             fprintf('The foundation for this support comes from the following object:\n')
-            obj.Interactions = obj.Interactions.showSummary;
+    %        obj.Interactions = obj.Interactions.showSummary;
             
             fprintf('\nThis object also determines what type of annotation will be displayed.\n')
             if obj.TimeVisible
@@ -1957,6 +1985,8 @@ classdef PMMovieTracking < PMChannels
                     
                 case 'SelectedChannels'     
                      obj = setVisible(obj, Value);
+                     obj.SegmentationCapture = obj.getDefaultSegmentationCapture;
+                     obj.ActiveImage = obj.getActiveImage;
                      
                 case 'ChannelReconstruction'
                     obj = obj.setReconstructionType(Value);   
@@ -2060,21 +2090,50 @@ classdef PMMovieTracking < PMChannels
        
         function obj =      addMaskByClickedCoordiante(obj, Coordinate)      
             
+            tic
+            obj.GenerateMaskOnClick = true;
             rowPos =                        Coordinate(1);
             columnPos =                     Coordinate(2);
             planePos =                      Coordinate(3);
+
+             if isempty(obj.SegmentationCapture)
+
+
+                obj.SegmentationCapture = obj.getDefaultSegmentationCapture;
+             end
+
+            mySegmentationObject =          obj.SegmentationCapture;
             
-            mySegmentationObject =          obj.getDefaultSegmentationCapture;
-            mySegmentationObject =          mySegmentationObject.setImageVolume(obj.getActiveImage);
-          
+            toc
+
+            
+            MyImage =                       obj.getActiveImage;
+            
+            
+            mySegmentationObject =          mySegmentationObject.setImageVolume(MyImage);
+            
                mySegmentationObject =        mySegmentationObject.setSegmentationOfCurrentFrame(obj.getUnfilteredSegmentationOfCurrentFrame); 
                 mySegmentationObject =        mySegmentationObject.setActiveStateBySegmentationCell(obj.getSegmentationOfActiveMask);
-                mySegmentationObject =        mySegmentationObject.setBlackedOutPixelsByPreviousTrackedPixels;
+                mySegmentationObject =        mySegmentationObject.blackoutAllPreviouslyTrackedPixels;
             mySegmentationObject =          mySegmentationObject.setActiveCoordinateBy(rowPos, columnPos, planePos);
-            mySegmentationObject =          mySegmentationObject.generateMaskByClickingThreshold;
-            
+           
+
+            if obj.GenerateMaskOnClick
+                   mySegmentationObject =          mySegmentationObject.generateMaskByClickingThreshold;
+
+
+            else
+                   mySegmentationObject =          mySegmentationObject.generateMaskByClick;
+
+              
+            end
+
+ 
+
              obj =                          obj.resetActivePixelListWith(mySegmentationObject);
             
+
+             
             if 1== 2
                   children =                          mySegmentationObject.getSegmentationCaptureChildren;
                    NewTrackID = obj.findNewTrackID;
@@ -2149,7 +2208,14 @@ classdef PMMovieTracking < PMChannels
                    
                end
               
-                obj.Tracking =      obj.Tracking.performMethod('addSegmentation', SegmentationCapture);
+                obj.Tracking =      obj.Tracking.performMethod('setEntryInTrackingCellForTime', SegmentationCapture);
+
+
+                MyID =               obj.Tracking.get('IdOfActiveTrack');
+                obj.Tracking =      obj.Tracking.performMethod('updateSegmentationAddressInTrackInfoListForIDs', MyID);
+                
+                
+                
                 obj =               obj.setSavingStatus(false);
                 
       
@@ -2496,6 +2562,9 @@ classdef PMMovieTracking < PMChannels
             % GETSEGMENTATIONOFACTIVEMASK returns segmentation of active track filtered for active frame ("active mask");
             segmentationOfActiveTrack =    obj.Tracking.get('ActiveSegmentationForFrames', obj.Navigation.getActiveFrames);
         end 
+
+
+        
 
         function pixelList_Modified =               getPixelsFromActiveMaskAfterRemovalOf(obj, pixelListToRemove)
             % GETPIXELSFROMACTIVEMASKAFTERREMOVALOF returns pixel list of active track (after removal of pixels where X and Y coordinates match input pixel list);
@@ -3000,12 +3069,19 @@ classdef PMMovieTracking < PMChannels
        
         function summary =              getMetaDataSummary(obj)
             % GETMETADATASUMMARY
-            summary = PMImageFiles(obj.getPathsOfImageFiles, obj.WantedScene).getMetaDataSummary;
+            summary = obj.getImageFileObjects.getMetaDataSummary;
         end
+
+        function imageFiles = getImageFileObjects(obj)
+            imageFiles = PMImageFiles(obj.getPathsOfImageFiles, obj.WantedScene);
+
+        end
+
+
         
         function MetaDataString =       getMetaDataString(obj)
             % GETMETADATASTRING
-            MetaDataString =             PMImageFiles(obj.getPathsOfImageFiles, obj.WantedScene).getMetaDataString;
+            MetaDataString =             obj.getImageFileObjects.getMetaDataString;
         end
    
     end
@@ -3091,7 +3167,7 @@ classdef PMMovieTracking < PMChannels
             obj.Tracking =          PMTrackingNavigationController(PMTrackingNavigation(obj.getTrackingFolder));
             try
                 obj.Tracking =      obj.Tracking.performMethod('load');
-                obj.Tracking =              obj.Tracking.permformMethod('initializeWithDrifCorrectionAndFrame', obj.DriftCorrection, obj.Navigation.getMaxFrame);
+                obj.Tracking =      obj.Tracking.permformMethod('initializeWithDrifCorrectionAndFrame', obj.DriftCorrection, obj.Navigation.getMaxFrame);
 
             catch
                 warning('Tracking was not loaded.')
@@ -3118,13 +3194,13 @@ classdef PMMovieTracking < PMChannels
             fprintf('Loading "%s": ', obj.getPathOfMovieTrackingForSmallFile)
             load(obj.getPathOfMovieTrackingForSmallFile, 'MovieTrackingInfo');
 
-            obj.NickName  =                     MovieTrackingInfo.File.NickName         ;
-            obj.MovieFolder =                   MovieTrackingInfo.File.MovieFolder   ;                % movie folder:
-            obj.AttachedFiles =                 MovieTrackingInfo.File.AttachedFiles     ;
-          %  obj.AnnotationFolder =              MovieTrackingInfo.File.AnnotationFolder   ;
+            obj.NickName  =                             MovieTrackingInfo.File.NickName         ;
+            obj.MovieFolder =                           MovieTrackingInfo.File.MovieFolder   ;                % movie folder:
+            obj.AttachedFiles =                         MovieTrackingInfo.File.AttachedFiles     ;
+            %  obj.AnnotationFolder =              MovieTrackingInfo.File.AnnotationFolder   ;
 
             if isfield(MovieTrackingInfo.File, 'WantedScene')
-                obj.WantedScene =              MovieTrackingInfo.File.WantedScene      ;
+                obj.WantedScene =                       MovieTrackingInfo.File.WantedScene      ;
 
             end
             
@@ -3163,21 +3239,17 @@ classdef PMMovieTracking < PMChannels
                 obj.ActiveTrackIsVisible =  true;
             end
             
-             if isfield(MovieTrackingInfo.MovieView, 'SelectedTracksAreVisible')
+            if isfield(MovieTrackingInfo.MovieView, 'SelectedTracksAreVisible')
                 obj.SelectedTracksAreVisible =              MovieTrackingInfo.MovieView.SelectedTracksAreVisible      ;
             else
                 obj.SelectedTracksAreVisible =  true;
-             end
+            end
             
             if isfield(MovieTrackingInfo.MovieView, 'RestingTracksAreVisible')
                 obj.RestingTracksAreVisible =              MovieTrackingInfo.MovieView.RestingTracksAreVisible      ;
             else
                 obj.RestingTracksAreVisible =  false;
             end
-            
-        
-            
-            
             
             obj.MasksAreVisible =               MovieTrackingInfo.MovieView.MasksAreVisible        ;
             obj.ActiveTrackIsHighlighted =      MovieTrackingInfo.MovieView.ActiveTrackIsHighlighted ;
@@ -3188,7 +3260,6 @@ classdef PMMovieTracking < PMChannels
             obj.CroppingOn =                    logical(MovieTrackingInfo.MovieView.CroppingOn            );
             obj.CroppingGate =                  MovieTrackingInfo.MovieView.CroppingGate      ;
 
-          
             if isempty(MovieTrackingInfo.Channels.Channels)
 
             else
@@ -3343,7 +3414,7 @@ classdef PMMovieTracking < PMChannels
             MovieTrackingInfo.File.AttachedFiles =                  obj.AttachedFiles;
             MovieTrackingInfo.File.AnnotationFolder  =              obj.AnnotationFolder;
 
-               MovieTrackingInfo.File.WantedScene =             obj.WantedScene;
+            MovieTrackingInfo.File.WantedScene =                    obj.WantedScene;
           
             
             MovieTrackingInfo.File.DriftCorrection  =               obj.DriftCorrection;
@@ -3353,10 +3424,10 @@ classdef PMMovieTracking < PMChannels
             MovieTrackingInfo.StopTracking.MaxStopDurationForGoSegment =    obj.MaxStopDurationForGoSegment;
             MovieTrackingInfo.StopTracking.MinStopDurationForStopSegment =  obj.MinStopDurationForStopSegment;
 
-            MovieTrackingInfo.ImageMapPerFile =                     obj.ImageMapPerFile;
-            MovieTrackingInfo.TimeCalibration =                     obj.TimeCalibration;
-            MovieTrackingInfo.SpaceCalibration =                    obj.SpaceCalibration;
-            MovieTrackingInfo.Navigation =                          obj.Navigation;
+            MovieTrackingInfo.ImageMapPerFile =                         obj.ImageMapPerFile;
+            MovieTrackingInfo.TimeCalibration =                         obj.TimeCalibration;
+            MovieTrackingInfo.SpaceCalibration =                        obj.SpaceCalibration;
+            MovieTrackingInfo.Navigation =                              obj.Navigation;
 
 
             MovieTrackingInfo.MovieView.TimeVisible =               obj.TimeVisible;
@@ -3618,12 +3689,12 @@ classdef PMMovieTracking < PMChannels
 
                 tic
             
-                MyImageSource =              obj.getImageSource(FrameNumber);                                    
-                VolumeReadFromFile =         MyImageSource.getImageVolume;
+                MyImageSource =                 obj.getImageSource(FrameNumber);                                    
+                VolumeReadFromFile =            MyImageSource.getImageVolume;
                                                     
-                ProcessedVolume =           PM5DImageVolume(VolumeReadFromFile).filter(obj.getReconstructionTypesOfChannels).getImageVolume;
+                ProcessedVolume =               PM5DImageVolume(VolumeReadFromFile).filter(obj.getReconstructionTypesOfChannels).getImageVolume;
                 
-                Time =  toc;
+                Time =                          toc;
                 fprintf('PMMovieTracking: @getImageVolumeForFrame. Loading frame %i from file. Duration: %8.5f seconds.\n', FrameNumber, Time)
 
         end
@@ -3713,6 +3784,7 @@ classdef PMMovieTracking < PMChannels
                                                             'Red'...
                                                             );
             end
+            
         end
 
         function image =                getInteractionImage(obj)
@@ -3738,8 +3810,12 @@ classdef PMMovieTracking < PMChannels
         
         function filtered =             filterImageVolumeByActivePlanes(obj, Volume)
             % FILTERIMAGEVOLUMEBYACTIVEPLANES
-            
-              VisiblePlanesWithoutDriftCorrection =         obj.getVisibleTrackingPlanesWithoutDriftCorrection;
+          
+            if obj.CollapseAllPlanes
+              VisiblePlanesWithoutDriftCorrection =        1 : obj.getMaxPlaneWithoutDriftCorrection;
+            else
+                 VisiblePlanesWithoutDriftCorrection =         obj.getActivePlanesWithoutDriftCorrection;
+                        end
               filtered =                                    Volume(:, :, VisiblePlanesWithoutDriftCorrection, :, :);
          end
         

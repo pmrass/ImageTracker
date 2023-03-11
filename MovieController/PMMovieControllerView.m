@@ -588,7 +588,7 @@ classdef PMMovieControllerView
            switch Type
                case 'PMMovieTracking'
                     index =      find(strcmp(obj.getEditingType, Value.getPossibleEditingActivities));
-                    obj.Navigation.EditingOptions.Value =          index;
+                  %  obj.Navigation.EditingOptions.Value =          index;
                      switch index
                         case {1, 3} % 'Visualize', 'Tracking;
                             Value = 'off';
@@ -799,7 +799,7 @@ classdef PMMovieControllerView
        function string = getEditingType(obj)
            
            try
-            input =                        obj.Navigation.EditingOptions.String{MyValue};
+            input =                        obj.Navigation.EditingOptions.String{obj.Navigation.EditingOptions.Value};
             
            catch
                input = 'Viewing only';
