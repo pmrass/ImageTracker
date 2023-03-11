@@ -268,6 +268,9 @@ classdef PMMovieController_Keypress
                          switch obj.Modifiers 
                              case 'Nil'
                                 obj.MovieController =              obj.MovieController.performTrackingMethod('autoTracking', 'activeTrack', 'backwardInLastGap');
+                           
+                             case 'shift'
+                                obj.MovieController  =          obj.MovieController.updateAllViewsThatDependOnActiveTrack;
                              case 'command'
                                  obj.MovieController =    obj.MovieController.setActiveTrackTo('backWardGapInNextUnfinishedTrack');
                                  

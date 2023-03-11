@@ -88,11 +88,30 @@ classdef PMRGBImage
             
             imageVolume = obj.SourceImageVolume;
             
-             for ChannelIndex = 1 : size(imageVolume, 4)
+             for ChannelIndex = 1 : size(imageVolume, 5)
                  
                  for planeIndex = 1 : size(imageVolume, 3)
                  
-                    imageVolume(:, :, planeIndex, ChannelIndex)=          imadjust(imageVolume(:, :, planeIndex, ChannelIndex), [obj.ListWithMinimumIntensities_Select(ChannelIndex)  obj.ListWithMaximumIntensities_Select(ChannelIndex)], [0 1]);
+                        low = obj.ListWithMinimumIntensities_Select(ChannelIndex) ;
+                        high = obj.ListWithMaximumIntensities_Select(ChannelIndex);
+
+                        if high <= 0
+                            high = 0.5;
+
+                        else
+
+                              if low > high
+                            low = high - 0.01;
+                            end
+
+                        end
+
+
+
+
+                      
+
+                    imageVolume(:, :, planeIndex, ChannelIndex)=          imadjust(imageVolume(:, :, planeIndex, ChannelIndex), [ low high], [0 1]);
 
                  end
                     

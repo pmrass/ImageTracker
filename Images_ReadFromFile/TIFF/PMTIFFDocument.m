@@ -447,10 +447,10 @@ classdef PMTIFFDocument
                     MatLabType=         'float64';
 
                 otherwise
-                    warning(['tiff type %i not supported', FieldType])
-                     OffsetOfFieldValue=            NaN;  
-                    Value = '';
+                    OffsetOfFieldValue=         NaN;  
+                    Value =                     '';
                     return
+                     
             end
 
 

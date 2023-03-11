@@ -133,11 +133,11 @@ classdef PMAutoTracking
     
     methods % GETTERS findMatchingTrackIDsForSegmentationLists
 
-        function FramesThatRequireClosing =     getFramesThatRequireClosing(~, Source, Target)
-        FramesThatRequireClosing =         Source.getFrame + 1 : Target.getFrame - 1;
+            function FramesThatRequireClosing =     getFramesThatRequireClosing(~, Source, Target)
+                FramesThatRequireClosing =         Source.getFrame + 1 : Target.getFrame - 1;
 
 
-    end
+            end
 
     end
 

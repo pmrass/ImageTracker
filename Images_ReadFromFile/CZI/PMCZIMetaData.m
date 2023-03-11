@@ -1,7 +1,7 @@
-classdef PMCZIDocument
-    %PMCZIDOCUMENT read data from CZI files
-    %   retrieve metadata and get a map of image-data within file;
-    
+classdef PMCZIMetaData
+    %PMCZIDOCUMENT read meta-data from CZI files
+    %   provides methods that allow retrieval of metadata;
+    %   getImageMap provides access to individual images contained within czi file;
     
     properties (Access = private)
         FileName
@@ -15,11 +15,12 @@ classdef PMCZIDocument
         ImageMap
         
         WantedPosition
+
     end
     
     methods % INITIALIZE
         
-        function obj =          PMCZIDocument(varargin)
+        function obj =          PMCZIMetaData(varargin)
             %PMCZIDOCUMENT Construct an instance of this class
             %   takes 1 or 2 arguments:
             % 1: filename
@@ -54,6 +55,70 @@ classdef PMCZIDocument
     
     methods % GETTERS
         
+       
+        function [SummaryStart, SummarySize, SummaryStartCoordinate] = getDimensionSummary(obj)
+
+           [SummaryStart, SummarySize, SummaryStartCoordinate] =    obj.getFullDimensionSummary;
+
+            FirstChannelRows =                                      cell2mat(SummaryStart(2:end, 4)) == 0;
+            FirstChannelRows =                                      [true; FirstChannelRows];
+
+            SummaryStart(~FirstChannelRows, :) =                    [];
+            SummarySize(~FirstChannelRows, :) =                     [];
+            SummaryStartCoordinate(~FirstChannelRows, :) =          [];
+
+        end
+
+        function [SummaryStart, SummarySize, SummaryStartCoordinate] = getFullDimensionSummary(obj)
+
+            RequiredDimensions =        {'X', 'Y', 'Z', 'C', 'T', 'S', 'H', 'M'};
+
+            ImageSegments =             obj.getAllImageSegments;
+
+            Summary =                   cell(size(ImageSegments, 1) + 1, length(RequiredDimensions));
+            Summary(1, :) =             RequiredDimensions;
+
+
+            SummaryStart =              Summary;
+            SummarySize =               Summary;
+            SummaryStartCoordinate =    Summary;
+        
+
+            for index = 1 : size(ImageSegments, 1)
+
+                MySegment =                         ImageSegments{index, 6};
+
+                MyDimensionEntries =                MySegment.Directory.DimensionEntries;
+
+                DimensionNames =                    cellfun(@(x) x.Dimension(1), MyDimensionEntries, 'UniformOutput', false);
+
+                Comparison =                        strcmp(DimensionNames', RequiredDimensions);
+                assert(min(Comparison) == 1, 'Wrong format')
+                
+                Starts =                            cellfun(@(x) x.Start, MyDimensionEntries);                
+                SummaryStart(index + 1, :) =        num2cell(Starts);
+                
+                Sizes =                             cellfun(@(x) x.Size, MyDimensionEntries);
+                SummarySize(index + 1, :) =         num2cell(Sizes);
+                
+                Sizes =                             cellfun(@(x) x.StartCoordinate, MyDimensionEntries);
+                SummaryStartCoordinate(index + 1, :) =        num2cell(Sizes);
+                
+            end
+
+        end
+
+        function ImageSegments =    getAllImageSegments(obj)
+            ImageSegments =        obj.SegmentList(cellfun(@(x) contains(x, 'ZISRAWSUBBLOCK'), obj.SegmentList(:,1)),:);
+
+        end
+
+        function list = getSegmentList(obj)
+
+            list = obj.SegmentList;
+
+        end
+
         function metaData =     getMetaData(obj)
             % GETMETADATA returns meta-data structure;
             metaData = obj.MetaData;
@@ -132,24 +197,60 @@ classdef PMCZIDocument
         end
         
         
+        
+    end
+
+    methods % GETTERS: STITCHING
+
+         function [Stitching ] = getFullStitchingStructure(obj)
+
+            [SummaryStart, SummarySize, SummaryStartCoordinate] =       obj.getFullDimensionSummary;
+            Stitching =                                                 obj.convertDimensionSummaryIntoStitchingStructure(SummaryStart, SummarySize, SummaryStartCoordinate);
+        
+         end
+
+        function [Stitching] = getStichtchingStructure(obj)
+
+                [SummaryStart, SummarySize, SummaryStartCoordinate]  =          obj.getDimensionSummary;
+                Stitching =                                                     obj.convertDimensionSummaryIntoStitchingStructure(SummaryStart, SummarySize, SummaryStartCoordinate);
+               
+        end
+
+        function Stitching = convertDimensionSummaryIntoStitchingStructure(obj, SummaryStart, SummarySize, SummaryStartCoordinate)
+
+
+
+                XColumn = 1;
+                YColumn = 2;
+                XShifts =                   cell2mat(SummaryStart(2 : end, XColumn));
+                XShifts =                   XShifts - min(XShifts);
+
+                 XSize =                     unique(cell2mat(SummarySize(2 : end, XColumn)));
+                assert(length(XSize), 'Inconsistent image sizes not allowed.')
+
+                 Stitching.TotalXSize =     max(XShifts) + XSize;
+                 Stitching.PanelXSize =     XSize;
+                 Stitching.XShifts =        XShifts;
+
+                YShifts =                   cell2mat(SummaryStart(2 : end, YColumn));
+                YShifts =                   YShifts - min(YShifts);
+
+                YSize =                     unique(cell2mat(SummarySize(2 : end, YColumn)));
+                assert(length(YSize), 'Inconsistent image sizes not allowed.')
+                
+                 Stitching.TotalYSize =     max(YShifts) + YSize;
+                 Stitching.PanelYSize =     YSize;
+                 Stitching.YShifts =        YShifts;
+        end
+
+
+
+
     end
     
     methods % GETTERS IMAGE-MAP
         
           function imageMap =     getImageMap(obj, varargin)
-            
-                switch length(varargin)
-                    case 0
-                         obj.ImageMap =      obj.getImageMapInternal;
-                         
-               
-                          
-                    otherwise
-                        error('Wrong input.')
-
-                end
-
-
                 imageMap = obj.ImageMap;
           end
            
@@ -169,20 +270,28 @@ classdef PMCZIDocument
         end
 
     end
+
+      methods  % FILE-MANAGEMENT
+        
+        function pointer = getPointer(obj)
+            pointer = fopen(obj.FileName,'r','l');
+            
+        end
+
+    end
     
     methods (Access = private) % GETTERS DIMENSION
        
         function WantedDimensionEntries =   getAllDimensionEntries(obj, Character)
-            
               WantedDimensionEntries = obj.getDimensionEntriesFor(obj.getAllImageSegments, Character);
         end
         
         function WantedDimensionEntries =   getDimensionEntriesFor(obj, ImageSegments, Character)
-            AllDimensionEntries =         cellfun(@(x) x.Directory.DimensionEntries, ImageSegments(:, 6), 'UniformOutput', false);
-              WantedDimensionEntries =      cellfun(@(x) obj.extractDimensionData(x, Character), AllDimensionEntries, 'UniformOutput', false);
+                AllDimensionEntries =               cellfun(@(x) x.Directory.DimensionEntries, ImageSegments(:, 6), 'UniformOutput', false);
+                WantedDimensionEntries =            cellfun(@(x) obj.extractDimensionData(x, Character), AllDimensionEntries, 'UniformOutput', false);
           
-              Empty =                       cellfun(@(x) isempty(x), WantedDimensionEntries);
-              WantedDimensionEntries(Empty) = [];
+                Empty =                             cellfun(@(x) isempty(x), WantedDimensionEntries);
+                WantedDimensionEntries(Empty) =     [];
             
         end
         
@@ -201,14 +310,7 @@ classdef PMCZIDocument
     end
     
     methods (Access = private) % GETTERS: IMAGE-SEGMENTS;
-       
-        function ImageSegments =    getAllImageSegments(obj)
-
-          ImageSegments =        obj.SegmentList(cellfun(@(x) contains(x, 'ZISRAWSUBBLOCK'), obj.SegmentList(:,1)),:);
-
-
-        end
-
+    
         function ImageSegments =    getImageSegementsOfSelectedScenes(obj)
 
 
@@ -247,7 +349,15 @@ classdef PMCZIDocument
             YDimensionData =            obj.getDimensionEntriesFor(SelectedImageSegments, 'Y');
             ZDimensionData =            obj.getDimensionEntriesFor(SelectedImageSegments, 'Z');
             TDimensionData =            obj.getDimensionEntriesFor(SelectedImageSegments, 'T');
+            
+            
             CDimensionData =            obj.getDimensionEntriesFor(SelectedImageSegments, 'C');
+
+
+            TDimensionStarts =          cellfun(@(x) x.Start + 1, TDimensionData);
+            CDimensionStarts =          cellfun(@(x) x.Start + 1, CDimensionData);
+            
+            
             
             NumberOfImages =     size(SelectedImageSegments,1);
             
@@ -286,12 +396,12 @@ classdef PMCZIDocument
 
                 ImageMap{ImageIndex + 1, 8} =   XDimensionData{ImageIndex}.Size;
                 ImageMap{ImageIndex + 1, 9} =   YDimensionData{ImageIndex}.Size;
-                ImageMap{ImageIndex+1, 10} =    TDimensionData{ImageIndex}.Start + 1;
+                ImageMap{ImageIndex+1, 10} =    TDimensionStarts(ImageIndex);
                 ImageMap{ImageIndex+1, 11} =    ZDimensionData{ImageIndex}.Start + 1;
                 ImageMap{ImageIndex+1, 12} =    YDimensionData{ImageIndex}.Size;
                 ImageMap{ImageIndex+1, 13} =    1;
                 ImageMap{ImageIndex+1, 14} =    YDimensionData{ImageIndex}.Size;
-                ImageMap{ImageIndex+1, 15} =    CDimensionData{ImageIndex}.Start + 1;
+                ImageMap{ImageIndex+1, 15} =    CDimensionStarts(ImageIndex);
                 ImageMap{ImageIndex+1, 16} =    0;
                 ImageMap{ImageIndex+1, 17} =    Compression;
                 
@@ -347,15 +457,6 @@ classdef PMCZIDocument
         
     end
 
-    methods (Access = private) % FILE-MANAGEMENT
-        
-        function pointer = getPointer(obj)
-            pointer = fopen(obj.FileName,'r','l');
-            
-        end
-
-    end
-    
     methods (Access = private) % GETTERS SEGMENTS
         
          function segmentList =     getSegments(obj)
@@ -363,8 +464,8 @@ classdef PMCZIDocument
             
             obj.FilePointer =            obj.getPointer;
             if obj.FilePointer == -1
-                warning('Cannot access file. Segment retrieval interrupted.')
-                return
+                error('Cannot access file. %s Segment retrieval interrupted.', obj.FileName)
+                
             end
 
             counter = 0;
@@ -530,10 +631,10 @@ classdef PMCZIDocument
         
         function Entry =            readDirectoryEntry(obj)
             Entry.Dimension =               fread(obj.FilePointer, 4, '*char');
-            Entry.Start =                   fread(obj.FilePointer, 1, '*uint32');
-            Entry.Size =                    fread(obj.FilePointer, 1, '*uint32');
+            Entry.Start =                   fread(obj.FilePointer, 1, '*int32');
+            Entry.Size =                    fread(obj.FilePointer, 1, '*int32');
             Entry.StartCoordinate =         fread(obj.FilePointer, 1, '*float32');
-            Entry.StoredSize =              fread(obj.FilePointer, 1, '*uint32');
+            Entry.StoredSize =              fread(obj.FilePointer, 1, '*int32');
 
         end
             

@@ -73,15 +73,7 @@ classdef PMCellomicsImages
         function obj = setMovieTrackingObjects(obj)
             
             
-            myFile =        PMFile(obj.Folder);
-            if isempty(obj.Channel)
-                Filter =        {obj.Well; '.TIFF'};
-            else
-                Filter =        {obj.Well; '.TIFF'; obj.Channel};
-            end
-            
-            Names =         myFile.getFileNamesInDirectory(Filter);
-            
+            Names = obj.getImageFileNames;
             obj.MovieTrackings = cell(length(Names), 1);
             
             for index = 1 : length(Names)
@@ -174,7 +166,21 @@ classdef PMCellomicsImages
     methods % GETTERS:
         
 
-        
+        function  Names = getImageFileNames(obj)
+
+
+            myFile =        PMFile(obj.Folder);
+            if isempty(obj.Channel)
+                Filter =        {obj.Well; '.TIFF'};
+            else
+                Filter =        {obj.Well; '.TIFF'; obj.Channel};
+            end
+            
+            Names =         myFile.getFileNamesInDirectory(Filter);
+
+            assert(~isempty(Names), fprintf('No files in source folder %s found.', obj.Folder))
+            
+        end
 
         function numbers = getNumberOfForeGroundPixels(obj)
            

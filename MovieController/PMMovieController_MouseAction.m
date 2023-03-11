@@ -40,7 +40,7 @@ classdef PMMovieController_MouseAction
                    obj =                    obj.setMouseAction;
 
                    if strcmp(obj.MovieController.interpretMouseMovement, 'Out of bounds')
-                        obj.MovieController = obj.MovieController.setMouseAction('No action');
+                       % obj.MovieController = obj.MovieController.setMouseAction('No action');
                      
                    end
 
@@ -63,21 +63,30 @@ classdef PMMovieController_MouseAction
            
         function myMovieController =    mouseMoved(obj)
             % MOUSEMOVED mediates response to mouse movement;
+
             if obj.MovieController.verifyActiveMovieStatus
                  obj = obj.perforActionDuringMouseDrag;
             end
             myMovieController = obj.MovieController;
+
         end
 
         function myMovieController =    mouseButtonReleased(obj)
-             % mouseButtonReleased mediates response to mouse button release;
-           obj =                       obj.performActionUponKeyRelease;
+            % mouseButtonReleased mediates response to mouse button release;
 
+             switch obj.MovieController.interpretMouseMovement
+                    case 'Stay'
+                        obj = obj.performActionUponKeyReleaseWhenImmotile;
+                    case 'Movement'
+                        obj = obj.performActionUponKeyReleaseWhenMoving;
+                end
+            
             obj.MovieController =       obj.MovieController.setMouseAction('No action');  
-          %  obj.MovieController =       obj.MovieController.blackOutStartMousePosition;
+            %  obj.MovieController =       obj.MovieController.blackOutStartMousePosition;
             myMovieController =         obj.MovieController;
 
         end
+
 
     end
         
@@ -107,6 +116,10 @@ classdef PMMovieController_MouseAction
            
            function obj = setDefaultMouseAction(obj)
                switch obj.Modifiers
+
+                   case 'shift'
+                          obj.MovieController =       obj.MovieController.setMouseAction('DrawLine');
+
                     case 'control'
                         obj.MovieController =       obj.MovieController.setMouseAction('MoveViewOrChangeTrack');
                     case 'alt'
@@ -159,9 +172,13 @@ classdef PMMovieController_MouseAction
         function obj = perforActionDuringMouseDrag(obj)
  
             switch obj.MovieController.getMouseAction
-                case 'No action'
-                    obj.MovieController =      obj.MovieController.blackOutMousePositions;
 
+                case 'No action'
+                   
+
+                case 'DrawLine'
+                        obj.MovieController =      obj.MovieController.addCoordinatesToLine;
+        
                 case 'Draw rectangle'
                         switch obj.MovieController.interpretMouseMovement
                               case 'Movement'
@@ -205,26 +222,22 @@ classdef PMMovieController_MouseAction
                         case {'Movement', 'Stay'}
                      end
 
+                otherwise
+                    warning('Type not supported.')
+
             end
 
         end
         
         %% performActionUponKeyRelease:
-         function obj = performActionUponKeyRelease(obj)
-
-                switch obj.MovieController.interpretMouseMovement
-                    case 'Stay'
-                        obj = obj.performActionUponKeyReleaseWhenImmotile;
-                    case 'Movement'
-                        obj = obj.performActionUponKeyReleaseWhenMoving;
-                end
-
-                    
-         end
+      
 
          function obj = performActionUponKeyReleaseWhenImmotile(obj)
 
             switch obj.MovieController.getMouseAction
+
+
+
                 case 'AutoTrackCurrentCell'
                     obj.MovieController =       obj.MovieController.autoTrackCurrentCell; 
                     
@@ -263,6 +276,12 @@ classdef PMMovieController_MouseAction
 
          function obj = performActionUponKeyReleaseWhenMoving(obj)
               switch obj.MovieController.getMouseAction
+
+
+                case 'DrawLine'
+
+                   MyLine =   obj.MovieController.exportLine;
+
                   case 'Add pixels'
                          obj.MovieController =   obj.MovieController.performTrackingMethod('addHighlightedPixelsFromMask');
 
